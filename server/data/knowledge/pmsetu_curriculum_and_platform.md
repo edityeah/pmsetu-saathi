@@ -1,0 +1,13 @@
+# PM-SETU curriculum, LOMS and the Saathi platform
+
+## Course structure
+A CTS year is 1,200 hours plus 150 hours of On-the-Job Training plus an optional 240-hour add-on, i.e. 1,590 hours. Every 30 hours is one NCrF credit: 40 + 5 + 8 = 53 credits. Courses are modularised into 240-hour modules of 8 credits. Three core modules (720 hours) are fixed nationally; two specific modules (480 hours), the OJT and the add-on (870 hours in total) can be designed by the SPV and delivered through institutional, industrial, online or hybrid modes. Hub ITIs introduce on average four new courses and upgrade ten; spokes introduce two and upgrade eight; ten short-term courses per cluster; four CITS instructor courses per cluster in some RFPs. New courses are routed through CSTARI Kolkata to NCVET. DGT notified 32 new-age CTS courses in 2026 (AI, cybersecurity, drones, 3D printing, advanced CNC, industrial robotics, IIoT, green hydrogen, EV, semiconductors, solar, mechatronics, 5G).
+
+## LOMS requirements
+The Learning Outcome Management System is a digital interface mapping the whole Hub-and-Spoke network with real-time data capture and links to the national MIS. It must be user-centric, accessible, multi-language, blended, interactive and gamified, with adaptive learning, personalised pathways, real-time analytics and feedback. Assessment uses competency-based, formative and summative methods with job sheets, observation checklists, rating scales, logbooks, viva and digital assessment apps integrated with LOMS, including AI-enabled video for practicals. OJT evaluation is split between the industry mentor and the ITI.
+
+## Student services the SPV must provide
+Placement services, counselling, soft skills, remedial classes for foundational gaps, sports, foreign language, apprenticeship and OJT linkage, grievance redressal, and a graduate tracer survey.
+
+## The PM-SETU Saathi platform
+Three layers. Administration: an SPV compliance layer (SIP and AOP tracking, cost-weighted KPI and tranche readiness, civil works, procurement, escrow and UCs, milestones with IMA verification, quarterly report pack, board and reserved matters) and a cluster operations layer (seats, attendance with camera reconciliation, trainers, machines and labs, batches, OJT, placement verification by trainee, employer and IMA, grievances). Learning: a CMS for 240-hour modules and NCVET pipeline, and a simple mobile LMS for trainees. Companion: Saathi, the AI assistant that opens any screen, answers scheme questions, tutors, counsels, logs OJT and runs the on-job tracer check-ins. Roles: SPV CEO, ITI Principal, Trainer, Trainee, IMA Verifier, Industry Partner, Curriculum Developer, State PMU.

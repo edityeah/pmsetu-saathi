@@ -1,0 +1,1153 @@
+// PM-SETU Saathi — Prisma schema (SQLite for the prototype; provider-neutral models).
+//
+// Shape follows the PRD's four modules on top of the SPV compliance layer:
+//   A  SIP & Annual Plan: Cluster, Iti, Trade, Offering(+Plan), Package, AopRecord,
+//      PlanTask, LaunchGate, EvidenceRule, Risk, Kpi, ChangeRequest
+//   B  Institute Operations: Subject, Batch, TrainerAssignment, Session, AttendanceMark,
+//      AssessmentPlan, MarkEntry, PracticalTask, PracticalObservation, Visit, Finding,
+//      OpsIssue, TrainerAvailability, SupportAction, Machine
+//   C  Student Companion: CompanionEvent, Referral, CompanionArtifact (+ CourseModule/ModuleProgress LMS)
+//   D  Industry & Placement: Employer, Opportunity, Application, EmploymentSpell, FollowUp, EmployerFeedback
+//   Compliance (unchanged): BudgetLine, CivilWork, ProcurementPackage, EscrowDeposit,
+//      UtilisationCertificate, Milestone, Report, BoardItem, Grievance
+// Every record that a dashboard counts keeps source + review state; missing data is never a zero.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── AUTH / USERS ─────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  role         String // spv_ceo | iti_principal | trainer | trainee | ima_officer | employer | curriculum_dev | state_pmu
+  name         String
+  phone        String?  @unique
+  aadhaar      String?  @unique
+  loginId      String?  @unique
+  passwordHash String?
+  email        String?
+  language     String   @default("en")
+  profile      String   @default("{}") // JSON: clusterId, itiId, facultyCode, roleCode (PR-PUS, SPV-ME…), designation
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  trainee            Trainee?
+  principalOf        Iti?                   @relation("principalOfIti")
+  ownedEmployer      Employer?              @relation("employerAdmin")
+  trainerBatches     Batch[]                @relation("leadOfBatch")
+  assignments        TrainerAssignment[]
+  sessions           Session[]              @relation("trainerOfSession")
+  availability       TrainerAvailability[]
+  observations       PracticalObservation[] @relation("observer")
+  visits             Visit[]                @relation("visitor")
+  issuesRaised       OpsIssue[]             @relation("raisedIssue")
+  notifications      Notification[]
+  chatThreads        ChatThread[]
+  grievances         Grievance[]            @relation("raisedBy")
+  milestonesVerified Milestone[]            @relation("verifiedBy")
+  changeRequests     ChangeRequest[]        @relation("proposer")
+  supportActions     SupportAction[]        @relation("supportOwner")
+  referralsTo        Referral[]             @relation("referralTo")
+}
+
+// ───────────────────────────── MODULE A: PLAN ─────────────────────────────
+model Cluster {
+  id              String   @id @default(cuid())
+  code            String   @unique // CL-DL-01
+  name            String
+  state           String
+  aipName         String
+  academicPartner String?
+  spvName         String
+  sipAmountCr     Float // 213
+  envelopeY1Cr    Float    @default(0) // 10% initial advance scenario
+  sipApprovedAt   DateTime
+  licenseStartAt  DateTime
+  scenarioStart   DateTime // Y1 month 1
+  currentYear     Int      @default(1)
+  planYearLabel   String   @default("Y1")
+  sector          String?
+  createdAt       DateTime @default(now())
+
+  itis           Iti[]
+  budgetLines    BudgetLine[]
+  kpis           Kpi[]
+  milestones     Milestone[]
+  reports        Report[]
+  deposits       EscrowDeposit[]
+  ucs            UtilisationCertificate[]
+  procurement    ProcurementPackage[]
+  boardItems     BoardItem[]
+  packages       Package[]
+  tasks          PlanTask[]
+  risks          Risk[]
+  evidenceRules  EvidenceRule[]
+  changeRequests ChangeRequest[]
+  employers      Employer[]
+  opportunities  Opportunity[]
+}
+
+model Iti {
+  id                String   @id @default(cuid())
+  clusterId         String
+  cluster           Cluster  @relation(fields: [clusterId], references: [id])
+  code              String   @unique // PUS | SHA | NAR | ROH | OKH
+  name              String
+  kind              String // hub | spoke
+  district          String
+  sectorFocus       String?
+  fiveYearCr        Float    @default(0)
+  civilCr           Float    @default(0)
+  digitalCr         Float    @default(0)
+  seatCapacity      Int // annual training places at baseline
+  baselineSeats     Int // baseline enrolments
+  trainersBaseline  Int      @default(0)
+  trainerPlan       String   @default("{}") // JSON {Y1..Y5}
+  roomsBaseline     Int      @default(0)
+  roomsWorking      Int      @default(0)
+  roomsY5           Int      @default(0)
+  registryConnected Boolean  @default(false) // student registry imported?
+  profileSections   String   @default("{}") // JSON {overview:{state,confirmedAt}, trades:…} 7 tabs
+  gradeBaseline     String?
+  principalUserId   String?  @unique
+  principal         User?    @relation("principalOfIti", fields: [principalUserId], references: [id])
+  createdAt         DateTime @default(now())
+
+  offerings       Offering[]
+  packages        Package[]
+  tasks           PlanTask[]
+  batches         Batch[]
+  trainees        Trainee[]
+  machines        Machine[]
+  civilWorks      CivilWork[]
+  grievances      Grievance[]
+  visits          Visit[]
+  issues          OpsIssue[]
+  companionEvents CompanionEvent[]
+}
+
+model Trade {
+  id              String   @id @default(cuid())
+  code            String   @unique // ELE, FIT, COP, AUT, DRN, WEL, CNC, ELX, HVC, OTH, LWD, LMC…
+  name            String
+  sector          String
+  nsqfLevel       Int      @default(4)
+  kind            String // existing_core | existing_other | new_specialist | short_term | aggregate
+  durationValue   Int      @default(24)
+  durationUnit    String   @default("months")
+  totalHours      Int      @default(1200)
+  entryAssumption String?
+  roleDirection   String?
+  status          String   @default("approved") // draft | submitted_cstari | ncvet_review | approved
+  createdAt       DateTime @default(now())
+
+  modules        CourseModule[]
+  offerings      Offering[]
+  batches        Batch[]
+  machines       Machine[]
+  subjects       Subject[]
+  practicalTasks PracticalTask[]
+}
+
+// ITI × course. Capacity is annual intake places; plan rows per period.
+model Offering {
+  id      String         @id // OF-PUS-ELE
+  itiId   String
+  iti     Iti            @relation(fields: [itiId], references: [id])
+  tradeId String
+  trade   Trade          @relation(fields: [tradeId], references: [id])
+  launch  String // "Existing at baseline" | "Y2 Q3" …
+  note    String?
+  scope   String         @default("Detailed offering") // or aggregate
+  plans   OfferingPlan[]
+  gates   LaunchGate[]
+  batches Batch[]
+}
+
+model OfferingPlan {
+  id               String   @id @default(cuid())
+  offeringId       String
+  offering         Offering @relation(fields: [offeringId], references: [id])
+  period           String // Baseline | Y1 … Y5
+  places           Int
+  enrolments       Int
+  actualEnrolments Int? // from registry where connected
+  sourceStatus     String   @default("Synthetic allocation")
+
+  @@unique([offeringId, period])
+}
+
+model Package {
+  id              String      @id // WP-PUS-01
+  clusterId       String
+  cluster         Cluster     @relation(fields: [clusterId], references: [id])
+  itiId           String
+  iti             Iti         @relation(fields: [itiId], references: [id])
+  category        String // Civil | Equipment | Digital | Staff | Faculty | Operations | Student industry | Governance
+  title           String
+  courseScope     String?
+  totalCr         Float
+  yearly          String      @default("{}") // JSON {1:..,5:..}
+  expenditureType String // CapEx | Recurring
+  deliverable     String?
+  sourceStatus    String?
+  aops            AopRecord[]
+}
+
+model AopRecord {
+  id              String     @id // AOP-WP-PUS-01-Y1
+  packageId       String
+  package         Package    @relation(fields: [packageId], references: [id])
+  year            Int
+  budgetCr        Float
+  spentCr         Float      @default(0)
+  accountableRole String
+  deliverable     String
+  evidenceRule    String // EV-CIVIL …
+  start           String
+  finish          String
+  state           String     @default("planned") // planned | accepted_internal | in_progress | completed_evidence_pending | completed | reviewed | returned
+  progressPct     Int        @default(0)
+  sourceStatus    String     @default("Planned synthetic")
+  tasks           PlanTask[]
+}
+
+// Y1 task register = workplan activities (child of an AOP record; carries no budget)
+model PlanTask {
+  id              String    @id // TASK-PUS-01
+  clusterId       String
+  cluster         Cluster   @relation(fields: [clusterId], references: [id])
+  itiId           String
+  iti             Iti       @relation(fields: [itiId], references: [id])
+  aopId           String
+  aop             AopRecord @relation(fields: [aopId], references: [id])
+  title           String
+  quarter         String
+  dueMonth        Int
+  dueAt           DateTime // scenarioStart + dueMonth
+  forecastAt      DateTime?
+  responsibleRole String // PR-PUS, TECH-PUS, SPV-PROC …
+  reviewerRole    String
+  predecessorId   String?
+  evidence        String?
+  acceptance      String?
+  state           String    @default("planned") // planned | in_progress | blocked | reported_complete | completed | reviewed | returned
+  blockedReason   String?
+  evidenceNote    String?
+  evidenceUrl     String?
+  lastUpdateAt    DateTime?
+  updatedByRole   String?
+  reviewNote      String?
+  isMilestone     Boolean   @default(false) // surfaced on the milestone board
+  weightPct       Float     @default(0)
+}
+
+model LaunchGate {
+  id           String   @id // GATE-OF-PUS-AUT-SPACE
+  offeringId   String
+  offering     Offering @relation(fields: [offeringId], references: [id])
+  beforeLaunch String // Y2 Q3
+  prerequisite String
+  evidence     String?
+  ownerRole    String
+  reviewerRole String
+  state        String   @default("pending") // pending | ready | passed | failed
+}
+
+model EvidenceRule {
+  id              String  @id // EV-CIVIL
+  clusterId       String
+  cluster         Cluster @relation(fields: [clusterId], references: [id])
+  workstream      String
+  requiredContent String
+  workflow        String
+  firstReviewer   String
+  escalation      String
+}
+
+model Risk {
+  id           String  @id // R01
+  clusterId    String
+  cluster      Cluster @relation(fields: [clusterId], references: [id])
+  risk         String
+  trigger      String
+  response     String
+  ownerRole    String
+  cadence      String
+  decisionRule String
+  state        String  @default("open") // open | triggered | closed
+}
+
+model Kpi {
+  id           String    @id @default(cuid())
+  clusterId    String
+  cluster      Cluster   @relation(fields: [clusterId], references: [id])
+  code         String // K01…K27 plus license KPIs
+  area         String // enrolment | quality | placement | inclusion | curriculum | faculty | infra | sustainability | reporting | industry | digital
+  name         String
+  unit         String
+  baseline     Float?
+  baselineText String?
+  targets      String    @default("{}") // JSON {Y1:..,Y5:..}
+  target       Float? // current-year target
+  current      Float? // null = pending / baseline unavailable
+  currentAsOf  DateTime?
+  coverage     String? // "2 of 5 ITIs reported"
+  numerator    Float?
+  denominator  Float?
+  definition   String?
+  actualSource String?
+  ownerRole    String?
+  sourceText   String? // raw source range text (e.g. "30-35%; strategic objective >=35%")
+  weight       Float     @default(0)
+  verified     Boolean   @default(false)
+  direction    String    @default("up")
+  valueStatus  String    @default("Plan only")
+
+  @@unique([clusterId, code])
+}
+
+model ChangeRequest {
+  id                   String    @id @default(cuid())
+  clusterId            String
+  cluster              Cluster   @relation(fields: [clusterId], references: [id])
+  itiCode              String?
+  targetType           String // task | aop | target | offering | milestone
+  targetId             String
+  title                String
+  currentValue         String
+  proposedValue        String
+  reason               String
+  resourceImpact       String?
+  affected             String? // JSON list of affected targets/milestones
+  proposerUserId       String
+  proposer             User      @relation("proposer", fields: [proposerUserId], references: [id])
+  state                String    @default("proposed") // proposed | returned | approved_internal | routed_formal
+  formalApprovalNeeded Boolean   @default(false)
+  decisionNote         String?
+  decidedAt            DateTime?
+  createdAt            DateTime  @default(now())
+}
+
+// ───────────────────────────── MODULE B: OPERATIONS ─────────────────────────────
+model Subject {
+  id          String              @id // SUB-ELE-TH
+  tradeId     String
+  trade       Trade               @relation(fields: [tradeId], references: [id])
+  name        String
+  type        String // Theory | Practical | Common | Applied
+  scope       String?
+  studyYear   Int                 @default(1)
+  sessions    Session[]
+  assignments TrainerAssignment[]
+  assessments AssessmentPlan[]
+}
+
+model Batch {
+  id            String    @id // SYN-PUS-ELE-Y1-B01
+  name          String
+  itiId         String
+  iti           Iti       @relation(fields: [itiId], references: [id])
+  tradeId       String
+  trade         Trade     @relation(fields: [tradeId], references: [id])
+  offeringId    String?
+  offering      Offering? @relation(fields: [offeringId], references: [id])
+  leadUserId    String?
+  lead          User?     @relation("leadOfBatch", fields: [leadUserId], references: [id])
+  startDate     DateTime
+  endDate       DateTime
+  capacity      Int
+  tenureMonths  Int       @default(24)
+  studyYear     Int       @default(1)
+  currentModule Int       @default(1)
+  state         String    @default("running") // scheduled | running | completed
+  cohortLabel   String? // "Completing FY27-28" / "Pre-scheme 2024-26"
+  createdAt     DateTime  @default(now())
+
+  trainees    Trainee[]
+  sessions    Session[]
+  assignments TrainerAssignment[]
+  assessments AssessmentPlan[]
+  issues      OpsIssue[]
+}
+
+model TrainerAssignment {
+  id             String    @id // ASG-Y1-0001
+  trainerUserId  String
+  trainer        User      @relation(fields: [trainerUserId], references: [id])
+  batchId        String
+  batch          Batch     @relation(fields: [batchId], references: [id])
+  subjectId      String
+  subject        Subject   @relation(fields: [subjectId], references: [id])
+  responsibility String // Batch lead and subject trainer | Subject trainer
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+}
+
+model Trainee {
+  id              String   @id // SYN-STU-000001
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  name            String
+  phone           String
+  gender          String // M | F | O
+  dob             DateTime
+  education       String
+  category        String?
+  pwd             Boolean  @default(false)
+  pwdType         String?
+  district        String
+  itiId           String
+  iti             Iti      @relation(fields: [itiId], references: [id])
+  batchId         String?
+  batch           Batch?   @relation(fields: [batchId], references: [id])
+  enrolledAt      DateTime
+  studyYear       Int      @default(1)
+  status          String   @default("active") // applicant | active | dropped | completed | placed
+  languagePref    String   @default("hi")
+  registryMatched Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  marks           AttendanceMark[]
+  markEntries     MarkEntry[]
+  observations    PracticalObservation[]
+  progress        ModuleProgress[]
+  support         SupportAction[]
+  companionEvents CompanionEvent[]
+  referrals       Referral[]
+  artifacts       CompanionArtifact[]
+  applications    Application[]
+  spells          EmploymentSpell[]
+}
+
+// One scheduled timetable slot. Delivery status is separate from attendance.
+model Session {
+  id              String                 @id @default(cuid())
+  batchId         String
+  batch           Batch                  @relation(fields: [batchId], references: [id])
+  subjectId       String
+  subject         Subject                @relation(fields: [subjectId], references: [id])
+  trainerUserId   String?
+  trainer         User?                  @relation("trainerOfSession", fields: [trainerUserId], references: [id])
+  substituteName  String?
+  date            DateTime
+  startTime       String                 @default("10:00")
+  room            String?
+  kind            String                 @default("theory") // theory | practical
+  delivery        String                 @default("scheduled") // scheduled | delivered | partial | rescheduled | cancelled
+  deliveryReason  String?
+  attendanceState String                 @default("not_reported") // not_reported | submitted | needs_review | confirmed
+  captureMethod   String? // trainer_mobile | offline_sync | camera_assisted
+  submittedAt     DateTime?
+  confirmedAt     DateTime?
+  syncState       String                 @default("synced") // synced | saved_on_device
+  presentCount    Int?
+  absentCount     Int?
+  lateCount       Int?
+  marks           AttendanceMark[]
+  observations    PracticalObservation[]
+
+  @@index([batchId, date])
+}
+
+model AttendanceMark {
+  id               String    @id @default(cuid())
+  sessionId        String
+  session          Session   @relation(fields: [sessionId], references: [id])
+  traineeId        String
+  trainee          Trainee   @relation(fields: [traineeId], references: [id])
+  status           String // present | absent | late | excused | roster_issue
+  reason           String?
+  correctedAt      DateTime?
+  correctionReason String?
+
+  @@unique([sessionId, traineeId])
+}
+
+model AssessmentPlan {
+  id            String      @id @default(cuid())
+  batchId       String
+  batch         Batch       @relation(fields: [batchId], references: [id])
+  subjectId     String?
+  subject       Subject?    @relation(fields: [subjectId], references: [id])
+  title         String
+  type          String      @default("theory") // theory | practical
+  topic         String?
+  maxMarks      Int         @default(50)
+  date          DateTime
+  evaluatorName String?
+  paperVersion  String?
+  state         String      @default("planned") // planned | conducted | marks_pending | needs_review | confirmed
+  entries       MarkEntry[]
+}
+
+model MarkEntry {
+  id               String         @id @default(cuid())
+  assessmentId     String
+  assessment       AssessmentPlan @relation(fields: [assessmentId], references: [id])
+  traineeId        String
+  trainee          Trainee        @relation(fields: [traineeId], references: [id])
+  marks            Int?
+  status           String         @default("scored") // scored | absent | not_assessed | withheld
+  source           String         @default("manual") // manual | ocr
+  ocrConfidence    Float?
+  ocrExtracted     Int?
+  reviewState      String         @default("submitted") // submitted | needs_review | confirmed | returned
+  previousMarks    Int?
+  correctionReason String?
+
+  @@unique([assessmentId, traineeId])
+}
+
+model PracticalTask {
+  id           String                 @id @default(cuid())
+  tradeId      String
+  trade        Trade                  @relation(fields: [tradeId], references: [id])
+  title        String
+  rubric       String                 @default("[]") // JSON criteria
+  required     Boolean                @default(true)
+  observations PracticalObservation[]
+}
+
+model PracticalObservation {
+  id         String        @id @default(cuid())
+  taskId     String
+  task       PracticalTask @relation(fields: [taskId], references: [id])
+  traineeId  String
+  trainee    Trainee       @relation(fields: [traineeId], references: [id])
+  sessionId  String?
+  session    Session?      @relation(fields: [sessionId], references: [id])
+  observerId String
+  observer   User          @relation("observer", fields: [observerId], references: [id])
+  scores     String        @default("{}") // JSON criterion → 0..2
+  result     String // demonstrated | developing | needs_re_practice | not_observed
+  recheckAt  DateTime?
+  note       String?
+  photoUrl   String?
+  observedAt DateTime      @default(now())
+}
+
+model Visit {
+  id        String    @id @default(cuid())
+  itiId     String
+  iti       Iti       @relation(fields: [itiId], references: [id])
+  workshop  String
+  visitType String // routine | issue_follow_up | ceo_review
+  visitorId String
+  visitor   User      @relation("visitor", fields: [visitorId], references: [id])
+  date      DateTime
+  checklist String    @default("{}") // JSON item → satisfactory | action_needed | n_a
+  note      String?
+  state     String    @default("submitted")
+  findings  Finding[]
+}
+
+model Finding {
+  id            String    @id @default(cuid())
+  visitId       String
+  visit         Visit     @relation(fields: [visitId], references: [id])
+  item          String
+  severity      String    @default("medium") // low | medium | high
+  ownerRole     String
+  dueAt         DateTime?
+  state         String    @default("open") // open | action_assigned | closed
+  closureNote   String?
+  affectedClass String?
+}
+
+model OpsIssue {
+  id         String    @id @default(cuid())
+  itiId      String
+  iti        Iti       @relation(fields: [itiId], references: [id])
+  batchId    String?
+  batch      Batch?    @relation(fields: [batchId], references: [id])
+  machineId  String?
+  title      String
+  category   String // equipment | space | consumables | safety | timetable | trainer
+  severity   String    @default("medium")
+  effect     String?
+  raisedById String
+  raisedBy   User      @relation("raisedIssue", fields: [raisedById], references: [id])
+  ownerRole  String?
+  state      String    @default("open") // open | assigned | resolved
+  resolution String?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+}
+
+model TrainerAvailability {
+  id            String   @id @default(cuid())
+  trainerUserId String
+  trainer       User     @relation(fields: [trainerUserId], references: [id])
+  date          DateTime
+  status        String // available | leave | late
+  note          String?
+
+  @@unique([trainerUserId, date])
+}
+
+model SupportAction {
+  id          String    @id @default(cuid())
+  traineeId   String
+  trainee     Trainee   @relation(fields: [traineeId], references: [id])
+  reason      String // repeated_absence | missed_assessment | low_result | recheck_due | no_recent_data | companion_referral
+  detail      String?
+  ownerUserId String?
+  owner       User?     @relation("supportOwner", fields: [ownerUserId], references: [id])
+  nextAction  String?
+  dueAt       DateTime?
+  state       String    @default("open") // open | in_progress | closed
+  outcome     String?
+  createdAt   DateTime  @default(now())
+  closedAt    DateTime?
+}
+
+model Machine {
+  id            String    @id @default(cuid())
+  itiId         String
+  iti           Iti       @relation(fields: [itiId], references: [id])
+  tradeId       String?
+  trade         Trade?    @relation(fields: [tradeId], references: [id])
+  name          String
+  category      String
+  status        String    @default("functional") // installed | functional | safe | available | non_functional | awaiting_commissioning | ordered | baseline_obsolete
+  source        String    @default("baseline") // baseline | sip | industry_donation
+  packageId     String?
+  installedAt   DateTime?
+  lastServiceAt DateTime?
+}
+
+// ───────────────────────────── LMS (kept from learning stack) ─────────────────────────────
+model CourseModule {
+  id        String           @id @default(cuid())
+  tradeId   String
+  trade     Trade            @relation(fields: [tradeId], references: [id])
+  index     Int
+  title     String
+  kind      String
+  hours     Int              @default(240)
+  credits   Int              @default(8)
+  status    String           @default("approved")
+  lessons   String           @default("[]")
+  authorId  String?
+  updatedAt DateTime         @updatedAt
+  progress  ModuleProgress[]
+
+  @@unique([tradeId, index])
+}
+
+model ModuleProgress {
+  id             String       @id @default(cuid())
+  traineeId      String
+  trainee        Trainee      @relation(fields: [traineeId], references: [id])
+  moduleId       String
+  module         CourseModule @relation(fields: [moduleId], references: [id])
+  pctComplete    Int          @default(0)
+  hoursLogged    Int          @default(0)
+  lessonsDone    String       @default("[]")
+  lastActivityAt DateTime?
+
+  @@unique([traineeId, moduleId])
+}
+
+// ───────────────────────────── MODULE C: COMPANION ─────────────────────────────
+model CompanionEvent {
+  id             String   @id @default(cuid())
+  traineeId      String?
+  trainee        Trainee? @relation(fields: [traineeId], references: [id])
+  itiId          String?
+  iti            Iti?     @relation(fields: [itiId], references: [id])
+  guestKey       String?
+  stage          String // explore | career | doubt | practice | job_prep | barrier | support
+  topic          String
+  theme          String? // travel_cost | timetable | devices | facilities | accessibility | family | cost | course_interest | aspiration | learning_need
+  subtheme       String?
+  source         String   @default("direct") // direct | inferred
+  confidence     Float    @default(1)
+  language       String   @default("hi")
+  recommendation String?
+  response       String?
+  signalCode     String? // Signal Taxonomy code (SIG-…)
+  conversationId String?
+  createdAt      DateTime @default(now())
+}
+
+model Referral {
+  id        String   @id @default(cuid())
+  traineeId String
+  trainee   Trainee  @relation(fields: [traineeId], references: [id])
+  kind      String // doubt | support | counselling | mock_interview | registry_correction
+  summary   String
+  shared    String? // JSON preview of what was shared
+  toRole    String // trainer | principal | counsellor
+  toUserId  String?
+  toUser    User?    @relation("referralTo", fields: [toUserId], references: [id])
+  state     String   @default("sent") // sent | accepted | contacted | action_agreed | resolved | still_open
+  response  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CompanionArtifact {
+  id        String   @id @default(cuid())
+  traineeId String
+  trainee   Trainee  @relation(fields: [traineeId], references: [id])
+  kind      String // profile | course_decision | career_plan | resume | application_checklist
+  title     String
+  content   String   @default("{}") // JSON
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+// Student Companion knowledge base (from Student_Companion_Dummy KB.xlsx) — grounding
+// facts the LLM must keep consistent: courses, roles, interests, topics, support,
+// signal taxonomy, response rules.
+model KbCourse {
+  id            String @id // CRS-PUS-ELE
+  itiCode       String
+  programCode   String
+  courseName    String
+  durationMonths Int
+  studyYear     String
+  y1Capacity    Int
+  y1Enrolment   Int
+  entryQualification String
+  practicalFocus String
+  sampleProject String
+  commonTools   String
+  jobFamily     String
+  fitPrompt     String
+  sourceTreatment String?
+}
+
+model KbRole {
+  id          String @id // ROLE-ELE-01
+  programCode String
+  roleName    String
+  sector      String
+  summary     String
+  tasksSkills String
+  workplaceSkills String
+  typicalWorkplace String
+  entryPathway String
+  progression String
+  mapId       String?
+  skillsToBuild String?
+  evidenceProject String?
+  recommendationNote String?
+}
+
+model KbInterest {
+  id                String @id // INT-001
+  statement         String
+  tag               String
+  suggestedProgram  String
+  whyFit            String
+  clarifyingQuestion String
+  alternativeProgram String?
+}
+
+model KbTopic {
+  id             String @id // TOP-001
+  programCode    String
+  subjectArea    String
+  topic          String
+  conceptSummary String
+  commonDoubt    String
+  practicePrompt String
+  safetyLevel    String // Low | Medium | High
+  escalationRule String
+}
+
+model SupportContact {
+  id              String @id // SUP-PUS-01
+  itiCode         String
+  supportType     String
+  responsibleRole String
+  contactChannel  String
+  issuesHandled   String
+  consentAction   String
+  responseTime    String
+  status          String @default("Active")
+}
+
+model SignalType {
+  code              String @id // SIG-COURSE-VIEW
+  eventGroup        String
+  trigger           String
+  sourceMethod      String
+  dashboardLabel    String
+  verificationState String
+  sensitive         String // No | Yes | Potentially
+  aggregationRule   String
+}
+
+model ResponseRule {
+  id              String @id // RULE-001
+  appliesTo       String
+  instruction     String
+  requiredContext String
+  answerStructure String
+  fallback        String
+  eventToWrite    String?
+}
+
+// ───────────────────────────── MODULE D: INDUSTRY & PLACEMENT ─────────────────────────────
+model Employer {
+  id                    String    @id @default(cuid())
+  clusterId             String
+  cluster               Cluster   @relation(fields: [clusterId], references: [id])
+  code                  String    @unique
+  name                  String // organisation role, not a real company
+  sector                String
+  city                  String
+  sites                 String    @default("[]") // JSON
+  relationshipOwnerRole String    @default("SPV-IEPC")
+  relationshipStatus    String    @default("lead") // lead | active | paused
+  participatingItis     String    @default("[]") // JSON codes
+  mouSignedAt           DateTime?
+  mouRef                String?
+  contactName           String?
+  contactChannel        String?
+  lastInteractionAt     DateTime?
+  nextEngagementAt      DateTime?
+  ojtSlots              Int       @default(0)
+  hiringCommitment      Int       @default(0)
+  adminUserId           String?   @unique
+  adminUser             User?     @relation("employerAdmin", fields: [adminUserId], references: [id])
+  createdAt             DateTime  @default(now())
+
+  opportunities Opportunity[]
+  spells        EmploymentSpell[]
+  feedback      EmployerFeedback[]
+}
+
+model Opportunity {
+  id            String        @id @default(cuid())
+  clusterId     String
+  cluster       Cluster       @relation(fields: [clusterId], references: [id])
+  employerId    String
+  employer      Employer      @relation(fields: [employerId], references: [id])
+  title         String
+  type          String // apprenticeship | ojt | wage
+  tradeCodes    String        @default("[]") // JSON
+  location      String
+  openings      Int
+  filled        Int           @default(0)
+  wageMin       Int?
+  wageMax       Int?
+  wagePeriod    String? // month
+  stipend       Int?
+  eligibility   String?
+  requiredSkills String?
+  documents     String?
+  process       String?
+  shiftTravel   String?
+  closingAt     DateTime?
+  startAt       DateTime?
+  source        String?
+  lastCheckedAt DateTime?
+  status        String        @default("lead") // lead | checking | live | paused | filled | expired | archived
+  ownerRole     String        @default("SPV-IEPC")
+  approvedItis  String        @default("[]") // JSON codes
+  version       Int           @default(1)
+  createdAt     DateTime      @default(now())
+  applications  Application[]
+}
+
+model Application {
+  id               String            @id @default(cuid())
+  traineeId        String
+  trainee          Trainee           @relation(fields: [traineeId], references: [id])
+  opportunityId    String
+  opportunity      Opportunity       @relation(fields: [opportunityId], references: [id])
+  stage            String            @default("interested") // interested | prepared | referred | applied | interviewed | offered | joined | follow_up | declined | withdrawn | not_selected
+  interest         String            @default("interested") // interested | undecided | not_interested | awaiting
+  preparation      String? // résumé reviewed | checklist ready | mock interview | trade task | counselling
+  consentSharedAt  DateTime?
+  referredAt       DateTime?
+  appliedAt        DateTime?
+  applicationRef   String?
+  interviewAt      DateTime?
+  interviewOutcome String? // pending | feedback_received | missed
+  offerAt          DateTime?
+  offerWage        Int?
+  offerSource      String?
+  joinedAt         DateTime?
+  evidenceLevel    String            @default("none") // none | student_reported | document_supported | employer_confirmed | independently_verified | disputed
+  evidenceNote     String?
+  ownerRole        String?
+  nextAction       String?
+  dueAt            DateTime?
+  lastEventAt      DateTime          @default(now())
+  timeline         String            @default("[]") // JSON [{at, actor, event, source}]
+  spells           EmploymentSpell[]
+
+  @@unique([traineeId, opportunityId])
+}
+
+model EmploymentSpell {
+  id             String       @id @default(cuid())
+  traineeId      String
+  trainee        Trainee      @relation(fields: [traineeId], references: [id])
+  applicationId  String?
+  application    Application? @relation(fields: [applicationId], references: [id])
+  employerId     String
+  employer       Employer     @relation(fields: [employerId], references: [id])
+  type           String // apprenticeship | ojt | wage
+  role           String
+  startAt        DateTime
+  endAt          DateTime?
+  wage           Int?
+  wagePeriod     String?      @default("month")
+  stipend        Int?
+  mentorName     String?
+  hoursTarget    Int?
+  hoursLogged    Int          @default(0)
+  mentorSignedAt DateTime?
+  itiSignedAt    DateTime?
+  logbook        String       @default("[]")
+  evidenceLevel  String       @default("student_reported")
+  state          String       @default("active") // active | exited | converted | completed
+  followUps      FollowUp[]
+}
+
+model FollowUp {
+  id          String          @id @default(cuid())
+  spellId     String
+  spell       EmploymentSpell @relation(fields: [spellId], references: [id])
+  dueAt       DateTime
+  respondedAt DateTime?
+  status      String? // working | not_working | unknown | changed
+  respondent  String? // student | employer | coordinator
+  note        String?
+  attempts    Int             @default(0)
+}
+
+model EmployerFeedback {
+  id            String   @id @default(cuid())
+  employerId    String
+  employer      Employer @relation(fields: [employerId], references: [id])
+  opportunityId String?
+  kind          String // demand | interviewed | joined
+  text          String
+  date          DateTime
+  quotable      Boolean  @default(false)
+  roleTag       String?
+}
+
+// ───────────────────────────── COMPLIANCE (SPV layer) ─────────────────────────────
+model BudgetLine {
+  id          String  @id @default(cuid())
+  clusterId   String
+  cluster     Cluster @relation(fields: [clusterId], references: [id])
+  year        Int
+  component   String
+  label       String
+  capex       Boolean @default(true)
+  budgetCr    Float
+  committedCr Float   @default(0)
+  utilisedCr  Float   @default(0)
+  kpiWeight   Float   @default(0)
+  progressPct Int     @default(0)
+}
+
+model CivilWork {
+  id                  String    @id @default(cuid())
+  itiId               String
+  iti                 Iti       @relation(fields: [itiId], references: [id])
+  packageId           String?
+  title               String
+  budgetCr            Float
+  workUnits           Int       @default(0) // frozen physical work units
+  unitsAccepted       Int       @default(0)
+  pctComplete         Int       @default(0)
+  designApprovedAt    DateTime?
+  startedAt           DateTime?
+  scheduledCompletion DateTime
+  imaInspectedAt      DateTime?
+  state               String    @default("planned")
+  contractor          String?
+}
+
+model ProcurementPackage {
+  id             String    @id @default(cuid())
+  clusterId      String
+  cluster        Cluster   @relation(fields: [clusterId], references: [id])
+  code           String    @unique
+  packageId      String?
+  title          String
+  category       String
+  budgetCr       Float
+  inventoryUnits Int       @default(0)
+  unitsInstalled Int       @default(0)
+  state          String    @default("planned")
+  awardedTo      String?
+  tenderedAt     DateTime?
+  awardedAt      DateTime?
+  deliveredAt    DateTime?
+  forItiCodes    String    @default("[]")
+}
+
+model EscrowDeposit {
+  id          String    @id @default(cuid())
+  clusterId   String
+  cluster     Cluster   @relation(fields: [clusterId], references: [id])
+  year        Int
+  tranche     String
+  source      String
+  amountCr    Float
+  dueAt       DateTime
+  depositedAt DateTime?
+  state       String    @default("pending")
+}
+
+model UtilisationCertificate {
+  id          String    @id @default(cuid())
+  clusterId   String
+  cluster     Cluster   @relation(fields: [clusterId], references: [id])
+  period      String
+  amountCr    Float
+  caCertified Boolean   @default(false)
+  submittedAt DateTime?
+  acceptedAt  DateTime?
+  pfmsMatched Boolean   @default(false)
+  state       String    @default("draft")
+}
+
+model Milestone {
+  id                   String    @id @default(cuid())
+  clusterId            String
+  cluster              Cluster   @relation(fields: [clusterId], references: [id])
+  title                String
+  kind                 String
+  itiCode              String?
+  taskId               String?
+  dueAt                DateTime
+  forecastAt           DateTime?
+  submittedAt          DateTime?
+  evidenceUrl          String?
+  evidenceNote         String?
+  verifiedByUserId     String?
+  verifiedBy           User?     @relation("verifiedBy", fields: [verifiedByUserId], references: [id])
+  verifiedAt           DateTime?
+  rejectNote           String?
+  state                String    @default("pending")
+  weightPct            Float     @default(0)
+  formalApprovalNeeded Boolean   @default(false)
+}
+
+model Report {
+  id            String    @id @default(cuid())
+  clusterId     String
+  cluster       Cluster   @relation(fields: [clusterId], references: [id])
+  kind          String
+  period        String
+  dueAt         DateTime
+  submittedAt   DateTime?
+  imaReviewedAt DateTime?
+  sscApprovedAt DateTime?
+  state         String    @default("draft")
+  summary       String?
+}
+
+model BoardItem {
+  id          String    @id @default(cuid())
+  clusterId   String
+  cluster     Cluster   @relation(fields: [clusterId], references: [id])
+  title       String
+  kind        String
+  needs       String
+  amountCr    Float?
+  meetingDate DateTime?
+  state       String    @default("pending")
+}
+
+model Grievance {
+  id             String    @id @default(cuid())
+  raisedByUserId String
+  raisedBy       User      @relation("raisedBy", fields: [raisedByUserId], references: [id])
+  itiId          String?
+  iti            Iti?      @relation(fields: [itiId], references: [id])
+  category       String
+  note           String
+  status         String    @default("open")
+  resolvedAt     DateTime?
+  resolutionNote String?
+  createdAt      DateTime  @default(now())
+}
+
+// ───────────────────────────── PLATFORM ─────────────────────────────
+model Notification {
+  id           String    @id @default(cuid())
+  type         String
+  title        String
+  message      String
+  category     String
+  priority     String    @default("normal")
+  module       String?
+  targetRoles  String    @default("[]")
+  targetUserId String?
+  user         User?     @relation(fields: [targetUserId], references: [id])
+  action       String?
+  scheduledAt  DateTime  @default(now())
+  deliveredAt  DateTime?
+  expiresAt    DateTime?
+  readAt       DateTime?
+  dismissedAt  DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model ChatThread {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  title       String
+  bot         String?
+  canvasState String        @default("{}")
+  toolState   String        @default("{}")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  messages    ChatMessage[]
+}
+
+model ChatMessage {
+  id        String     @id @default(cuid())
+  threadId  String
+  thread    ChatThread @relation(fields: [threadId], references: [id])
+  role      String
+  text      String
+  html      String?
+  actions   String?
+  meta      String?
+  createdAt DateTime   @default(now())
+}
+
+model KnowledgeChunk {
+  id         String   @id @default(cuid())
+  source     String
+  heading    String?
+  content    String
+  embedding  String
+  roleFilter String?
+  module     String?
+  tokens     Int      @default(0)
+  createdAt  DateTime @default(now())
+}
+
+model OtpCode {
+  id         String   @id @default(cuid())
+  channel    String
+  identifier String
+  code       String
+  expiresAt  DateTime
+  consumed   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([identifier])
+}

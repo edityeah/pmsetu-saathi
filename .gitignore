@@ -1,0 +1,30 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+!.env.production.example
+*.db
+*.db-*
+# generated at deploy from schema.prisma
+server/prisma/schema.postgres.prisma
+server/prisma/data/
+.DS_Store
+prisma/migrations/dev.db*
+
+
+# Local-only data (DB dumps, Cloudflare credentials)
+.local-data/
+*.sql
+cloudflared/credentials/
+
+# Wrangler local cache (contains OAuth account snapshot; not secret but no reason to ship)
+.wrangler/
+workers/**/.wrangler/
+
+# Samsung ARISE course material — proprietary, kept locally only
+Samsung ARISE*.pdf
+samsung_iti_digha_*.pdf
+server/src/rag/arise-content/
+WhatsApp Image*.jpeg
+WhatsApp Image*.jpg

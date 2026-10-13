@@ -1,0 +1,19 @@
+{
+  "name": "pmsetu-saathi",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PM-SETU Saathi \u2014 cluster transformation platform for Anchor Industry Partner SPVs (prototype)",
+  "scripts": {
+    "build": "cd web && npm install --include=dev --no-audit --no-fund && npm run build",
+    "start": "node start.cjs",
+    "dev:web": "cd web && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "db:push": "cd server && npm run db:push",
+    "db:seed": "cd server && npm run db:seed",
+    "rag:ingest": "cd server && npm run rag:ingest"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
