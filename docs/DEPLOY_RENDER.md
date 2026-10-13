@@ -2,6 +2,8 @@
 
 _Last updated: 2026-10-13_
 
+**Live:** https://pmsetu-saathi.onrender.com (web service `pmsetu-saathi`, database `pmsetu-db`, both Singapore, Render team "Adityeah"). Created through the Render API on 13 Oct 2026 and seeded; every push to `main` redeploys.
+
 One Render **web service** (Express serves `/api/*` and the built SPA) plus one Render **Postgres** database. Everything is declared in `render.yaml`, so the whole stack is created from the repo in one Blueprint step.
 
 ## Where the database lives

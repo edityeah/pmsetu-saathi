@@ -77,4 +77,4 @@ See [`docs/demo-credentials.md`](docs/demo-credentials.md). Password for every r
 
 ## Deploy
 
-Render, one Blueprint: a Node web service (Express serves `/api/*` and the built SPA) plus a managed Postgres database, both declared in `render.yaml`. Step by step in [`docs/DEPLOY_RENDER.md`](docs/DEPLOY_RENDER.md): push to GitHub → New Blueprint → set `OPENAI_API_KEY` → `POST /api/admin/seed` once with the generated `ADMIN_TOKEN`. Local development stays on SQLite; the Postgres schema is derived from `schema.prisma` at build time.
+Live at **https://pmsetu-saathi.onrender.com**. Render, one Blueprint: a Node web service (Express serves `/api/*` and the built SPA) plus a managed Postgres database, both declared in `render.yaml`. Step by step in [`docs/DEPLOY_RENDER.md`](docs/DEPLOY_RENDER.md): push to GitHub → New Blueprint → set `OPENAI_API_KEY` → `POST /api/admin/seed` once with the generated `ADMIN_TOKEN`. Local development stays on SQLite; the Postgres schema is derived from `schema.prisma` at build time.
