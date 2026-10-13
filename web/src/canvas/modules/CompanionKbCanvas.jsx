@@ -23,7 +23,7 @@ export default function CompanionKbCanvas({ context }) {
   const safety = s => s === 'High' ? 'bad' : s === 'Medium' ? 'warn' : 'ok'
   return (
     <div className="h-full overflow-y-auto">
-      <Hero tone="lime" eyebrow="Student Companion knowledge base · prototype v0.1" title={`${courses.length} course records · ${roles.length} roles · ${topics.length} topics · ${rules.length} rules`} subtitle="Grounding facts for the companion's language model. Descriptive content is synthetic and needs programme and trainer review before production; the model must not invent demand, vacancies or guaranteed progression." />
+      <Hero tone="lime" eyebrow="Student Companion knowledge base" title={`${courses.length} course records · ${roles.length} roles · ${topics.length} topics · ${rules.length} rules`} subtitle="What Saathi may tell students: institute courses, entry roles, interest prompts, learning topics with safety levels, support contacts, the signals it records, and the rules it answers by. Saathi never invents demand, vacancies or guaranteed progression." />
       <Tabs tabs={TABS.map(t => ({ ...t, badge: { courses: courses.length, roles: roles.length, interests: interests.length, topics: topics.length, support: support.length, signals: signals.length, rules: rules.length }[t.id] }))} active={tab} onChange={setTab} />
       <div className="p-4 space-y-4">
         {['courses', 'roles', 'topics'].includes(tab) && <div className="flex gap-3 flex-wrap">{tab === 'courses' && role !== 'iti_principal' && <Chips options={[{ id: 'all', label: 'Both ITIs' }, { id: 'PUS', label: 'Pusa' }, { id: 'SHA', label: 'Shahdara' }]} value={iti} onChange={setIti} />}<Chips options={[{ id: 'all', label: 'All programmes' }, ...progs.map(p => ({ id: p, label: p }))]} value={prog} onChange={setProg} /></div>}
@@ -36,7 +36,7 @@ export default function CompanionKbCanvas({ context }) {
             { key: 'fitPrompt', label: 'Fits a student who…', render: r => <span className="text-[11px]">{r.fitPrompt}</span> },
           ]} rows={courses.filter(c => (iti === 'all' || c.itiCode === iti) && (prog === 'all' || c.programCode === prog))} />
         </Section>}
-        {tab === 'roles' && <Section title="Role catalogue + course-role map" hint="Deliberately small set of entry roles with a demonstrable project and a progression example. Fit is always an estimate.">
+        {tab === 'roles' && <Section title="Role catalogue + course-role map" hint="Entry roles with a demonstrable project and a progression example. Fit is always an estimate.">
           <Table columns={[
             { key: 'roleName', label: 'Role', render: r => <div><div className="font-semibold">{r.roleName}</div><div className="text-[10px] text-txt-tertiary">{r.id} · {r.programCode} · {r.sector}</div></div> },
             { key: 'summary', label: 'What they do', render: r => <div className="text-[11px]">{r.summary}<div className="text-txt-tertiary">Tasks: {r.tasksSkills}</div><div className="text-txt-tertiary">Workplace: {r.typicalWorkplace}</div></div> },
@@ -61,7 +61,7 @@ export default function CompanionKbCanvas({ context }) {
             { key: 'escalationRule', label: 'Escalation', render: r => <span className="text-[11px]">{r.escalationRule}</span> },
           ]} rows={topics.filter(t => prog === 'all' || t.programCode === prog)} />
         </Section>}
-        {tab === 'support' && <Section title="Support directory" hint="Consent-based human referrals. Each row says what the student must confirm before anything is shared.">
+        {tab === 'support' && <Section title="Support directory" hint="Who students can reach, and what they confirm before anything is shared.">
           <Table columns={[
             { key: 'supportType', label: 'Support', render: r => <div><div className="font-semibold">{r.supportType}</div><div className="text-[10px] text-txt-tertiary">{r.id} · {r.itiCode} · {r.responsibleRole}</div></div> },
             { key: 'issuesHandled', label: 'Handles', render: r => <span className="text-[11px]">{r.issuesHandled}</span> },
@@ -79,7 +79,7 @@ export default function CompanionKbCanvas({ context }) {
             { key: 'aggregationRule', label: 'Aggregation rule', render: r => <span className="text-[11px]">{r.aggregationRule}</span> },
           ]} rows={signals} />
         </Section>}
-        {tab === 'rules' && <Section title="Response rules" hint="Rules for the orchestration and prompt layer; they are appended to the companion's system prompt.">
+        {tab === 'rules' && <Section title="Response rules" hint="The rules Saathi answers by.">
           <Table columns={[
             { key: 'appliesTo', label: 'Applies to', render: r => <div><div className="font-semibold">{r.appliesTo}</div><div className="text-[10px] text-txt-tertiary">{r.id}</div></div> },
             { key: 'instruction', label: 'Instruction', render: r => <span className="text-[11px]">{r.instruction}</span> },

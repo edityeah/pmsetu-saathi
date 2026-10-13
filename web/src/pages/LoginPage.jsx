@@ -6,9 +6,9 @@ import GovBadge from '../components/GovBadge.jsx'
 import PoweredBy from '../components/PoweredBy.jsx'
 
 const SLIDES = [
-  { id: 0, headline: 'Built for', bold: '200 Hub-and-Spoke ITI clusters under PM-SETU', visual: 'cluster' },
-  { id: 1, headline: 'Proves', bold: 'utilisation, KPIs and milestones the IMA can verify', visual: 'shield' },
-  { id: 2, headline: 'Serves', bold: 'SPV · Principal · Instructor · Trainee · Industry · IMA · State', visual: 'people' },
+  { id: 0, headline: 'Your cluster', bold: 'Plan, tasks and milestones in one place', visual: 'cluster' },
+  { id: 1, headline: 'Your institute', bold: 'Attendance, marks and support, as they happen', visual: 'shield' },
+  { id: 2, headline: 'Your students', bold: 'A companion from course choice to the first job', visual: 'people' },
 ]
 
 function SlideVisual({ type }) {
@@ -68,7 +68,7 @@ function LoginPanel({ navigate }) {
       <div className="mb-2">
         <p className="text-[15px] text-txt-secondary">Namaste! Welcome to</p>
         <h1 className="text-[32px] font-bold text-txt-primary leading-tight">PM-SETU Saathi</h1>
-        <p className="text-[12px] text-txt-secondary mt-1">The cluster platform for Anchor Industry Partners, ITIs and trainees.</p>
+        <p className="text-[12px] text-txt-secondary mt-1">Your PM-SETU cluster, institute and students in one place.</p>
       </div>
       <button onClick={() => navigate('role_select')} className="w-full bg-primary text-white font-bold text-[15px] py-3.5 rounded-pill shadow-modal active:opacity-80 transition-opacity">
         Sign in by role (SPV · ITI · IMA · Industry)

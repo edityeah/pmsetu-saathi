@@ -26,7 +26,7 @@ export default function PhoneEntryPage() {
       sessionStorage.setItem('pmsetu.pendingRole', r.role || '')
       navigate('phone_otp')
     } catch (e) {
-      showToast({ kind: 'danger', text: e.payload?.error === 'phone_not_registered' ? 'Phone not registered. Try a demo account below.' : 'Could not send OTP.' })
+      showToast({ kind: 'danger', text: e.payload?.error === 'phone_not_registered' ? 'This phone number is not registered with your institute.' : 'Could not send OTP.' })
     } finally { setBusy(false) }
   }
 
@@ -141,7 +141,7 @@ function FormBody({ phone, onChange, canProceed, submit, busy, goBack, demoUsers
 
       {demoUsers.length > 0 && (
         <div className="mt-6">
-          <div className="text-[11px] font-semibold text-txt-tertiary uppercase tracking-wider mb-2">Demo accounts</div>
+          <div className="text-[11px] font-semibold text-txt-tertiary uppercase tracking-wider mb-2">Quick sign-in</div>
           <div className="grid grid-cols-2 gap-1.5">
             {demoUsers.filter(u => u.phone).slice(0, 8).map(u => (
               <button key={u.id} onClick={() => onPickDemo(u.phone)}
@@ -151,7 +151,6 @@ function FormBody({ phone, onChange, canProceed, submit, busy, goBack, demoUsers
               </button>
             ))}
           </div>
-          <div className="text-[10px] text-txt-tertiary text-center mt-2">Demo OTP is <span className="font-mono font-bold">1234</span></div>
         </div>
       )}
     </div>

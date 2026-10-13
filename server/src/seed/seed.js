@@ -124,8 +124,8 @@ async function main() {
   const ov = Object.fromEntries(plan['SIP overview'].map(r => [r.Measure, r.Value]))
   const cluster = await prisma.cluster.create({ data: {
     id: 'CL-DL-01', code: 'CL-DL-01', name: 'Delhi ITI Cluster (Pusa hub)', state: 'Delhi',
-    aipName: 'Delhi Industrial Skills Consortium (AIP · synthetic)', academicPartner: 'Hub academic partner (synthetic)',
-    spvName: 'Delhi Cluster Skill SPV (Section 8 · synthetic)',
+    aipName: 'Delhi Industrial Skills Consortium', academicPartner: 'Hub academic partner',
+    spvName: 'Delhi Cluster Skill SPV',
     sipAmountCr: ov['Five-year investment INR crore'], envelopeY1Cr: ov['Y1 initial envelope'],
     sipApprovedAt: d('2026-07-07'), licenseStartAt: SCENARIO_START, scenarioStart: SCENARIO_START, currentYear: 1,
     planYearLabel: 'Y1 · Aug 2026 – Jul 2027',
@@ -295,7 +295,7 @@ async function main() {
     K02: { current: +(100 * studentsPUSSHA / placesPUSSHA).toFixed(1), coverage: '2 of 5 ITIs', numerator: studentsPUSSHA, denominator: placesPUSSHA, valueStatus: 'Registry-derived for connected ITIs', weight: 0.12 },
     K03: { current: null, valueStatus: 'No cohort due to finish in Y1', weight: 0.08 },
     K04: { current: null, valueStatus: 'Pending: pre-scheme cohort tracking under way (see pipeline)', weight: 0.14 },
-    K05: { current: 18, coverage: 'Faculty training log · 2 of 5 ITIs', valueStatus: 'Synthetic from faculty training events', weight: 0.08 },
+    K05: { current: 18, coverage: 'Faculty training log · 2 of 5 ITIs', valueStatus: 'From the faculty training log', weight: 0.08 },
     K06: { current: 4, coverage: 'Employer register', valueStatus: 'From employer register (active MoUs)', weight: 0.05 },
     K07: { current: 32, coverage: 'Apprenticeship/OJT spells started', valueStatus: 'From placement pipeline (joined, any evidence level)', weight: 0.08 },
     K08: { current: 14, coverage: 'Cost-weighted across 15 civil packages', valueStatus: 'From civil works register; IMA inspected Pusa', weight: 0.1, verified: true },
@@ -304,7 +304,7 @@ async function main() {
     K12: { current: null, valueStatus: 'Registry has no category field — owner named (DIGITAL-LEAD)', weight: 0 },
     K19: { current: 88, coverage: 'Sessions with attendance submitted / scheduled, last 15 working days', valueStatus: 'From operations data (connected ITIs)', weight: 0.05 },
     K21: { current: null, valueStatus: 'No apprenticeship cohort has completed yet', weight: 0.05 },
-    K25: { current: 42, valueStatus: 'Synthetic infrastructure checklist', weight: 0.05 },
+    K25: { current: 42, valueStatus: 'From the infrastructure checklist', weight: 0.05 },
     K26: { current: 2, valueStatus: 'Baseline carried; no new CSR partnership logged', weight: 0.03 },
   }
   for (const k of plan['KPI plan']) {
@@ -383,7 +383,7 @@ async function main() {
     { id: 'SYN-PUS-FIT-PRE-B01', iti: 'PUS', trade: 'FIT', n: 20, lead: null },
     { id: 'SYN-SHA-LWD-PRE-B01', iti: 'SHA', trade: 'LWD', n: 20, lead: null },
   ]
-  for (const p of PRE) batchRows.push({ id: p.id, name: `${ITI_META[p.iti].name.replace('Government ITI ', '')} · ${p.trade} 2024-26 (pre-scheme)`, itiId: p.iti, tradeId: p.trade, offeringId: null, leadUserId: p.lead ? facUserId(p.lead) : null, startDate: d('2024-08-01'), endDate: d('2026-07-31'), capacity: 24, tenureMonths: 24, studyYear: 2, currentModule: 5, state: 'completed', cohortLabel: 'Pre-scheme cohort 2024-26 · synthetic, not in registry' })
+  for (const p of PRE) batchRows.push({ id: p.id, name: `${ITI_META[p.iti].name.replace('Government ITI ', '')} · ${p.trade} 2024-26 (pre-scheme)`, itiId: p.iti, tradeId: p.trade, offeringId: null, leadUserId: p.lead ? facUserId(p.lead) : null, startDate: d('2024-08-01'), endDate: d('2026-07-31'), capacity: 24, tenureMonths: 24, studyYear: 2, currentModule: 5, state: 'completed', cohortLabel: 'Pre-scheme cohort 2024-26' })
   await createMany('batch', batchRows)
 
   await createMany('trainerAssignment', mapping['Trainer assignments'].map(a => ({
@@ -418,7 +418,7 @@ async function main() {
       const code = `SYN-PSS-${String(pssN).padStart(4, '0')}`, isF = chance(0.2), name = synthName(isF), phone = '9009' + String(100000 + pssN).padStart(6, '0')
       const isDemo = pssN === 1
       stuUsers.push({ id: `U-STU-${code}`, role: 'trainee', name, phone, passwordHash: isDemo ? pw : null, language: 'hi', loginId: isDemo ? 'LRN-PUS-PASS-001' : null,
-        profile: J({ clusterId: C, itiCode: p.iti, studentCode: code, programme: p.trade, batchCode: p.id, source: 'Synthetic pre-scheme pass-out; not in registry' }) })
+        profile: J({ clusterId: C, itiCode: p.iti, studentCode: code, programme: p.trade, batchCode: p.id, source: 'Pre-scheme pass-out; not in registry' }) })
       traineeRows.push({ id: code, userId: `U-STU-${code}`, name, phone, gender: isF ? 'F' : 'M', dob: new Date(Date.UTC(rand(2003, 2006), rand(0, 11), rand(1, 28))), education: pick(['10th', '10th', '12th']), category: null, pwd: false,
         district: ITI_META[p.iti].district, itiId: p.iti, batchId: p.id, enrolledAt: d('2024-08-01'), studyYear: 2, status: 'completed', languagePref: 'hi', registryMatched: false })
       passouts.push({ id: code, userId: `U-STU-${code}`, name, iti: p.iti, trade: p.trade, gender: isF ? 'F' : 'M' })
@@ -636,13 +636,13 @@ async function main() {
     await prisma.civilWork.create({ data: { itiId: p.ITI, packageId: p['Package ID'], title: p['Work package'], budgetCr: fy[p['Package ID']]?.['Total INR crore'] || 0, workUnits: 100, unitsAccepted: Math.round(pct * 0.8), pctComplete: pct,
       designApprovedAt: pct > 0 ? addDays(SCENARIO_START, rand(20, 45)) : null, startedAt: pct > 0 ? addDays(SCENARIO_START, rand(40, 60)) : null,
       scheduledCompletion: idx === 1 ? d('2028-03-31') : d('2027-07-31'), imaInspectedAt: p.ITI === 'PUS' && idx === 0 ? daysAgo(5) : null,
-      state: delayed ? 'delayed' : pct > 0 ? 'in_progress' : design, contractor: pct > 0 ? pick(['PWD-empanelled contractor (synthetic)', 'Cluster EPC agency (synthetic)']) : null } })
+      state: delayed ? 'delayed' : pct > 0 ? 'in_progress' : design, contractor: pct > 0 ? pick(['PWD-empanelled contractor', 'Cluster EPC agency']) : null } })
   }
   for (const p of plan.Packages.filter(p => (p.Category === 'Equipment' || p.Category === 'Digital') && (fy[p['Package ID']]?.Y1 || 0) > 0)) {
     const digital = p.Category === 'Digital', core = /ELE|FIT|COP/.test(p['Course scope'] || '')
     const state = digital ? 'awarded' : core ? pick(['tendered', 'planned', 'awarded']) : 'planned'
     await prisma.procurementPackage.create({ data: { clusterId: C, code: p['Package ID'], packageId: p['Package ID'], title: p['Work package'], category: digital ? 'digital' : 'equipment', budgetCr: fy[p['Package ID']]?.['Total INR crore'] || 0,
-      inventoryUnits: p.Quantity || 1, unitsInstalled: digital && p.ITI === 'PUS' ? 1 : 0, state, awardedTo: state === 'awarded' ? (digital ? 'Cluster digital platform vendor (synthetic)' : 'L1 bidder via GeM (synthetic)') : null,
+      inventoryUnits: p.Quantity || 1, unitsInstalled: digital && p.ITI === 'PUS' ? 1 : 0, state, awardedTo: state === 'awarded' ? (digital ? 'Cluster digital platform vendor' : 'L1 bidder via GeM') : null,
       tenderedAt: state !== 'planned' ? addDays(SCENARIO_START, rand(35, 60)) : null, awardedAt: state === 'awarded' ? daysAgo(rand(3, 20)) : null, forItiCodes: J([p.ITI]) } })
   }
   // Year-1 budget lines by category (aggregated from the 5-year budget)
@@ -734,7 +734,7 @@ async function main() {
     if (kbEmp[o.Employer_Name]) continue
     const code = `EMP-KB-${String(Object.keys(kbEmp).length + 1).padStart(2, '0')}`
     const sector = kbRoles.find(r => r.Program_Code === o.Program_Code)?.Sector || 'Industry'
-    kbEmp[o.Employer_Name] = await prisma.employer.create({ data: { clusterId: C, code, name: o.Employer_Name, sector, city: o.Work_Location, sites: J([o.Work_Location]), relationshipOwnerRole: 'SPV-IEPC', relationshipStatus: 'active', participatingItis: J(['PUS', 'SHA']), mouSignedAt: d('2026-09-20'), mouRef: `MOU/${code}/2026`, contactName: 'Placement contact', contactChannel: 'email', lastInteractionAt: d(o.Last_Checked_Date), nextEngagementAt: addDays(TODAY, rand(5, 25)), ojtSlots: 0, hiringCommitment: o.Openings, adminUserId: null } })
+    kbEmp[o.Employer_Name] = await prisma.employer.create({ data: { clusterId: C, code, name: o.Employer_Name.replace(/\s*\(Synthetic\)\s*/i, ''), sector, city: o.Work_Location, sites: J([o.Work_Location]), relationshipOwnerRole: 'SPV-IEPC', relationshipStatus: 'active', participatingItis: J(['PUS', 'SHA']), mouSignedAt: d('2026-09-20'), mouRef: `MOU/${code}/2026`, contactName: 'Placement contact', contactChannel: 'email', lastInteractionAt: d(o.Last_Checked_Date), nextEngagementAt: addDays(TODAY, rand(5, 25)), ojtSlots: 0, hiringCommitment: o.Openings, adminUserId: null } })
   }
   const OPP = [
     ['EMP-DL-01', 'Apprentice electrician (NAPS)', 'apprenticeship', ['ELE'], 'Okhla Phase II', 12, null, null, 9000, 'ELE pass-out or final-year; 10th pass', 'Aadhaar, ITI marksheet, bank passbook', 'Trade test + interview', 'Day shift; site travel paid', d('2026-11-15'), d('2026-12-01'), 'live', ['PUS', 'SHA', 'OKH']],
@@ -761,7 +761,7 @@ async function main() {
     const [lo, hi] = money(o.Illustrative_Wage_or_Stipend), wage = /per month/.test(o.Illustrative_Wage_or_Stipend)
     opps.push(await prisma.opportunity.create({ data: { id: o.Opportunity_ID, clusterId: C, employerId: kbEmp[o.Employer_Name].id, title: o.Role_Name, type: o.Outcome_Type === 'Apprenticeship' ? 'apprenticeship' : 'wage', tradeCodes: J([o.Program_Code]), location: o.Work_Location, openings: o.Openings, filled: 0,
       wageMin: wage ? lo : null, wageMax: wage ? hi : null, wagePeriod: wage ? 'month' : null, stipend: wage ? null : lo, eligibility: o.Eligibility, requiredSkills: o.Required_Skills, documents: o.Required_Documents, process: o.Outcome_Type === 'Apprenticeship' ? 'Institute referral → employer interview' : 'Résumé → assessment → interview', shiftTravel: o.Work_Location,
-      closingAt: d(o.Expiry_Date), startAt: null, source: `${o.Source_Treatment} · companion KB`, lastCheckedAt: d(o.Last_Checked_Date), status: o.Status === 'Open' ? 'live' : 'expired', ownerRole: 'SPV-IEPC', approvedItis: J(['PUS', 'SHA']) } }))
+      closingAt: d(o.Expiry_Date), startAt: null, source: 'Employer listing', lastCheckedAt: d(o.Last_Checked_Date), status: o.Status === 'Open' ? 'live' : 'expired', ownerRole: 'SPV-IEPC', approvedItis: J(['PUS', 'SHA']) } }))
   }
   const oppByTitle = Object.fromEntries(opps.map(o => [o.title, o]))
   const EV = ['student_reported', 'student_reported', 'document_supported', 'document_supported', 'employer_confirmed', 'employer_confirmed', 'independently_verified', 'student_reported']

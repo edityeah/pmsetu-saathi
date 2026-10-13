@@ -14,7 +14,7 @@ export default function BoardMattersCanvas() {
   if (!data) return <Loading />
   const items = data.items
   const groups = [['Reserved matters (SHA Part A/B)', items.filter(i => i.kind === 'reserved')], ['Delegated matters', items.filter(i => i.kind === 'delegated')]]
-  async function decide(i, decision) { await api.boardDecide(i.id, { decision }); showToast({ kind: 'success', text: `${decision} · recorded in board minutes (demo).` }); reload() }
+  async function decide(i, decision) { await api.boardDecide(i.id, { decision }); showToast({ kind: 'success', text: `${decision} · recorded in board minutes .` }); reload() }
   return (
     <div className="h-full overflow-y-auto">
       <Hero tone="violet" eyebrow="Governance · Shareholders' Agreement" title="Board agenda & reserved matters" subtitle="11 directors: AIP chair + 4, Centre 2, State 2, ITI leadership 1, CEO. Quorum for committees needs one Centre and one State director. Intra-envelope reallocations must be reported to SSC/NSC within 15 days." />
@@ -33,7 +33,7 @@ export default function BoardMattersCanvas() {
                   </div>
                   <Pill kind={stateKind(i.state)}>{i.state}</Pill>
                   {role === 'spv_ceo' && i.state === 'pending' && i.needs === 'ceo' && <Btn small onClick={() => decide(i, 'approved')}>Approve</Btn>}
-                  {role === 'spv_ceo' && i.state === 'pending' && i.needs !== 'ceo' && <Btn small tone="ghost" onClick={() => showToast({ kind: 'info', text: 'Added to next board agenda with consent request (demo).' })}>Table for board</Btn>}
+                  {role === 'spv_ceo' && i.state === 'pending' && i.needs !== 'ceo' && <Btn small tone="ghost" onClick={() => showToast({ kind: 'info', text: 'Added to next board agenda with consent request .' })}>Table for board</Btn>}
                 </li>
               ))}
             </ul>

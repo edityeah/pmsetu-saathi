@@ -11,7 +11,7 @@ export default function PoweredBy({ size = 22, className = '', layout = 'row' })
   if (layout === 'stack') {
     return (
       <div className={`inline-flex flex-col items-center gap-1.5 ${className}`}>
-        <div className="text-[10px] uppercase tracking-wider text-txt-tertiary font-semibold">A technical-partner platform for</div>
+        <div className="text-[10px] uppercase tracking-wider text-txt-tertiary font-semibold">Under</div>
         <Badge />
       </div>
     )

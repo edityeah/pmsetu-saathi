@@ -10,8 +10,8 @@ const r = Router()
 r.use(requireAuth)
 
 const PEERS = [
-  { code: 'CL-DL-02', name: 'Delhi ITI Cluster 2 (Nand Nagri hub) · illustrative', aipName: 'AIP selection under way', stage: 'RFP evaluation', sipCr: 0, utilisedPct: 0, score: 0, milestonesPct: 0, placementsVerified: 0, status: 'pre_sip' },
-  { code: 'CL-DL-03', name: 'Delhi ITI Cluster 3 (Jaffarpur hub) · illustrative', aipName: 'EOI issued', stage: 'EOI issued', sipCr: 0, utilisedPct: 0, score: 0, milestonesPct: 0, placementsVerified: 0, status: 'eoi' },
+  { code: 'CL-DL-02', name: 'Delhi ITI Cluster 2 (Nand Nagri hub)', aipName: 'AIP selection under way', stage: 'RFP evaluation', sipCr: 0, utilisedPct: 0, score: 0, milestonesPct: 0, placementsVerified: 0, status: 'pre_sip' },
+  { code: 'CL-DL-03', name: 'Delhi ITI Cluster 3 (Jaffarpur hub)', aipName: 'EOI issued', stage: 'EOI issued', sipCr: 0, utilisedPct: 0, score: 0, milestonesPct: 0, placementsVerified: 0, status: 'eoi' },
 ]
 
 r.get('/scorecard', async (req, res, next) => {

@@ -47,7 +47,7 @@ export default function CivilWorksCanvas() {
                   <div className="mt-2 flex items-center gap-2"><input type="range" min="0" max="100" defaultValue={w.pctComplete} id={`r-${w.id}`} className="flex-1 accent-primary" /><Btn small onClick={() => save(w, Number(document.getElementById(`r-${w.id}`).value))}>Save</Btn><Btn small tone="ghost" onClick={() => setEditing(null)}>Cancel</Btn></div>
                 ) : <div className="mt-2"><Btn small tone="ghost" onClick={() => setEditing(w.id)}>Update progress</Btn></div>
               )}
-              {role === 'ima_officer' && <div className="mt-2"><Btn small tone="ghost" onClick={() => showToast({ kind: 'success', text: `Inspection scheduled for ${w.iti.name} (demo).` })}>Schedule inspection</Btn></div>}
+              {role === 'ima_officer' && <div className="mt-2"><Btn small tone="ghost" onClick={() => showToast({ kind: 'success', text: `Inspection scheduled for ${w.iti.name}.` })}>Schedule inspection</Btn></div>}
             </li>
           ))}
         </ul>

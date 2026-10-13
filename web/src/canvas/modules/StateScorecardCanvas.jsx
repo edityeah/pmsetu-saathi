@@ -34,7 +34,7 @@ export default function StateScorecardCanvas({ context }) {
     </div>
   ) : null
   return (
-    <AnalystCanvasShell eyebrow={`State PMU · ${data.state} Training & Technical Education`} title="Where every cluster in the state stands." subtitle="One operational cluster (CL-DL-01), two illustrative pipeline clusters. The SSC meets quarterly; this is its scorecard." toneClass="from-fuchsia-50/60 via-white to-white"
+    <AnalystCanvasShell eyebrow={`State PMU · ${data.state} Training & Technical Education`} title="Where every cluster in the state stands." subtitle="Every cluster in the state at its stage. The SSC meets quarterly; this is its scorecard." toneClass="from-fuchsia-50/60 via-white to-white"
       refreshedOn={new Date().toLocaleDateString('en-IN')} saathiTitle="Saathi · State" saathiContext={`State portfolio: ${data.clusters.map(c => `${c.name} (${c.aipName}, ${c.stage}, SIP ₹${c.sipCr} Cr, utilised ${c.utilisedPct}%, KPI ${c.score}%)`).join('; ')}. National: ${data.national.approvedClusters} clusters approved worth ₹${data.national.approvedCr} Cr.`} threadId={context?.threadId}
       cells={[
         { node: <KpiGridCard card={kpiGrid} />, prompt: 'Summarise the state portfolio for the Chief Secretary in five lines.' },

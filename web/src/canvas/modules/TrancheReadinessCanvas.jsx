@@ -83,7 +83,7 @@ export default function TrancheReadinessCanvas() {
                   </label>
                 ))}
                 <div className={`mt-3 rounded-xl p-3 text-[12px] ${liveScore.score >= 80 ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
-                  Simulated score <b>{liveScore.score}%</b> {liveScore.score >= 80 ? '— clears the 80% gate.' : `— still ${80 - liveScore.score} points short. Equipment installation and civil progress move it fastest.`}
+                  Projected score <b>{liveScore.score}%</b> {liveScore.score >= 80 ? '— clears the 80% gate.' : `— still ${80 - liveScore.score} points short. Equipment installation and civil progress move it fastest.`}
                 </div>
               </div>
             </div>
@@ -91,8 +91,8 @@ export default function TrancheReadinessCanvas() {
         )}
         {role === 'ima_officer' && (
           <div className="flex gap-2 justify-end">
-            <Btn tone="ghost" onClick={() => showToast({ kind: 'warn', text: 'Observation letter drafted for the SPV (demo).' })}>Issue observations</Btn>
-            <Btn tone={firstTranche.ready ? 'ok' : 'primary'} disabled={!firstTranche.ready} onClick={() => showToast({ kind: 'success', text: 'Tranche certification sent to SPMU (demo).' })}>{firstTranche.ready ? 'Certify first tranche' : 'Cannot certify yet'}</Btn>
+            <Btn tone="ghost" onClick={() => showToast({ kind: 'warn', text: 'Observation letter drafted for the SPV.' })}>Issue observations</Btn>
+            <Btn tone={firstTranche.ready ? 'ok' : 'primary'} disabled={!firstTranche.ready} onClick={() => showToast({ kind: 'success', text: 'Tranche certification sent to the SPMU.' })}>{firstTranche.ready ? 'Certify first tranche' : 'Cannot certify yet'}</Btn>
           </div>
         )}
       </div>

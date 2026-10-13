@@ -47,7 +47,7 @@ export default function InstituteProfileCanvas({ context }) {
           </StatGrid>
           {!iti.registryConnected && <NoFeed>Student and trainer figures for {iti.name} come from the plan only. The registry connection milestone is due 31 Dec; until then operations dashboards show "no feed".</NoFeed>}
           <Section title="Sources" hint="Where each tab's values come from.">
-            <ul className="text-[12px] space-y-1 text-txt-secondary"><li><b>Budgets</b> — SIP section 7 ITI envelope, derived package allocation (66 packages cluster-wide).</li><li><b>Staff and rooms</b> — synthetic planning values; confirm against the sanctioned strength.</li><li><b>Intake</b> — course annual plan (places, enrolments by period); actual Year-1 enrolments from the registry where connected.</li><li><b>Gates</b> — one row per prerequisite per new offering (space, staff, course route, students).</li></ul>
+            <ul className="text-[12px] space-y-1 text-txt-secondary"><li><b>Budgets</b> — SIP section 7 ITI envelope, derived package allocation (66 packages cluster-wide).</li><li><b>Staff and rooms</b> — planning values; confirm against the sanctioned strength.</li><li><b>Intake</b> — course annual plan (places, enrolments by period); actual Year-1 enrolments from the registry where connected.</li><li><b>Gates</b> — one row per prerequisite per new offering (space, staff, course route, students).</li></ul>
           </Section>
         </>)}
         {tab === 'trades' && (<>
@@ -69,7 +69,7 @@ export default function InstituteProfileCanvas({ context }) {
             <Stat label="Trainers in registry" value={nil(staffing.registryTrainers || null)} sub={iti.registryConnected ? 'faculty file' : 'no feed'} tone="indigo" />
             <Stat label="With assignments" value={nil(staffing.assignedTrainers || null)} sub={`${staffing.leads} batch leads`} tone="emerald" />
             <Stat label="Baseline" value={staffing.baseline} tone="slate" />
-            <Stat label="Plan Y1 → Y5" value={`${staffing.plan.Y1} → ${staffing.plan.Y5}`} sub="synthetic planning values" tone="amber" />
+            <Stat label="Plan Y1 → Y5" value={`${staffing.plan.Y1} → ${staffing.plan.Y5}`} sub="planning values" tone="amber" />
           </StatGrid>
           <Section title="Trainers by programme" hint="Count of faculty records per programme; adequacy not validated.">
             {Object.keys(staffing.byProgramme).length === 0 ? <NoFeed /> : <div className="flex flex-wrap gap-2">{Object.entries(staffing.byProgramme).sort((a, b) => b[1] - a[1]).map(([p, n]) => <span key={p} className="text-[11px] rounded-pill bg-surface-page px-2.5 py-1"><b>{p}</b> · {n}</span>)}</div>}

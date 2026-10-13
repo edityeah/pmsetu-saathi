@@ -19,7 +19,7 @@ export default function JobsCanvas() {
   async function interested(o) { await api.apply({ opportunityId: o.id }); showToast({ kind: 'success', text: `Noted. Your trainer will review your résumé before anything is shared.` }); reload() }
   return (
     <div className="h-full overflow-y-auto bg-surface-page/40">
-      <Hero tone="teal" eyebrow="Checked by the SPV · approved for your ITI" title={`${list.length} opportunities`} subtitle="Apprenticeship (stipend, NAPS), OJT (while you study) or wage jobs (after you finish). Employers are described by what they do, not by brand." />
+      <Hero tone="teal" eyebrow="Checked by the SPV · approved for your ITI" title={`${list.length} opportunities`} subtitle="Apprenticeships (with stipend), OJT while you study, or wage jobs after you finish." />
       <div className="px-4 pt-3"><Chips options={[{ id: 'all', label: 'All' }, { id: 'apprenticeship', label: 'Apprenticeship' }, { id: 'ojt', label: 'OJT' }, { id: 'wage', label: 'Wage job' }]} value={type} onChange={setType} /></div>
       <div className="p-4 space-y-2.5">
         {list.length === 0 && <div className="text-[12px] text-txt-tertiary">Nothing live for your ITI in this filter.</div>}

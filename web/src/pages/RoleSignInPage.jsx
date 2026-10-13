@@ -1,4 +1,4 @@
-// Role sign-in — plain cluster sign-in (ID + password). Demo credentials prefilled per role.
+// Role sign-in — ID + password. Credentials are pre-filled per role in this build.
 import { useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { api } from '../api/client.js'
@@ -43,13 +43,12 @@ export default function RoleSignInPage() {
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-pill bg-primary-light text-primary">{roleLabel}</span>
           </div>
           <div className="p-6 space-y-3">
-            <div className="text-[12px] text-txt-secondary">Delhi ITI Cluster CL-DL-01 · {demo.contextLabel}</div>
+            <div className="text-[12px] text-txt-secondary">Delhi ITI Cluster · {demo.contextLabel}</div>
             <div><label className="block text-xs font-medium text-txt-secondary mb-1">User ID</label>
               <input value={loginId} onChange={e => setLoginId(e.target.value.toUpperCase())} className="w-full px-3 py-2 border border-bdr-light rounded outline-none focus:border-primary" /></div>
             <div><label className="block text-xs font-medium text-txt-secondary mb-1">Password</label>
               <input value={password} onChange={e => setPassword(e.target.value)} type="password" className="w-full px-3 py-2 border border-bdr-light rounded outline-none focus:border-primary" /></div>
-            <button type="submit" disabled={busy} className="w-full py-2.5 rounded bg-primary text-white font-medium hover:bg-primary-dark">{busy ? 'Signing in…' : `Sign in as ${demo.name}`}</button>
-            <div className="text-[11px] text-txt-tertiary text-center">Demo password <span className="font-mono font-bold">{DEMO_PASSWORD}</span></div>
+            <button type="submit" disabled={busy} className="w-full py-2.5 rounded bg-primary text-white font-medium hover:bg-primary-dark">{busy ? 'Signing in…' : 'Sign in'}</button>
             <button type="button" onClick={goBack} className="w-full py-1 text-xs text-txt-secondary hover:text-txt-primary">← Change role</button>
           </div>
         </form>

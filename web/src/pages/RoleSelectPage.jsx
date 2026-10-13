@@ -1,25 +1,24 @@
-// Role picker — who are you in the cluster? Eight personas across the three layers.
+// Role picker — choose how you sign in.
 import { useApp } from '../context/AppContext.jsx'
 import { ChevronLeft, Info } from 'lucide-react'
 import GovBadge from '../components/GovBadge.jsx'
 import Logo from '../components/Logo.jsx'
 import { ROLE_LABELS, ROLE_SCOPES } from '../roles/roleConfig.js'
-import { DEMO_USERS } from '../roles/demoUsers.js'
 
 const GROUPS = [
-  { title: 'Administration stack', subtitle: 'SPV compliance · cluster operations · verification', roles: ['spv_ceo', 'iti_principal', 'ima_officer', 'state_pmu', 'employer'] },
-  { title: 'Learning stack', subtitle: 'CMS for curriculum · mobile LMS + companion', roles: ['curriculum_dev', 'trainer', 'trainee'] },
+  { title: 'Cluster and institute', subtitle: 'Planning, operations, verification and industry', roles: ['spv_ceo', 'iti_principal', 'ima_officer', 'state_pmu', 'employer'] },
+  { title: 'Teaching and learning', subtitle: 'Curriculum, instructors and students', roles: ['curriculum_dev', 'trainer', 'trainee'] },
 ]
 const ICON = { spv_ceo: '🏗️', iti_principal: '🏫', trainer: '👨‍🏫', trainee: '🧑‍🎓', ima_officer: '🛡️', employer: '🏭', curriculum_dev: '🧱', state_pmu: '🗺️' }
 const DESC = {
-  spv_ceo: 'Track the transformation: SIP, tranche readiness, civil, procurement, escrow, IMA evidence, board.',
-  iti_principal: 'Run one ITI: seats, attendance, trainers, machines, OJT, placements, grievances.',
-  trainer: 'Mark attendance, teach the 240-hour module, record practical assessments.',
-  trainee: 'Learn, log OJT, confirm placement, check in from the job. Mobile-first, Indic.',
-  ima_officer: 'Verify milestones and KPIs, review reports, certify tranche conditions.',
-  employer: 'Host OJT, confirm hires with salary evidence, post openings.',
-  curriculum_dev: 'Build modules and lessons; move courses through CSTARI and NCVET.',
-  state_pmu: 'Compare clusters, approve AOPs, prepare the MSDE scorecard.',
+  spv_ceo: 'Plan the five years, run the cluster, and prove it: annual plan, milestones, tranche readiness, placements.',
+  iti_principal: 'Run your institute: today\'s coverage, attendance and marks review, profile, tasks, student voice, placements.',
+  trainer: 'Your day: sessions, attendance, marks, practicals, students who need support.',
+  trainee: 'Your course, your plan, help from your institute, opportunities and applications.',
+  ima_officer: 'Verify milestones and KPIs, review reports, sample placements, certify tranche conditions.',
+  employer: 'Post opportunities, host OJT and apprentices, confirm interviews and joiners.',
+  curriculum_dev: 'Build modules and lessons; move programmes through CSTARI and NCVET.',
+  state_pmu: 'Compare clusters, approve annual plans, prepare the state scorecard.',
 }
 
 export default function RoleSelectPage() {
@@ -38,8 +37,8 @@ export default function RoleSelectPage() {
       </div>
       <div className="max-w-6xl w-full mx-auto px-6 pt-8 pb-4">
         <div className="text-[12px] font-bold uppercase tracking-wider text-primary">Delhi ITI Cluster · Pusa hub + Shahdara, Narela, Rohini, Okhla</div>
-        <h1 className="text-[28px] md:text-[34px] font-bold text-txt-primary mt-1 leading-tight">Who are you <span className="text-primary">in the cluster?</span></h1>
-        <p className="text-[14px] text-txt-secondary mt-1.5 max-w-2xl">One platform, eight personas. Each sees only its layer of the cluster. Demo accounts are pre-filled on the next screen.</p>
+        <h1 className="text-[28px] md:text-[34px] font-bold text-txt-primary mt-1 leading-tight">Sign in <span className="text-primary">to your role</span></h1>
+        <p className="text-[14px] text-txt-secondary mt-1.5 max-w-2xl">Choose your role to continue.</p>
       </div>
       <div className="flex-1 max-w-6xl w-full mx-auto px-6 pb-10 space-y-8">
         {GROUPS.map(g => (
@@ -51,7 +50,7 @@ export default function RoleSelectPage() {
                   <div className="w-11 h-11 rounded-2xl bg-primary-light flex items-center justify-center text-[22px]">{ICON[r]}</div>
                   <div className="font-bold text-[15px] text-txt-primary leading-tight">{ROLE_LABELS[r]}</div>
                   <div className="text-[11px] text-txt-secondary leading-snug">{DESC[r]}</div>
-                  <div className="mt-auto text-[11px] font-semibold text-primary">{DEMO_USERS[r]?.name} · {ROLE_SCOPES[r]} →</div>
+                  <div className="mt-auto text-[11px] font-semibold text-primary">{ROLE_SCOPES[r]} →</div>
                 </button>
               ))}
             </div>
@@ -59,10 +58,10 @@ export default function RoleSelectPage() {
         ))}
         <div className="rounded-2xl border border-bdr-light bg-[#F4F6FA] px-4 py-3 text-[12px] text-txt-secondary flex items-start gap-2">
           <Info className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
-          <div><b className="text-txt-primary">Students and instructors</b> can also sign in with phone OTP (any registry phone, OTP 1234). <button onClick={() => navigate('login')} className="text-primary font-bold ml-1">← Back to login options</button></div>
+          <div><b className="text-txt-primary">Students and instructors</b> can also sign in with their registered phone number. <button onClick={() => navigate('login')} className="text-primary font-bold ml-1">← Back to sign-in options</button></div>
         </div>
       </div>
-      <div className="text-center py-3 text-[11px] text-txt-tertiary border-t border-bdr-light">PM-SETU Saathi · prototype · ConveGenius technical-partner stack</div>
+      <div className="text-center py-3 text-[11px] text-txt-tertiary border-t border-bdr-light">PM-SETU Saathi · Technology partner ConveGenius</div>
     </div>
   )
 }

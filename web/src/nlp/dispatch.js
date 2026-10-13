@@ -74,6 +74,6 @@ const ACTION_TO_CANVAS = {
 
 export function dispatchActionForRole({ actionId, entities = {}, role, openCanvas, showToast }) {
   const c = ACTION_TO_CANVAS[actionId]
-  if (!c) { showToast?.({ kind: 'warn', text: 'Action not yet wired in this prototype.' }); return }
+  if (!c) { showToast?.({ kind: 'warn', text: 'That action is not available yet.' }); return }
   openCanvas?.({ ...c, ...entities })
 }

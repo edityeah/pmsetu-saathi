@@ -124,7 +124,6 @@ export default function PhoneOtpPage() {
           : <p className="text-[13px] text-txt-secondary">Did not receive code? <button onClick={resend} className="font-bold text-primary">Resend OTP</button></p>}
       </div>
 
-      <p className="text-center text-[10px] text-txt-tertiary mt-4">Demo OTP is <span className="font-mono font-bold">1234</span></p>
     </div>
   )
 

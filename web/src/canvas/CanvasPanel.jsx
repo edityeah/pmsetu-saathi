@@ -116,8 +116,8 @@ export default function CanvasPanel() {
 function NotImplemented({ type }) {
   return (
     <div className="p-6 text-sm text-txt-secondary">
-      <div className="font-medium text-txt-primary mb-2">Module not implemented yet</div>
-      <div>This canvas type (<code className="font-mono">{type}</code>) is scaffolded but its UI hasn't been built in this prototype slice.</div>
+      <div className="font-medium text-txt-primary mb-2">This screen is not available yet</div>
+      <div>Ask Saathi for help, or go back and open another app.</div>
     </div>
   )
 }
@@ -131,7 +131,7 @@ class CanvasErrorBoundary extends Component {
     if (!this.state.err) return this.props.children
     return (
       <div className="p-6 text-sm">
-        <div className="font-bold text-danger mb-1">This screen hit an error</div>
+        <div className="font-bold text-danger mb-1">Something went wrong on this screen</div>
         <pre className="text-[11px] bg-slate-900 text-slate-100 rounded p-3 overflow-auto">{String(this.state.err?.message || this.state.err)}</pre>
       </div>
     )

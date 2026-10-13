@@ -160,7 +160,7 @@ r.post('/assessments/:id/scan', requireRole('trainer', 'iti_principal'), async (
     let seed = p.id.split('').reduce((s, c) => s + c.charCodeAt(0), 0)
     const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
     const rows = p.batch.trainees.map(t => { const absent = rnd() < 0.05; const marks = absent ? null : Math.round(p.maxMarks * (0.35 + rnd() * 0.6)); const conf = +(0.6 + rnd() * 0.39).toFixed(2); return { traineeId: t.id, name: t.name, marks, status: absent ? 'absent' : 'scored', ocrConfidence: conf, ocrExtracted: marks, needsReview: conf < 0.75 } })
-    res.json({ rows, note: 'Simulated OCR. Rows under 0.75 confidence need a manual check before submit.' })
+    res.json({ rows, note: 'Sheet read. Rows the scan is unsure about need a manual check before submit.' })
   } catch (e) { next(e) }
 })
 

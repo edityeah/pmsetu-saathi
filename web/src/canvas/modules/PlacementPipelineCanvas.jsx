@@ -60,7 +60,7 @@ export default function PlacementPipelineCanvas({ context }) {
   )
   const saathiContext = `Placement pipeline (${itiId ? 'one ITI' : 'cluster'}): total ${total}, by stage ${JSON.stringify(byStage)}, joined ${joined}, evidence ${JSON.stringify(evidence)}, verified-plus ${verifiedPlus}, conversion ${JSON.stringify(conversion)}, wages ${JSON.stringify(wages)}, per ITI ${perIti.map(i => `${i.code} joined ${i.joined} confirmed+ ${i.employerConfirmedPlus}`).join('; ')}; overdue actions ${overdue.length}; disputed ${disputed.length}.`
   return (
-    <AnalystCanvasShell eyebrow="Industry & placement" title="Who is where, and on what evidence." subtitle="Pre-scheme pass-outs in the wage branch; current COPA students on OJT; Year-1 cohorts preparing. Only employer-confirmed and independently verified records should reach a KPI." toneClass="from-emerald-50/70 via-white to-white" filterSlot={filter} saathiTitle="Saathi · Placement" saathiContext={saathiContext} threadId={context?.threadId}
+    <AnalystCanvasShell eyebrow="Industry & placement" title="Who is where, and on what evidence." subtitle="Every student's stage and the evidence behind it. Only employer-confirmed and independently verified records count towards a KPI." toneClass="from-emerald-50/70 via-white to-white" filterSlot={filter} saathiTitle="Saathi · Placement" saathiContext={saathiContext} threadId={context?.threadId}
       cells={[
         { node: <KpiGridCard card={grid} />, prompt: 'How many placements can we honestly report to the IMA today?' },
         { node: <BarChartCard card={funnel} />, prompt: 'Where does the pipeline leak most and what would fix it?', span: 'half' },
