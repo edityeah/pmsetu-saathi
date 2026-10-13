@@ -16,15 +16,9 @@ Plans in `render.yaml`: web service **Starter** (does not spin down; free instan
 
 ## One-time setup
 
-### 1. Push the repo to GitHub
+### 1. Code on GitHub
 
-The app folder is already a git repository with an initial commit. Create an empty private repo on GitHub (for example `edityeah/pmsetu-saathi`), then:
-
-```bash
-cd /Users/adityeasofficemac/Downloads/PM-SETU/pmsetu-app
-git remote add origin git@github-edityeah:edityeah/pmsetu-saathi.git
-git push -u origin main
-```
+Already done: https://github.com/edityeah/pmsetu-saathi. The local checkout tracks it over the `github-edityeah` SSH alias, so `git push` from the app folder is enough.
 
 ### 2. Create the Blueprint
 
