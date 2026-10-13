@@ -19,7 +19,7 @@ export default function StudentProfileCanvas({ context }) {
   async function addSupport() { await api.createSupport({ traineeId: trainee.id, reason: 'companion_referral', detail: note || 'Flagged by ' + role, nextAction: 'Talk to the student', dueDays: 3 }); showToast({ kind: 'success', text: 'Support action created.' }); setNote(''); reload() }
   return (
     <div className="h-full overflow-y-auto">
-      <Hero tone="sky" eyebrow={`${trainee.iti.name} · ${trainee.batch?.name || ''}`} title={trainee.name} subtitle={`${trainee.batch?.trade?.name || ''} · ${trainee.gender === 'F' ? 'F' : 'M'} · ${trainee.education}${trainee.pwd ? ' · PwD (' + trainee.pwdType + ')' : ''} · batch lead ${trainee.batch?.lead?.name || '—'} · ${trainee.registryMatched ? 'registry record' : 'synthetic record, not in registry'} · ${trainee.status}`} />
+      <Hero tone="sky" eyebrow={`${trainee.iti.name} · ${trainee.batch?.name || ''}`} title={trainee.name} subtitle={`${trainee.batch?.trade?.name || ''} · ${trainee.gender === 'F' ? 'F' : 'M'} · ${trainee.education}${trainee.pwd ? ' · PwD (' + trainee.pwdType + ')' : ''} · batch lead ${trainee.batch?.lead?.name || '—'} · ${trainee.registryMatched ? 'registry record' : 'not in the registry'} · ${trainee.status}`} />
       <div className="p-4 space-y-4">
         <StatGrid>
           <Stat label="Attendance (15d)" value={attendance.pct == null ? '—' : `${attendance.pct}%`} sub={`${attendance.present} present · ${attendance.absent} absent · ${attendance.late} late`} tone={attendance.pct == null ? 'slate' : attendance.pct >= 85 ? 'emerald' : attendance.pct >= 70 ? 'amber' : 'rose'} />
