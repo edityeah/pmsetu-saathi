@@ -18,11 +18,11 @@ Plans in `render.yaml`: web service **Starter** (does not spin down; free instan
 
 ### 1. Push the repo to GitHub
 
-The app folder is already a git repository with an initial commit. Create an empty private repo on GitHub (for example `adityeah1/pmsetu-saathi`), then:
+The app folder is already a git repository with an initial commit. Create an empty private repo on GitHub (for example `edityeah/pmsetu-saathi`), then:
 
 ```bash
 cd /Users/adityeasofficemac/Downloads/PM-SETU/pmsetu-app
-git remote add origin git@github.com:adityeah1/pmsetu-saathi.git
+git remote add origin git@github-edityeah:edityeah/pmsetu-saathi.git
 git push -u origin main
 ```
 
