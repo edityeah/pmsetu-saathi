@@ -19,8 +19,8 @@ r.get('/', async (req, res, next) => {
 
 r.post('/', async (req, res, next) => {
   try {
-    const body = z.object({ title: z.string(), bot: z.string().optional() }).parse(req.body)
-    const t = await prisma.chatThread.create({ data: { userId: req.user.id, title: body.title, bot: body.bot ?? null } })
+    const body = z.object({ title: z.string(), bot: z.string().optional(), canvasState: z.any().optional() }).parse(req.body)
+    const t = await prisma.chatThread.create({ data: { userId: req.user.id, title: body.title.slice(0, 120), bot: body.bot ?? null, canvasState: body.canvasState ? JSON.stringify(body.canvasState) : '{}' } })
     res.json({ thread: t })
   } catch (e) { next(e) }
 })

@@ -92,7 +92,18 @@ export function AppProvider({ children }) {
   const refreshThreads = useCallback(async () => { try { const r = await api.listThreads(); setThreads(r.threads || []) } catch {} }, [])
   useEffect(() => { if (!role) { setThreads([]); return } refreshThreads() }, [role, refreshThreads])
   const newChat = useCallback(() => { setCanvas(null); refreshThreads() }, [refreshThreads])
-  const openThread = useCallback((thread) => { if (!thread?.id) return; setCanvas({ type: PERSONA_TO_CANVAS[thread.bot] || thread.bot || 'saathi_assistant', threadId: thread.id }) }, [])
+  const openThread = useCallback((thread) => {
+    if (!thread?.id) return
+    let about = null
+    try { about = JSON.parse(thread.canvasState || '{}').about || null } catch {}
+    setCanvas({ type: PERSONA_TO_CANVAS[thread.bot] || thread.bot || 'saathi_assistant', threadId: thread.id, about })
+  }, [])
+  // Start a Saathi thread about a screen. `about` = { canvasType, title,
+  // subtitle, context, quickAsks }; `prompt` is sent as the first message.
+  // The screen the user came from is kept so Back returns to it.
+  const askSaathi = useCallback(({ about, prompt } = {}) => {
+    setCanvas(c => ({ type: 'saathi_assistant', about: about || null, from: c && c.type !== 'saathi_assistant' ? c : (c?.from || null), pendingPrompt: prompt ? { text: prompt, nonce: Date.now() } : undefined }))
+  }, [])
 
   const showToast = useCallback((t) => { setToast(t); setTimeout(() => setToast(null), 3000) }, [])
 
@@ -101,8 +112,8 @@ export function AppProvider({ children }) {
     completeLogin, signOut, switchRole, refreshMe,
     canvas, openCanvas, closeCanvas, updateCanvas, toast, showToast,
     notifications, refreshNotifications: async () => { try { const r = await api.notifications(); setNotifications(r.notifications || []) } catch {} },
-    threads, refreshThreads, newChat, openThread,
-  }), [screen, stack, navigate, goBack, role, user, meExtra, lang, canvas, toast, notifications, threads, completeLogin, signOut, switchRole, refreshMe, openCanvas, closeCanvas, updateCanvas, showToast, refreshThreads, newChat, openThread])
+    threads, refreshThreads, newChat, openThread, askSaathi,
+  }), [screen, stack, navigate, goBack, role, user, meExtra, lang, canvas, toast, notifications, threads, completeLogin, signOut, switchRole, refreshMe, openCanvas, closeCanvas, updateCanvas, showToast, refreshThreads, newChat, openThread, askSaathi])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

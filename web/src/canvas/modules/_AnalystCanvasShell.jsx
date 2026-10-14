@@ -11,14 +11,15 @@
 //   │  Scrollable dashboard:                                  │
 //   │   ─ cells (charts / tables) wrapped in "Ask Saathi" tag │
 //   │   ─ "Try asking" quick-prompt grid                      │
-//   ├─────────────────────────────────────────────────────────┤
-//   │  Saathi chat (full AvatarCall) — bottom, max 50vh       │
 //   └─────────────────────────────────────────────────────────┘
+// There is no chat on the screen itself: "Ask Saathi" (header, any card,
+// or a ready question) opens a saved thread about this screen.
 
-import { useMemo, useState } from 'react'
-import AvatarCall from '../../components/AvatarCall.jsx'
-import ResizableSaathiSplit from '../../components/ResizableSaathiSplit.jsx'
+import { useMemo } from 'react'
 import { Sparkles, Calendar, Database } from 'lucide-react'
+import { useApp } from '../../context/AppContext.jsx'
+import { useSaathiContext } from '../CanvasSaathi.jsx'
+import { getCanvasMeta } from './index.js'
 
 export default function AnalystCanvasShell({
   // Hero
@@ -33,24 +34,23 @@ export default function AnalystCanvasShell({
   quickAsks = [],            // array of strings — pre-written analyst prompts
   filterSlot,                // optional React node rendered as a sticky filter row under the hero
   // Saathi
-  persona = 'general',
-  saathiTitle = 'Saathi',
-  saathiContext = '',        // per-module extraSystem
-  threadId,
+  saathiContext = '',        // live data on this screen, given to the thread
 }) {
-  const [pending, setPending] = useState(null)
-  const ask = (text) => setPending({ text, nonce: Date.now() })
+  const { askSaathi, canvas } = useApp()
+  const extraSystem = useMemo(() => (
+    "Treat every analytic question as: 1-2 sentence narrative + ONE chart card + (if a problem was surfaced) an action_panel. Use the data baked into your system prompt — no clarifying questions before answering.\n\n" +
+    (saathiContext || '')
+  ), [saathiContext])
+  // Publish for the header "Ask Saathi" button.
+  useSaathiContext(extraSystem, quickAsks)
+  const meta = getCanvasMeta(canvas?.type)
+  const about = { canvasType: canvas?.type, title: meta?.title || title, subtitle: meta?.subtitle || subtitle || '', context: extraSystem, quickAsks }
+  const ask = (text) => askSaathi({ about, prompt: text })
 
   const half = cells.filter(c => c.span === 'half')
   const full = cells.filter(c => c.span !== 'half')
 
-  const extraSystem = useMemo(() => (
-    "You are inside the " + (title || 'analyst') + " module of PM-SETU Saathi. " +
-    "Treat every analytic question as: 1-2 sentence narrative + ONE chart card + (if a problem was surfaced) an action_panel. Use the data baked into your system prompt — no clarifying questions before answering.\n\n" +
-    (saathiContext || '')
-  ), [title, saathiContext])
-
-  const dashboard = (
+  return (
     <div className="h-full overflow-y-auto">
         {/* Hero band */}
         <div className={`px-5 pt-5 pb-3 bg-gradient-to-br ${toneClass} border-b border-bdr-light`}>
@@ -65,9 +65,9 @@ export default function AnalystCanvasShell({
           )}
           {(refreshedOn || dataMartOn) && (
             <div className="text-[11px] text-txt-secondary mt-2 inline-flex items-center gap-3 flex-wrap">
-              {refreshedOn && <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" />Dashboard refreshed {refreshedOn}</span>}
+              {refreshedOn && <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" />Refreshed {refreshedOn}</span>}
               {dataMartOn && <span className="inline-flex items-center gap-1"><Database className="w-3 h-3" />Data mart {dataMartOn}</span>}
-              <span className="inline-flex items-center gap-1"><Sparkles className="w-3 h-3 text-primary" />Tap any chart to talk to it</span>
+              <span className="inline-flex items-center gap-1"><Sparkles className="w-3 h-3 text-primary" />Ask Saathi about any card</span>
             </div>
           )}
         </div>
@@ -79,11 +79,7 @@ export default function AnalystCanvasShell({
           </div>
         )}
 
-        {/* "Try asking" lives ONLY in the chat panel — not duplicated here.
-            The dashboard is the data canvas; the chat is where you talk to it. */}
-
         <div className="p-4 space-y-4">
-          {/* Half-span cells laid out 2-up on large screens */}
           {half.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {half.map((c, i) => (
@@ -91,35 +87,29 @@ export default function AnalystCanvasShell({
               ))}
             </div>
           )}
-          {/* Full-span cells */}
           {full.map((c, i) => (
             <Cell key={`f-${i}`} prompt={c.prompt} onAsk={ask}>{c.node}</Cell>
           ))}
+
+          {/* Ready questions — each opens a saved Saathi thread about this screen. */}
+          {quickAsks.length > 0 && (
+            <div className="pt-2">
+              <div className="text-[11px] uppercase tracking-wider font-bold text-txt-tertiary mb-2 inline-flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-primary" /> Ask Saathi</div>
+              <div className="flex flex-wrap gap-2">
+                {quickAsks.map((q, i) => (
+                  <button key={i} onClick={() => ask(q)} className="px-3.5 py-2 rounded-pill bg-surface-page hover:bg-primary-light border border-bdr-light text-[13px] text-txt-primary text-left">{q}</button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
     </div>
   )
-
-  const chat = (
-    <AvatarCall
-      persona={persona}
-      title={saathiTitle}
-      useWebSearch={true}
-      extraSystem={extraSystem}
-      pendingPrompt={pending}
-      threadId={threadId}
-      // Persistent prompt strip ABOVE the message thread so the user always
-      // sees example questions, regardless of conversation state.
-      quickAsks={quickAsks}
-    />
-  )
-
-  // Resizable split — user can drag the handle between dashboard and chat to
-  // give either side more room. Persists to localStorage.
-  return <ResizableSaathiSplit top={dashboard} bottom={chat} />
 }
 
-// "Ask Saathi about this" overlay revealed on hover. Click → fires a
-// pre-baked prompt at the chat below.
+// "Ask Saathi about this" on each card. Always visible on touch screens,
+// revealed on hover with a mouse. Click → opens a Saathi thread with the
+// card's question already sent.
 function Cell({ children, prompt, onAsk }) {
   return (
     <div className="group relative">
@@ -127,7 +117,7 @@ function Cell({ children, prompt, onAsk }) {
       <button
         onClick={() => onAsk(prompt)}
         title="Ask Saathi about this"
-        className="absolute top-2 right-2 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-pill bg-primary/90 text-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition shadow-card hover:bg-primary"
+        className="absolute top-2 right-2 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-pill bg-primary/90 text-white text-[11px] font-bold opacity-80 md:opacity-0 md:group-hover:opacity-100 transition shadow-card hover:bg-primary"
       >
         <Sparkles className="w-3 h-3" /> Ask Saathi
       </button>

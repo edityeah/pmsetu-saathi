@@ -172,7 +172,7 @@ export const api = {
   markRead: (id) => req('POST', `/api/notifications/${id}/read`),
   aiMessage: (text, language) => req('POST', '/api/ai/message', { text, language }),
   listThreads:    () => req('GET', '/api/chats'),
-  createThread:   (title, bot) => req('POST', '/api/chats', { title, bot }),
+  createThread:   (title, bot, canvasState) => req('POST', '/api/chats', { title, bot, canvasState }),
   threadMessages: (id) => req('GET', `/api/chats/${id}/messages`),
   postMessage:    (id, role, text, meta) => req('POST', `/api/chats/${id}/messages`, { role, text, meta }),
 }

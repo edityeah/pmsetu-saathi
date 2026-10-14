@@ -16,17 +16,18 @@
 
 import { Component, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
-import { X, ArrowLeft, Maximize2, Minimize2 } from 'lucide-react'
+import { X, ArrowLeft, Maximize2, Minimize2, Sparkles } from 'lucide-react'
 import { moduleFor, getCanvasMeta } from './modules/index.js'
 import { CanvasHeaderActionsContext } from './CanvasHeaderActions.js'
-import { CanvasSaathiProvider } from './CanvasSaathi.jsx'
-import SaathiDock from './SaathiDock.jsx'
+import { CanvasSaathiProvider, usePublishedSaathi } from './CanvasSaathi.jsx'
 
-// Canvases that already embed Saathi (analyst shells, companion personas).
-const HAS_OWN_CHAT = new Set(['cluster_home', 'five_year_targets', 'institute_today', 'cluster_operations', 'student_voice', 'placement_pipeline', 'transformation_dashboard', 'state_scorecard', 'doubt_solver', 'course_selection', 'career_counsellor', 'job_prep', 'on_job_buddy', 'grievance', 'course_builder', 'saathi_assistant'])
+// Canvases that ARE a conversation (Saathi itself and the companion
+// personas). Every other canvas is a standalone screen with an "Ask Saathi"
+// button in its header that starts a saved thread about that screen.
+const IS_CHAT = new Set(['doubt_solver', 'course_selection', 'career_counsellor', 'job_prep', 'on_job_buddy', 'grievance', 'course_builder', 'saathi_assistant'])
 
 export default function CanvasPanel() {
-  const { canvas, closeCanvas } = useApp()
+  const { canvas, closeCanvas, openCanvas } = useApp()
   const [expanded, setExpanded] = useState(false)
   const [headerActions, setHeaderActions] = useState(null)
   // No reset effect for headerActions — when the canvas TYPE changes, React
@@ -42,6 +43,12 @@ export default function CanvasPanel() {
   if (!canvas) return null
   const meta = getCanvasMeta(canvas.type)
   const Module = moduleFor(canvas.type)
+  const isChat = IS_CHAT.has(canvas.type)
+  // A Saathi thread started from a screen shows that screen's name and its
+  // Back arrow returns to the screen it came from.
+  const title = canvas.type === 'saathi_assistant' && canvas.about?.title ? `Saathi · ${canvas.about.title}` : (meta?.title || canvas.type)
+  const subtitle = canvas.type === 'saathi_assistant' && canvas.about?.title ? 'This conversation is saved in your chats' : (meta?.subtitle || '')
+  const back = () => { if (canvas.from) openCanvas(canvas.from); else closeCanvas() }
 
   // On mobile (default), force expanded full-screen layout
   const expandedDesktop = expanded
@@ -62,15 +69,18 @@ export default function CanvasPanel() {
             : 'absolute inset-0 md:inset-y-0 md:right-0 md:left-auto md:w-[min(820px,72%)] md:border-l md:border-bdr-strong md:shadow-canvas md:animate-canvas-slide z-40 bg-white flex flex-col'
         }
       >
+        <CanvasSaathiProvider key={canvas.type}>
         <header className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-3 border-b border-bdr bg-gradient-to-b from-surface-page/50 to-white sticky top-0 z-10">
-          <button onClick={closeCanvas} title="Back" className="p-1.5 rounded-pill hover:bg-slate-100 flex-shrink-0">
+          <button onClick={back} title="Back" className="p-1.5 rounded-pill hover:bg-slate-100 flex-shrink-0">
             <ArrowLeft className="w-5 h-5 text-txt-secondary" />
           </button>
           <div className="w-9 h-9 rounded bg-primary-light text-primary-dark flex items-center justify-center text-lg flex-shrink-0">{meta?.icon || '🗂'}</div>
           <div className="flex-1 min-w-0">
-            <div className="text-[14px] md:text-[15px] font-bold text-txt-primary truncate">{meta?.title || canvas.type}</div>
-            <div className="text-[11px] md:text-[12px] text-txt-secondary truncate">{meta?.subtitle || ''}</div>
+            <div className="text-[14px] md:text-[15px] font-bold text-txt-primary truncate">{title}</div>
+            <div className="text-[11px] md:text-[12px] text-txt-secondary truncate">{subtitle}</div>
           </div>
+
+          {!isChat && <AskSaathiButton canvas={canvas} meta={meta} />}
 
           {/* Module-injected actions (e.g. voice + video call icons) */}
           {headerActions && (
@@ -94,22 +104,26 @@ export default function CanvasPanel() {
         </header>
 
         <CanvasHeaderActionsContext.Provider value={{ setActions: setHeaderActions }}>
-          {HAS_OWN_CHAT.has(canvas.type) ? (
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <CanvasErrorBoundary key={canvas.type}>{Module ? <Module context={canvas} /> : <NotImplemented type={canvas.type} />}</CanvasErrorBoundary>
-            </div>
-          ) : (
-            <div className="flex-1 min-h-0">
-              <CanvasSaathiProvider key={canvas.type}>
-                <SaathiDock meta={meta} canvas={canvas}>
-                  <CanvasErrorBoundary key={canvas.type}>{Module ? <Module context={canvas} /> : <NotImplemented type={canvas.type} />}</CanvasErrorBoundary>
-                </SaathiDock>
-              </CanvasSaathiProvider>
-            </div>
-          )}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <CanvasErrorBoundary key={canvas.type}>{Module ? <Module context={canvas} /> : <NotImplemented type={canvas.type} />}</CanvasErrorBoundary>
+          </div>
         </CanvasHeaderActionsContext.Provider>
+        </CanvasSaathiProvider>
       </div>
     </>
+  )
+}
+
+// "Ask Saathi" in a screen's header: starts a new saved thread that knows
+// what is on this screen (the canvas publishes it via useSaathiContext).
+function AskSaathiButton({ canvas, meta }) {
+  const { askSaathi } = useApp()
+  const { context, quickAsks } = usePublishedSaathi()
+  const about = { canvasType: canvas.type, title: meta?.title || canvas.type, subtitle: meta?.subtitle || '', context, quickAsks }
+  return (
+    <button onClick={() => askSaathi({ about })} title="Ask Saathi about this screen" className="inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-pill bg-gradient-to-r from-primary to-primary-dark text-white font-bold text-[11px] md:text-[12px] shadow-card hover:opacity-90 active:scale-95 transition flex-shrink-0">
+      <Sparkles className="w-3.5 h-3.5" /><span className="hidden sm:inline">Ask Saathi</span>
+    </button>
   )
 }
 

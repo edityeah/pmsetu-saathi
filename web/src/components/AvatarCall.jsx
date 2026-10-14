@@ -62,6 +62,10 @@ export default function AvatarCall({
   persona, title, intro, useWebSearch, extraSystem,
   suggestions = [], quickAsks = [], pendingPrompt,
   threadId: initialThreadId,
+  // Optional { title, canvasState }: title prefixes the saved thread name
+  // ("Cluster Home · Which ITI is slipping…"); canvasState is stored on the
+  // thread so reopening it from the sidebar restores the screen context.
+  threadMeta,
   onCallStateChange,
   // ARISE-classroom-specific hooks. When the ai/stream backend detects
   // persona=arise_mx_teacher it emits `board` and `diagram` SSE events
@@ -245,8 +249,9 @@ export default function AvatarCall({
   async function persistMessage(role, text) {
     try {
       if (!threadIdRef.current) {
-        const seed = (text || '').slice(0, 60).trim() || (title || persona || 'Conversation')
-        const r = await api.createThread(seed, persona || null)
+        const first = (text || '').slice(0, 60).trim()
+        const seed = threadMeta?.title ? `${threadMeta.title}${first ? ' · ' + first : ''}` : (first || title || persona || 'Conversation')
+        const r = await api.createThread(seed, persona || null, threadMeta?.canvasState)
         threadIdRef.current = r.thread?.id || null
         refreshThreads?.()
       }
