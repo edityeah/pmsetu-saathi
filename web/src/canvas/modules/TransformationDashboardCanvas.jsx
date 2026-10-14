@@ -24,7 +24,7 @@ export default function TransformationDashboardCanvas({ context }) {
       { label: 'Cost-weighted KPI score', value: `${score.score}%`, delta: score.score >= 80 ? '+ above 80% gate' : `- ${80 - score.score} pts to 80% gate`, tone: score.score >= 80 ? 'emerald' : 'rose', onClick: () => openCanvas({ type: 'tranche_readiness' }) },
       { label: 'Utilised of advance', value: `${utilisation.utilisedPct}%`, delta: utilisation.utilisedPct >= 75 ? '+ above 75%' : `- needs 75% (₹${utilisation.budgetCr} Cr)`, tone: utilisation.utilisedPct >= 75 ? 'emerald' : 'amber', onClick: () => openCanvas({ type: 'finance_escrow' }) },
       { label: 'Milestones verified', value: `${headline.milestonesVerified}/${headline.milestonesTotal}`, hint: `${readiness.milestoneProgressPct}% of weighted milestones`, tone: 'indigo', onClick: () => openCanvas({ type: 'milestones' }) },
-      { label: 'Active students', value: headline.traineesActive.toLocaleString('en-IN'), hint: `${headline.womenPct}% women · ${headline.coverage}`, tone: 'sky', onClick: () => openCanvas({ type: 'cluster_operations' }) },
+      { label: 'Active students', value: headline.traineesActive.toLocaleString('en-IN'), hint: `${headline.womenPct}% women · ${headline.coverage}`, tone: 'sky', onClick: () => openCanvas({ type: 'iti_dashboard' }) },
       { label: 'Employer-confirmed joins', value: headline.placementsVerified, hint: `${headline.placementsAll} joined records · ${headline.employersActive} active MoUs`, tone: 'violet', onClick: () => openCanvas({ type: 'placement_pipeline' }) },
       { label: 'Machines functional', value: `${headline.machinesFunctionalPct}%`, hint: 'of cluster assets', tone: headline.machinesFunctionalPct >= 70 ? 'emerald' : 'amber', onClick: () => openCanvas({ type: 'machines_infra' }) },
       { label: 'Year-1 tasks', value: `${headline.tasksDone}/${headline.tasksTotal}`, hint: `${headline.tasksOverdue} overdue`, tone: headline.tasksOverdue ? 'rose' : 'teal', onClick: () => openCanvas({ type: 'milestone_board' }) },
@@ -83,7 +83,6 @@ export default function TransformationDashboardCanvas({ context }) {
         { node: trancheBox, prompt: 'What exactly do we need to do by July 2027 to release the Year-2 first tranche?', span: 'half' },
         { node: dueList, prompt: 'Which pending milestones carry the most weight and what evidence do they need?', span: 'half' },
         { node: <BarChartCard card={kpiBars} />, prompt: 'Which KPIs are furthest from target and what actions move them this quarter?' },
-        { node: <DataTableCard card={itiTable} />, prompt: 'Compare the five ITIs. Which spoke needs intervention and why?' },
         { node: <BarChartCard card={spend} />, prompt: 'Is the spend mix consistent with the SIP and the 20% civil cap?', span: 'half' },
         { node: <DonutChartCard card={{ title: 'Milestone states', unit: 'milestones', data: [{ label: 'Verified', value: headline.milestonesVerified, color: 'emerald' }, { label: 'Submitted', value: milestonesDue.filter(m => m.state === 'submitted').length, color: 'amber' }, { label: 'Pending', value: headline.milestonesTotal - headline.milestonesVerified - milestonesDue.filter(m => m.state === 'submitted').length, color: 'sky' }] }} />, prompt: 'What is blocking the submitted milestones from being verified?', span: 'half' },
       ]}
@@ -92,7 +91,6 @@ export default function TransformationDashboardCanvas({ context }) {
         'Draft a one-paragraph status for the SPV board.',
         'Which civil works are behind and what should I tell the contractor?',
         'What does "verified placement" require under the License Agreement?',
-        'Rank the ITIs by transformation progress.',
         'What would the MSDE scorecard show for us today?',
       ]}
     />

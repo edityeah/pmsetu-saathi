@@ -82,10 +82,10 @@ export const CANVAS_MODULES = {
 }
 
 const META = {
-  cluster_home: { title: 'Cluster Home', subtitle: 'Five ITIs · Year-1 envelope vs plan · tasks · gates · risks', icon: '🏠' },
+  cluster_home: { title: 'Cluster Home', subtitle: 'SIP funding · Year-1 by category and ITI · this month · headline KPIs · risks', icon: '🏠' },
   institute_profile: { title: 'Institute Profile', subtitle: 'Overview · trades · staffing · infrastructure · budget · targets · launch gates', icon: '🏫' },
   five_year_targets: { title: 'Five-Year Targets', subtitle: 'Places, enrolments, KPI trajectories, site budgets, phasing', icon: '📈' },
-  annual_plan: { title: 'Annual Plan', subtitle: 'Outcomes · workplan (AOP records + tasks) · calendar', icon: '🗓️' },
+  annual_plan: { title: 'Annual Plan', subtitle: 'Workplan (AOP records + tasks) · calendar · assign tasks to principals', icon: '🗓️' },
   milestone_board: { title: 'Milestone Board', subtitle: 'Overdue, blocked, returned · dependency chain · change requests', icon: '🧭' },
   my_commitments: { title: 'My Commitments', subtitle: 'Batches, subjects, deadlines, referrals', icon: '📌' },
   transformation_dashboard: { title: 'Transformation Dashboard', subtitle: 'KPIs vs baseline · per-ITI progress · tranche readiness', icon: '🏗️' },

@@ -47,8 +47,14 @@ export default function AnalystCanvasShell({
   const about = { canvasType: canvas?.type, title: meta?.title || title, subtitle: meta?.subtitle || subtitle || '', context: extraSystem, quickAsks }
   const ask = (text) => askSaathi({ about, prompt: text })
 
-  const half = cells.filter(c => c.span === 'half')
-  const full = cells.filter(c => c.span !== 'half')
+  // Cells render in the order they are given; consecutive half-width cells
+  // pair up in a two-column row.
+  const groups = []
+  for (const c of cells) {
+    const last = groups[groups.length - 1]
+    if (c.span === 'half' && last && last.kind === 'half') last.cells.push(c)
+    else groups.push({ kind: c.span === 'half' ? 'half' : 'full', cells: [c] })
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -80,15 +86,12 @@ export default function AnalystCanvasShell({
         )}
 
         <div className="p-4 space-y-4">
-          {half.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {half.map((c, i) => (
-                <Cell key={`h-${i}`} prompt={c.prompt} onAsk={ask}>{c.node}</Cell>
-              ))}
+          {groups.map((g, gi) => g.kind === 'half' ? (
+            <div key={`g-${gi}`} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {g.cells.map((c, i) => <Cell key={`h-${gi}-${i}`} prompt={c.prompt} onAsk={ask}>{c.node}</Cell>)}
             </div>
-          )}
-          {full.map((c, i) => (
-            <Cell key={`f-${i}`} prompt={c.prompt} onAsk={ask}>{c.node}</Cell>
+          ) : (
+            <Cell key={`f-${gi}`} prompt={g.cells[0].prompt} onAsk={ask}>{g.cells[0].node}</Cell>
           ))}
 
           {/* Ready questions — each opens a saved Saathi thread about this screen. */}

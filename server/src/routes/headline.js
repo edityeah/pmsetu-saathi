@@ -37,7 +37,7 @@ async function ceo(user) {
   }
   return { title: `${c.name} · Year ${c.currentYear}, month ${Math.max(1, Math.min(12, Math.floor((Date.now() - new Date(c.scenarioStart || c.licenseStartAt).getTime()) / (30.4 * 86400000)) + 1))}`, items: [
     kpiItem('K01', 'Annual enrolment', 'indigo', 'five_year_targets'),
-    kpiItem('K02', 'Seat utilisation', 'sky', 'cluster_operations', '%'),
+    kpiItem('K02', 'Seat utilisation', 'sky', 'iti_dashboard', '%'),
     kpiItem('K11', 'Female enrolment', 'fuchsia', 'five_year_targets', '%'),
     item({ key: 'util', label: 'Funds utilised', value: `${rd.utilisation.utilisedPct}%`, pct: Math.min(100, Math.round(100 * rd.utilisation.utilisedPct / 75)), target: 'tranche gate 75%', hint: `₹${rd.utilisation.utilisedCr} Cr of ₹${rd.utilisation.budgetCr} Cr · ${rd.utilisation.committedPct}% committed`, tone: 'amber', canvas: 'tranche_readiness' }),
     item({ key: 'score', label: 'KPI score', value: `${rd.score.score}%`, pct: Math.min(100, Math.round(100 * rd.score.score / 80)), target: 'tranche gate 80%', hint: `cost-weighted · ${overdue} of ${total} tasks overdue`, tone: rd.score.score >= 80 ? 'emerald' : 'rose', canvas: 'tranche_readiness' }),

@@ -33,16 +33,6 @@ export default function StudentVoiceCanvas({ context }) {
   const bars = { title: 'Themes (direct + inferred)', unit: 'signals', orient: 'horizontal', data: themes.map(t => ({ label: titleCase(t.theme), value: t.total, color: ['travel_cost', 'facilities', 'devices', 'timetable', 'cost', 'family'].includes(t.theme) ? 'rose' : ['course_interest', 'aspiration'].includes(t.theme) ? 'emerald' : 'primary' })), annotation: 'Red = barriers, green = interest and aspiration, blue = learning needs.' }
   const donut = { title: 'Direct vs inferred', unit: 'signals', data: [{ label: 'Direct', value: totals.direct, color: 'emerald' }, { label: 'Inferred', value: totals.inferred, color: 'amber' }] }
   const line = { title: 'Signals per week', yAxis: 'signals', series: [{ name: 'All', color: 'primary', data: trend }] }
-  const themeTable = (
-    <Section title="What they say" hint="Top statements per theme (paraphrased). Counts are students, not messages.">
-      <Table columns={[
-        { key: 'theme', label: 'Theme', render: r => <div><div className="font-semibold">{titleCase(r.theme)}</div><div className="text-[10px] text-txt-tertiary">{r.students} students · {r.direct} direct · {r.inferred} inferred{r.guests ? ` · ${r.guests} guest` : ''}</div></div> },
-        { key: 'topics', label: 'Top statements', render: r => <ul className="text-[11px] space-y-0.5">{r.topics.map(t => <li key={t.topic}>"{t.topic}" <span className="text-txt-tertiary">×{t.n}</span></li>)}</ul> },
-        { key: 'byIti', label: 'By ITI', render: r => <span className="text-[11px]">{Object.entries(r.byIti).map(([k, v]) => `${perIti.find(i => i.id === k)?.code || k} ${v}`).join(' · ')}</span> },
-        { key: 'recommendation', label: 'Suggested response', render: r => <span className="text-[11px]">{r.recommendation || '—'}</span> },
-      ]} rows={themes} />
-    </Section>
-  )
   const actionBox = (
     <Section title="Actions this suggests" hint="Themes with the most students first; each links to the owner who can act.">
       <ul className="space-y-1.5 text-[12px]">{actions.map(a => <li key={a.theme} className="flex items-start gap-2"><Pill kind="warn">{titleCase(a.theme)}</Pill><span className="flex-1">{a.suggestion}</span><span className="text-[10px] text-txt-tertiary">{a.affected} students</span></li>)}</ul>
@@ -70,7 +60,6 @@ export default function StudentVoiceCanvas({ context }) {
         { node: <KpiGridCard card={grid} />, prompt: 'Summarise what students are raising and what I should do first.' },
         { node: <BarChartCard card={bars} />, prompt: 'Which barriers are growing and which ITI do they come from?', span: 'half' },
         { node: <DonutChartCard card={donut} />, prompt: 'How much of this is students saying it directly vs the model inferring?', span: 'half' },
-        { node: themeTable, prompt: 'Draft a note to batch leads on the top three themes.' },
         { node: actionBox, prompt: 'Which of these actions can I take this week without budget?', span: 'half' },
         { node: itiTable || <LineChartCard card={line} />, prompt: 'Is participation rising and are more students using the companion?', span: 'half' },
         { node: signalTable, prompt: 'Which signals are verified facts and which are unverified themes?' },

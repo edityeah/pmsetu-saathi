@@ -7,6 +7,7 @@ import { useApp } from '../../context/AppContext.jsx'
 import { Hero, Stat, StatGrid, Bar, Pill, Section, Table, Loading, Btn, useLoad, Tabs, fmtCr, fmtDate, nil, stateKind, titleCase, NoFeed } from './_ui.jsx'
 import { useSaathiContext, brief } from '../CanvasSaathi.jsx'
 
+const r1 = v => (v == null || v === '' ? v : Math.round(Number(v) * 10) / 10)
 const TABS = [{ id: 'overview', label: 'Overview' }, { id: 'trades', label: 'Trades & intake' }, { id: 'staffing', label: 'Staffing' }, { id: 'infrastructure', label: 'Infrastructure' }, { id: 'budget', label: 'Budget' }, { id: 'targets', label: 'Targets' }, { id: 'launch_gates', label: 'Launch gates' }]
 
 export default function InstituteProfileCanvas({ context }) {
@@ -36,14 +37,14 @@ export default function InstituteProfileCanvas({ context }) {
       <div className="p-4 space-y-4">
         {tab === 'overview' && (<>
           <StatGrid>
-            <Stat label="Active students" value={students.registryConnected ? students.active.toLocaleString('en-IN') : '—'} sub={students.registryConnected ? `${students.women} women · ${students.pwd} PwD` : 'registry not connected'} tone="indigo" />
+            <Stat label="Active students" value={students.registryConnected ? students.active.toLocaleString('en-IN') : '—'} sub={students.registryConnected ? `${students.women} women · ${students.pwd} PwD · open roster` : 'registry not connected'} tone="indigo" onClick={() => openCanvas({ type: 'batches', itiId: iti.id })} />
             <Stat label="Annual places (Y1)" value={iti.seatCapacity} sub={`baseline enrolments ${iti.baselineSeats}`} tone="sky" />
-            <Stat label="Trainers" value={`${staffing.registryTrainers || '—'}`} sub={`baseline ${staffing.baseline} · Y1 plan ${staffing.plan.Y1}`} tone="emerald" />
+            <Stat label="Trainers" value={`${staffing.registryTrainers || '—'}`} sub={`baseline ${staffing.baseline} · Y1 plan ${staffing.plan.Y1} · registry`} tone="emerald" onClick={() => setTab('staffing')} />
             <Stat label="Rooms working" value={`${iti.roomsWorking}/${iti.roomsBaseline}`} sub={`Y5 target ${iti.roomsY5}`} tone="amber" />
-            <Stat label="Five-year anchor" value={fmtCr(iti.fiveYearCr)} sub={`civil ${fmtCr(iti.civilCr)} · digital ${fmtCr(iti.digitalCr)}`} tone="violet" />
+            <Stat label="Annual budget (Y1)" value={fmtCr(budget.reduce((s, p) => s + (p.yearly[1] || 0), 0))} sub={`of ${fmtCr(iti.fiveYearCr)} over five years · open AOP`} tone="violet" onClick={() => openCanvas({ type: 'annual_plan', itiId: iti.id })} />
             <Stat label="Year-1 tasks" value={`${tasks.filter(t => ['completed', 'reviewed'].includes(t.state)).length}/${tasks.length}`} sub={`${tasks.filter(t => t.overdue).length} overdue`} tone={tasks.some(t => t.overdue) ? 'rose' : 'teal'} onClick={() => openCanvas({ type: 'annual_plan', itiId: iti.id })} />
             <Stat label="Launch gates" value={`${gates.filter(g => g.state === 'passed').length}/${gates.length}`} sub={`${gates.filter(g => g.state === 'ready').length} ready`} tone="teal" onClick={() => setTab('launch_gates')} />
-            <Stat label="Principal" value={iti.kind === 'hub' ? 'Hub' : 'Spoke'} sub={sec.overview?.by || `PR-${iti.code}`} tone="slate" />
+            <Stat label="Principal" value={iti.principal?.name || '—'} sub={`${iti.kind === 'hub' ? 'Hub' : 'Spoke'} · PR-${iti.code}`} tone="slate" />
           </StatGrid>
           {!iti.registryConnected && <NoFeed>Student and trainer figures for {iti.name} come from the plan only. The registry connection milestone is due 31 Dec; until then operations dashboards show "no feed".</NoFeed>}
           <Section title="Sources" hint="Where each tab's values come from.">
@@ -105,10 +106,18 @@ export default function InstituteProfileCanvas({ context }) {
           </Section>
         </>)}
         {tab === 'targets' && (<>
+          <Section title="KPI targets the institute contributes to" hint="Cluster KPI plan: baseline and yearly targets; 'now' only where a source exists.">
+            <Table columns={[
+              { key: 'code', label: 'KPI', render: r => <div><div className="font-semibold">{r.code} · {r.name}</div><div className="text-[10px] text-txt-tertiary">{r.unit}{r.ownerRole ? ` · owner ${r.ownerRole}` : ''}</div></div> },
+              { key: 'baseline', label: 'Baseline', align: 'right', render: r => r1(r.baseline) ?? '—' },
+              ...['Y1', 'Y2', 'Y3', 'Y4', 'Y5'].map(y => ({ key: y, label: y, align: 'right', render: r => r1(r.targets?.[y]) ?? '—' })),
+              { key: 'current', label: 'Now', align: 'right', render: r => r.current == null ? <span className="text-txt-tertiary">—</span> : <b>{r1(r.current)}</b> },
+            ]} rows={(data.kpis || []).filter(k => ['K01', 'K02', 'K03', 'K04', 'K05', 'K06', 'K07', 'K08', 'K09', 'K11'].includes(k.code))} />
+          </Section>
+          <Section title="Institute anchors"><div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[12px]">{[['Five-year', fmtCr(targets.fiveYearCr)], ['Civil', fmtCr(targets.civilCr)], ['Digital', fmtCr(targets.digitalCr)], ['Trainers Y5', staffing.plan.Y5]].map(([l, v]) => <div key={l} className="rounded-xl bg-surface-page p-2.5"><div className="text-[10px] uppercase font-bold text-txt-tertiary">{l}</div><div className="text-[16px] font-bold">{v}</div></div>)}</div></Section>
           <Section title="Enrolment plan by course" hint="Planned enrolments per period (places in grey).">
             <Table columns={[{ key: 'trade', label: 'Course', render: r => r.trade.name }, ...periods.map((p, i) => ({ key: p, label: p, align: 'right', render: r => r.plans[i] ? <span>{r.plans[i].enrolments} <span className="text-txt-tertiary text-[10px]">/{r.plans[i].places}</span></span> : '—' }))]} rows={trades} />
           </Section>
-          <Section title="Institute anchors"><div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[12px]">{[['Five-year', fmtCr(targets.fiveYearCr)], ['Civil', fmtCr(targets.civilCr)], ['Digital', fmtCr(targets.digitalCr)], ['Trainers Y5', staffing.plan.Y5]].map(([l, v]) => <div key={l} className="rounded-xl bg-surface-page p-2.5"><div className="text-[10px] uppercase font-bold text-txt-tertiary">{l}</div><div className="text-[16px] font-bold">{v}</div></div>)}</div><div className="mt-2"><button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'five_year_targets' })}>Cluster five-year targets and KPIs →</button></div></Section>
         </>)}
         {tab === 'launch_gates' && (
           <Section title="Launch gates for new offerings" hint="No intake without all four: space, named staff, course route, students. Course gates follow the NCVET pipeline.">

@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { prisma } from '../db.js'
 import { requireAuth, requireRole } from '../auth/middleware.js'
 import { clusterFor, itiFor, profileOf, trainerBatchIds } from '../lib/scope.js'
+import { notifyPrincipal } from '../lib/notify.js'
 
 const r = Router()
 r.use(requireAuth)
@@ -68,6 +69,7 @@ r.get('/itis/:code/profile', async (req, res, next) => {
   try {
     let iti = req.params.code === 'mine' ? await itiFor(req.user) : await prisma.iti.findFirst({ where: { OR: [{ code: req.params.code }, { id: req.params.code }] } })
     if (!iti) { const c = await clusterFor(req.user); iti = await prisma.iti.findFirst({ where: { clusterId: c.id, kind: 'hub' } }) }
+    const [principal, kpis] = await Promise.all([iti.principalUserId ? prisma.user.findUnique({ where: { id: iti.principalUserId }, select: { name: true, loginId: true } }) : null, prisma.kpi.findMany({ where: { clusterId: iti.clusterId }, orderBy: { code: 'asc' } })])
     const [offerings, packages, aops, tasks, gates, machines, civil, trainers, assignments, batches, activeStudents, women, pwd] = await Promise.all([
       prisma.offering.findMany({ where: { itiId: iti.id }, include: { trade: true, plans: { orderBy: { period: 'asc' } } } }),
       prisma.package.findMany({ where: { itiId: iti.id }, orderBy: { id: 'asc' } }),
@@ -97,7 +99,7 @@ r.get('/itis/:code/profile', async (req, res, next) => {
     const staffing = { registryTrainers: trainers.length, assignedTrainers: trainerIds.size, baseline: iti.trainersBaseline, plan: J(iti.trainerPlan, {}), byProgramme: {}, leads: assignments.filter(a => a.responsibility.startsWith('Batch lead')).length }
     for (const t of trainers) { const p = J(t.profile, {}); staffing.byProgramme[p.programme] = (staffing.byProgramme[p.programme] || 0) + 1 }
     const budget = packages.map(p => ({ ...p, yearly: J(p.yearly, {}), aops: aops.filter(a => a.packageId === p.id) }))
-    res.json({ iti: { ...iti, profileSections: J(iti.profileSections, {}), trainerPlan: J(iti.trainerPlan, {}) }, students: { active: activeStudents, women, pwd, registryConnected: iti.registryConnected },
+    res.json({ iti: { ...iti, principal, profileSections: J(iti.profileSections, {}), trainerPlan: J(iti.trainerPlan, {}) }, kpis: kpis.map(k => ({ ...k, targets: J(k.targets, {}) })), students: { active: activeStudents, women, pwd, registryConnected: iti.registryConnected },
       trades, otherTrades: Object.values(otherTrades), staffing, infrastructure: { rooms: { baseline: iti.roomsBaseline, working: iti.roomsWorking, y5: iti.roomsY5 }, machines, civil },
       budget, targets: { fiveYearCr: iti.fiveYearCr, civilCr: iti.civilCr, digitalCr: iti.digitalCr, plannedCr: +packages.reduce((s, p) => s + p.totalCr, 0).toFixed(2) }, gates, tasks: tasks.map(taskView) })
   } catch (e) { next(e) }
@@ -127,10 +129,12 @@ r.get('/targets', async (req, res, next) => {
     const periods = ['Baseline', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5']
     const clusterPlan = periods.map(p => ({ period: p, places: offerings.reduce((s, o) => s + (o.plans.find(x => x.period === p)?.places || 0), 0), enrolments: offerings.reduce((s, o) => s + (o.plans.find(x => x.period === p)?.enrolments || 0), 0) }))
     const siteBudgets = itis.map(i => { const pk = packages.filter(p => p.itiId === i.id); const yearly = [1, 2, 3, 4, 5].map(y => +pk.reduce((s, p) => s + (J(p.yearly, {})[y] || 0), 0).toFixed(3)); return { code: i.code, name: i.name, anchorCr: i.fiveYearCr, yearly, totalCr: +yearly.reduce((a, b) => a + b, 0).toFixed(2) } })
+    const phasingByIti = itis.map(i => ({ code: i.code, name: i.name, byCategory: {} }))
+    for (const p of packages) { const row = phasingByIti.find(x => x.code === itis.find(i => i.id === p.itiId)?.code); if (!row) continue; const y = J(p.yearly, {}); const c = row.byCategory[p.category] ||= [0, 0, 0, 0, 0]; for (let i = 1; i <= 5; i++) c[i - 1] += y[i] || 0 }
     const phasing = {}
     for (const p of packages) { const y = J(p.yearly, {}); const row = phasing[p.category] ||= { category: p.category, yearly: [0, 0, 0, 0, 0], totalCr: 0 }; for (let i = 1; i <= 5; i++) row.yearly[i - 1] += y[i] || 0; row.totalCr += p.totalCr }
     res.json({ cluster: c, periods, clusterPlan, offerings: offerings.map(o => ({ ...o, plans: periods.map(p => o.plans.find(x => x.period === p) || null) })),
-      kpis: kpis.map(k => ({ ...k, targets: J(k.targets, {}) })), siteBudgets, phasing: Object.values(phasing).map(p => ({ ...p, yearly: p.yearly.map(v => +v.toFixed(3)), totalCr: +p.totalCr.toFixed(2) })) })
+      kpis: kpis.map(k => ({ ...k, targets: J(k.targets, {}) })), siteBudgets, phasingByIti: phasingByIti.map(r => ({ ...r, byCategory: Object.fromEntries(Object.entries(r.byCategory).map(([k, v]) => [k, v.map(x => +x.toFixed(3))])) })), phasing: Object.values(phasing).map(p => ({ ...p, yearly: p.yearly.map(v => +v.toFixed(3)), totalCr: +p.totalCr.toFixed(2) })) })
   } catch (e) { next(e) }
 })
 
@@ -142,10 +146,10 @@ r.get('/annual', async (req, res, next) => {
     const itiId = req.query.itiId || null
     const [aops, tasks, kpis] = await Promise.all([
       prisma.aopRecord.findMany({ where: { year, ...(itiId ? { package: { itiId } } : {}) }, include: { package: true }, orderBy: { id: 'asc' } }),
-      prisma.planTask.findMany({ where: { clusterId: c.id, ...(itiId ? { itiId } : {}) }, orderBy: { dueAt: 'asc' } }),
+      prisma.planTask.findMany({ where: { clusterId: c.id, ...(itiId ? { itiId } : {}) }, orderBy: { dueAt: 'asc' }, include: { aop: { select: { package: { select: { category: true, title: true } } } }, iti: { select: { code: true, name: true } } } }),
       prisma.kpi.findMany({ where: { clusterId: c.id }, orderBy: { code: 'asc' } }),
     ])
-    const tv = tasks.map(taskView)
+    const tv = tasks.map(t => ({ ...taskView(t), category: t.aop?.package?.category || null, packageTitle: t.aop?.package?.title || null, itiCode: t.iti?.code || null }))
     const workplan = aops.map(a => ({ ...a, package: { ...a.package, yearly: J(a.package.yearly, {}) }, tasks: tv.filter(t => t.aopId === a.id) }))
     const calendar = ['Q1', 'Q2', 'Q3', 'Q4'].map(q => ({ quarter: q, tasks: tv.filter(t => t.quarter === q) }))
     const totals = { budgetCr: +aops.reduce((s, a) => s + a.budgetCr, 0).toFixed(3), spentCr: +aops.reduce((s, a) => s + a.spentCr, 0).toFixed(3) }
@@ -162,6 +166,41 @@ r.get('/tasks', async (req, res, next) => {
     if (req.query.state) where.state = String(req.query.state)
     const tasks = await prisma.planTask.findMany({ where, orderBy: { dueAt: 'asc' }, include: { aop: { select: { id: true, budgetCr: true, spentCr: true, deliverable: true, evidenceRule: true, package: { select: { title: true, category: true } } } }, iti: { select: { code: true, name: true } } } })
     res.json({ tasks: tasks.map(taskView) })
+  } catch (e) { next(e) }
+})
+
+// Assign a task (CEO → principal, or principal → own ITI). The task hangs
+// off an AOP record so it carries no budget of its own; the principal is
+// notified in-app.
+r.post('/tasks', requireRole('spv_ceo', 'iti_principal'), async (req, res, next) => {
+  try {
+    const body = z.object({ title: z.string().min(3), itiId: z.string(), aopId: z.string().optional(), category: z.string().optional(), dueAt: z.string(), evidence: z.string().optional(), acceptance: z.string().optional(), isMilestone: z.boolean().optional(), note: z.string().optional() }).parse(req.body)
+    const c = await clusterFor(req.user)
+    const iti = await prisma.iti.findUnique({ where: { id: body.itiId } })
+    if (!iti) return res.status(404).json({ error: 'iti_not_found' })
+    let aop = body.aopId ? await prisma.aopRecord.findUnique({ where: { id: body.aopId } }) : null
+    if (!aop) aop = await prisma.aopRecord.findFirst({ where: { year: c.currentYear, package: { itiId: iti.id, ...(body.category ? { category: body.category } : {}) } }, orderBy: { id: 'asc' } })
+    if (!aop) aop = await prisma.aopRecord.findFirst({ where: { year: c.currentYear, package: { itiId: iti.id } }, orderBy: { id: 'asc' } })
+    if (!aop) return res.status(400).json({ error: 'no_aop_record', message: 'This ITI has no AOP record to hang the task on.' })
+    const n = await prisma.planTask.count({ where: { itiId: iti.id } })
+    const id = `TASK-${iti.code}-${String(n + 1).padStart(2, '0')}`
+    const dueAt = new Date(body.dueAt)
+    const months = Math.max(1, Math.min(12, Math.round((dueAt - new Date(c.scenarioStart || c.licenseStartAt)) / (30.4 * 86400000)) + 1))
+    const quarter = `Q${Math.min(4, Math.ceil(months / 3))}`
+    const t = await prisma.planTask.create({ data: { id, clusterId: c.id, itiId: iti.id, aopId: aop.id, title: body.title, quarter, dueMonth: months, dueAt, responsibleRole: `PR-${iti.code}`, reviewerRole: 'SPV-CEO', evidence: body.evidence || 'Progress note with photo or document', acceptance: body.acceptance || 'Reviewer accepts the evidence note', state: 'planned', isMilestone: !!body.isMilestone, lastUpdateAt: new Date(), updatedByRole: profileOf(req.user).roleCode || req.user.role, evidenceNote: null, reviewNote: body.note || null } })
+    await notifyPrincipal(iti.id, { title: `New task from the SPV: ${body.title}`, message: `${id} · due ${dueAt.toLocaleDateString('en-IN')} · evidence: ${t.evidence}${body.note ? ' · ' + body.note : ''}`, priority: 'high', action: { label: 'Open annual plan', type: 'OPEN_ANNUAL_PLAN' } })
+    res.json({ task: taskView(t) })
+  } catch (e) { next(e) }
+})
+
+// CEO asks the principal for the current status of a task.
+r.post('/tasks/:id/ask', requireRole('spv_ceo', 'ima_officer'), async (req, res, next) => {
+  try {
+    const body = z.object({ question: z.string().min(2) }).parse(req.body)
+    const t = await prisma.planTask.findUnique({ where: { id: req.params.id } })
+    if (!t) return res.status(404).json({ error: 'not_found' })
+    await notifyPrincipal(t.itiId, { title: `Status requested: ${t.title}`, message: `${req.user.name} asks: ${body.question}`, priority: 'high', action: { label: 'Open annual plan', type: 'OPEN_ANNUAL_PLAN' } })
+    res.json({ ok: true })
   } catch (e) { next(e) }
 })
 

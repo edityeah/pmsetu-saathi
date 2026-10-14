@@ -8,6 +8,7 @@ import { prisma } from '../db.js'
 import { requireAuth, requireRole } from '../auth/middleware.js'
 import { clusterFor } from '../lib/scope.js'
 import { trancheReadiness, costWeightedScore, utilisation, kpiAchievement } from '../lib/kpiEngine.js'
+import { notifyPrincipal } from '../lib/notify.js'
 
 const r = Router()
 r.use(requireAuth)
@@ -128,11 +129,35 @@ r.post('/civil/:id/progress', requireRole('spv_ceo', 'iti_principal'), async (re
   } catch (e) { next(e) }
 })
 
+// CEO asks the ITI principal for the current situation on a civil work.
+r.post('/civil/:id/ask', requireRole('spv_ceo', 'ima_officer'), async (req, res, next) => {
+  try {
+    const body = z.object({ question: z.string().min(2) }).parse(req.body)
+    const w = await prisma.civilWork.findUnique({ where: { id: req.params.id } })
+    if (!w) return res.status(404).json({ error: 'not_found' })
+    await notifyPrincipal(w.itiId, { title: `Status requested: ${w.title}`, message: `${req.user.name} asks: ${body.question}`, category: 'civil', priority: 'high', action: { label: 'Open civil works', type: 'OPEN_CIVIL_WORKS' } })
+    res.json({ ok: true })
+  } catch (e) { next(e) }
+})
+
 r.get('/procurement', async (req, res, next) => {
   try {
     const c = await clusterFor(req.user)
     const packages = await prisma.procurementPackage.findMany({ where: { clusterId: c.id }, orderBy: { code: 'asc' } })
     res.json({ packages: packages.map(p => ({ ...p, forItiCodes: J(p.forItiCodes, []) })) })
+  } catch (e) { next(e) }
+})
+
+// CEO asks the receiving ITI(s) how a procurement package is progressing.
+r.post('/procurement/:id/ask', requireRole('spv_ceo', 'ima_officer'), async (req, res, next) => {
+  try {
+    const body = z.object({ question: z.string().min(2), itiCode: z.string().optional() }).parse(req.body)
+    const p = await prisma.procurementPackage.findUnique({ where: { id: req.params.id } })
+    if (!p) return res.status(404).json({ error: 'not_found' })
+    const codes = body.itiCode ? [body.itiCode] : J(p.forItiCodes, [])
+    const itis = await prisma.iti.findMany({ where: { code: { in: codes } } })
+    for (const i of itis) await notifyPrincipal(i.id, { title: `Progress check: ${p.title}`, message: `${req.user.name} asks: ${body.question}`, category: 'procurement', priority: 'high', action: { label: 'Open procurement', type: 'OPEN_PROCUREMENT' } })
+    res.json({ ok: true, notified: itis.map(i => i.code) })
   } catch (e) { next(e) }
 })
 

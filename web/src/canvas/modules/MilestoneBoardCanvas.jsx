@@ -7,6 +7,7 @@ import { api } from '../../api/client.js'
 import { useApp } from '../../context/AppContext.jsx'
 import { Hero, Stat, StatGrid, Pill, Section, Loading, Btn, useLoad, Chips, fmtDate, stateKind, Field, inputCls } from './_ui.jsx'
 import { TaskCard } from './AnnualPlanCanvas.jsx'
+import { AssignTaskToggle } from './_AssignTask.jsx'
 import { useSaathiContext, brief } from '../CanvasSaathi.jsx'
 
 export default function MilestoneBoardCanvas() {
@@ -14,6 +15,7 @@ export default function MilestoneBoardCanvas() {
   const { data, reload } = useLoad(() => api.milestoneBoard())
   const [filter, setFilter] = useState('all')
   const [proposing, setProposing] = useState(null)
+  const [pickId, setPickId] = useState('')
   const [form, setForm] = useState({ title: '', currentValue: '', proposedValue: '', reason: '', resourceImpact: '', formalApprovalNeeded: false })
   useSaathiContext(data ? `Milestone board: ${data.board.length} items. ${data.board.map(t => `${t.id} ${t.title} [${t.state}${t.overdue ? ', OVERDUE ' + t.slipDays + 'd' : ''}${t.blockedByPredecessor ? ', blocked by predecessor' : ''}; due ${String(t.dueAt).slice(0, 10)}${t.forecastAt ? ', forecast ' + String(t.forecastAt).slice(0, 10) : ''}; ${t.responsibleRole}→${t.reviewerRole}${t.blockedReason ? '; blocked: ' + t.blockedReason : ''}${t.chain.length ? '; depends on ' + t.chain.map(c => c.id + '(' + c.state + ')').join(',') : ''}${t.dependents.length ? '; unlocks ' + t.dependents.map(d => d.id).join(',') : ''}]`).join(' || ')}. IMA milestones: ${data.milestones.map(m => `${m.title} (${m.state}, due ${String(m.dueAt).slice(0, 10)})`).join('; ')}. Change requests: ${data.changes.map(c => `${c.title} [${c.state}] ${c.currentValue} → ${c.proposedValue}; reason ${c.reason}`).join(' || ') || 'none'}.` : '', ['What is blocked and what unblocks it?', 'Should I approve the pending change requests?', 'Which slips affect Year-2 launch gates?', 'Draft a note to the Rohini principal about the room survey.'])
   if (!data) return <Loading />
@@ -30,6 +32,12 @@ export default function MilestoneBoardCanvas() {
     <div className="h-full overflow-y-auto">
       <Hero tone="rose" eyebrow="Milestone board · exceptions first" title={`${board.filter(t => t.overdue).length} overdue · ${board.filter(t => t.state === 'blocked').length} blocked · ${board.filter(t => t.state === 'returned').length} returned`} subtitle="Milestone tasks with their predecessor chain. A slip here moves everything downstream; a change request records the decision before any date or target is rewritten." />
       <div className="p-4 space-y-4">
+        {(role === 'iti_principal' || role === 'spv_ceo') && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <AssignTaskToggle open={!!proposing} onToggle={() => { if (proposing) { setProposing(null); return } const t = board.find(x => x.id === pickId) || board[0]; if (t) { setProposing(t); setForm(f => ({ ...f, title: `Revise ${t.id}: ${t.title}`, currentValue: `Due ${fmtDate(t.dueAt)}`, proposedValue: t.forecastAt ? `Forecast ${fmtDate(t.forecastAt)}` : '' })) } }} label="Propose a change" />
+            {!proposing && <select value={pickId} onChange={e => setPickId(e.target.value)} className="text-[12px] rounded-lg border border-bdr px-2 py-1.5 bg-white max-w-[360px]"><option value="">Pick the task to change…</option>{board.map(t => <option key={t.id} value={t.id}>{t.id} · {t.title}</option>)}</select>}
+          </div>
+        )}
         <StatGrid>
           <Stat label="Overdue" value={board.filter(t => t.overdue).length} tone="rose" onClick={() => setFilter('overdue')} />
           <Stat label="Blocked (incl. by predecessor)" value={board.filter(t => t.state === 'blocked' || t.blockedByPredecessor).length} tone="amber" onClick={() => setFilter('blocked')} />
