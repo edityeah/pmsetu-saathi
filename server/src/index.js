@@ -28,6 +28,7 @@ import whisperRoutes from './routes/whisper.js'
 import realtimeRoutes from './routes/realtime.js'
 import ocrRoutes from './routes/ocr.js'
 import adminRoutes from './routes/admin.js'
+import headlineRoutes from './routes/headline.js'
 
 const app = express()
 app.set('trust proxy', 1)
@@ -52,6 +53,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/lookups', lookupRoutes)
 // authed
 app.use('/api/me', meRoutes)
+app.use('/api/headline', headlineRoutes)
 app.use('/api/cluster', clusterRoutes)
 app.use('/api/itis', itiRoutes)
 app.use('/api/batches', batchRoutes)

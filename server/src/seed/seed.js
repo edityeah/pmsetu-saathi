@@ -751,7 +751,7 @@ async function main() {
     ['EMP-DL-03', 'CNC operator (wage) — Y2 pipeline', 'wage', ['CNC', 'LMC'], 'Narela', 4, 15000, 17000, null, 'CNC specialist programme graduates (from Y3)', 'Marksheet', 'Trade test', 'Day shift', null, null, 'archived', []],
   ]
   const opps = []
-  const KEEP = new Set(['OJT — office operations (COPA)', 'Data entry operator (wage)', 'Building services technician (wage)', 'Sheet-metal helper (wage)', 'CNC operator (wage) — Y2 pipeline'])
+  const KEEP = new Set(['Apprentice electrician (NAPS)', 'Electrician (wage) — site maintenance', 'OJT — office operations (COPA)', 'Data entry operator (wage)', 'Building services technician (wage)', 'Sheet-metal helper (wage)', 'CNC operator (wage) — Y2 pipeline'])
   for (const [emp, title, type, tradeCodes, location, openings, wmin, wmax, stipend, eligibility, documents, process, shiftTravel, closingAt, startAt, status, approvedItis] of OPP.filter(o => KEEP.has(o[1]))) {
     opps.push(await prisma.opportunity.create({ data: { clusterId: C, employerId: employers[emp].id, title, type, tradeCodes: J(tradeCodes), location, openings, filled: 0, wageMin: wmin, wageMax: wmax, wagePeriod: wmin ? 'month' : null, stipend, eligibility, documents, process, shiftTravel, closingAt, startAt, source: 'Employer conversation (SPV-IEPC)', lastCheckedAt: daysAgo(rand(0, 12)), status, ownerRole: 'SPV-IEPC', approvedItis: J(approvedItis) } }))
   }
@@ -766,7 +766,7 @@ async function main() {
   const oppByTitle = Object.fromEntries(opps.map(o => [o.title, o]))
   const EV = ['student_reported', 'student_reported', 'document_supported', 'document_supported', 'employer_confirmed', 'employer_confirmed', 'independently_verified', 'student_reported']
   const STAGES = ['interested', 'interested', 'prepared', 'prepared', 'referred', 'referred', 'referred', 'applied', 'applied', 'interviewed', 'interviewed', 'interviewed', 'offered', 'offered', 'joined', 'joined', 'joined', 'joined', 'joined', 'joined', 'follow_up', 'follow_up', 'not_selected', 'declined']
-  const wageFor = tr => tr === 'ELE' ? ['Electrical Technician Apprentice', 'Electrical Technician Apprentice', 'Building services technician (wage)'] : tr === 'FIT' ? ['Fitter Trainee', 'Fitter Trainee', 'Sheet-metal helper (wage)'] : ['Welder Apprentice']
+  const wageFor = tr => tr === 'ELE' ? ['Electrical Technician Apprentice', 'Apprentice electrician (NAPS)', 'Electrician (wage) — site maintenance', 'Building services technician (wage)'] : tr === 'FIT' ? ['Fitter Trainee', 'Fitter Trainee', 'Sheet-metal helper (wage)'] : ['Welder Apprentice']
   const appRows = [], spellRows = [], followRows = []
   let joinedN = 0
   passouts.forEach((p, i) => {

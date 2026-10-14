@@ -12,6 +12,7 @@ import ChatBubble from '../components/ChatBubble.jsx'
 import TypingIndicator from '../components/TypingIndicator.jsx'
 import Logo from '../components/Logo.jsx'
 import { Bell, Plus, Search, Sparkles, Send, Mic, Phone, ChevronUp, MessageSquare, Menu } from 'lucide-react'
+import HeadlineStrip from '../components/HeadlineStrip.jsx'
 import CanvasPanel from '../canvas/CanvasPanel.jsx'
 import FloatingCallPill from '../components/FloatingCallPill.jsx'
 
@@ -162,6 +163,7 @@ function GreetingPanel({ ctx, bots, chips, onSend, onPickBot, mobile }) {
             <button onClick={() => ctx.openCanvas({ type: 'saathi_assistant' })} className="inline-flex items-center gap-2.5 px-6 py-3 rounded-pill bg-primary text-white font-bold text-[15px] shadow-modal hover:opacity-90 active:scale-95 transition"><Phone className="w-4 h-4" /> Talk to Saathi</button>
           </div>
         </div>
+        <HeadlineStrip />
         {sections ? <SectionedGrid bots={bots} sections={sections} onPickBot={onPickBot} /> : (
           <div className="mt-10">
             <div className="flex items-center gap-2 mb-4"><Sparkles className="w-4 h-4 text-primary" /><div className="text-[12px] font-bold uppercase tracking-[2px] text-primary">Open an app</div></div>
