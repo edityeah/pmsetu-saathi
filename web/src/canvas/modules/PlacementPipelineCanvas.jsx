@@ -39,7 +39,7 @@ export default function PlacementPipelineCanvas({ context }) {
       {!d ? <Loading /> : (
         <div className="p-4 space-y-5">
           <StatGrid>
-            <Stat label="Live opening seats" value={fmtNum(d.totals.liveSeats)} sub="open across live opportunities" tone="indigo" onClick={() => openCanvas({ type: 'employer_register', tab: 'opportunities' })} />
+            <Stat label="Live opening seats" value={fmtNum(d.totals.liveSeats)} sub="open across live opportunities" tone="indigo" onClick={() => openCanvas({ type: 'employer_register' })} />
             <Stat label="Application records" value={fmtNum(d.totals.applications)} sub={`from ${fmtNum(d.totals.pool)} candidates · multiple applications allowed`} tone="sky" />
             <Stat label="Reported joins" value={fmtNum(d.totals.reportedJoins)} sub="distinct people" tone="violet" />
             <Stat label="Independently verified joins" value={fmtNum(d.totals.verifiedJoins)} sub={`${fmtNum(d.totals.employerConfirmed)} employer-confirmed`} tone="emerald" />

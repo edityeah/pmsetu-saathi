@@ -2,6 +2,7 @@
 // ITIs and relationship evidence: hero numbers, a five-row list with View
 // more, an employer record page (description, opportunities, placements,
 // interaction history), Add credible employer as a popup, Download list.
+// Two tabs, the same two as the analytics page.
 import { useMemo, useState } from 'react'
 import { Download, Plus, Search, X, ChevronRight } from 'lucide-react'
 import FilterBar from './_FilterBar.jsx'
@@ -15,7 +16,6 @@ const REL = { active: { kind: 'ok', label: 'Active partner' }, lead: { kind: 'wa
 
 export default function EmployerRegisterCanvas({ context }) {
   const { role, openCanvas, showToast, meExtra } = useApp()
-  const [tab, setTab] = useState(context?.tab === 'opportunities' ? 'opportunities' : 'employers')
   const [itiCode, setItiCode] = useState('all'), [sector, setSector] = useState('all'), [rel, setRel] = useState('all'), [tradeF, setTradeF] = useState('all'), [q, setQ] = useState('')
   const [open, setOpen] = useState(null), [adding, setAdding] = useState(false), [all, setAll] = useState(false)
   const { data: emp, reload } = useLoad(() => api.employers())
@@ -41,8 +41,8 @@ export default function EmployerRegisterCanvas({ context }) {
   return (
     <div className="h-full overflow-y-auto">
       <Hero tone="teal" eyebrow="Employer directory" title={emp ? `${emp.employers.length} employers · ${emp.employers.filter(e => e.relationshipStatus === 'active').length} active partners` : 'Employer directory'} subtitle="Cluster employers, participating ITIs and relationship evidence. Credibility is based on recorded source and review details, not an external accreditation." right={<div className="flex gap-2"><button onClick={exportCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white border border-bdr text-[11px] font-bold text-txt-primary hover:bg-surface-page"><Download className="w-3.5 h-3.5" /> Download list</button>{(role === 'spv_ceo' || role === 'iti_principal') && <button onClick={() => setAdding(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill bg-primary text-white text-[11px] font-bold hover:opacity-90"><Plus className="w-3.5 h-3.5" /> Add credible employer</button>}</div>} />
-      <Tabs tabs={[{ id: 'analytics', label: 'Placement analytics' }, { id: 'employers', label: 'Employer directory' }, { id: 'opportunities', label: 'Opportunities', badge: liveOpps.length }]} active={tab} onChange={t => t === 'analytics' ? openCanvas({ type: 'placement_pipeline' }) : setTab(t)} />
-      {tab === 'employers' && (<>
+      <Tabs tabs={[{ id: 'analytics', label: 'Placement analytics' }, { id: 'employers', label: 'Employer directory' }]} active="employers" onChange={t => t === 'analytics' && openCanvas({ type: 'placement_pipeline' })} />
+      <>
         <FilterBar items={filters} note={`${rows.length} employers`} />
         <div className="px-4 pt-3 flex items-center gap-2 flex-wrap">
           <label className="relative flex-1 min-w-[200px] max-w-sm"><Search className="w-3.5 h-3.5 absolute left-2 top-2.5 text-txt-tertiary" /><input className={`${inputCls} pl-7`} placeholder="Employer name or ID" value={q} onChange={e => setQ(e.target.value)} /></label>
@@ -53,7 +53,7 @@ export default function EmployerRegisterCanvas({ context }) {
             <StatGrid>
               <Stat label="Employer records" value={fmtNum(emp.employers.length)} sub={`${emp.employers.filter(e => e.relationshipStatus === 'lead').length} interested · ${emp.employers.filter(e => e.relationshipStatus === 'paused').length} paused`} tone="indigo" />
               <Stat label="Active partners" value={fmtNum(emp.employers.filter(e => e.relationshipStatus === 'active').length)} sub={`${emp.employers.filter(e => e.mouSignedAt).length} with an MoU`} tone="emerald" />
-              <Stat label="Live opportunities" value={fmtNum(liveOpps.length)} sub={`${new Set(liveOpps.map(o => o.employerId)).size} employers hiring now`} tone="violet" onClick={() => setTab('opportunities')} />
+              <Stat label="Live opportunities" value={fmtNum(liveOpps.length)} sub={`${new Set(liveOpps.map(o => o.employerId)).size} employers hiring now`} tone="violet" />
               <Stat label="Live opening seats" value={fmtNum(liveOpps.reduce((s, o) => s + Math.max(0, o.openings - o.filled), 0))} sub="openings not yet filled" tone="amber" />
             </StatGrid>
             <Section title="Cluster employer list" hint={`Showing ${shown.length} of ${rows.length}. Tap an employer for its record.`}>
@@ -69,37 +69,8 @@ export default function EmployerRegisterCanvas({ context }) {
             </Section>
           </div>
         )}
-      </>)}
-      {tab === 'opportunities' && <Opportunities opps={opp?.opportunities || []} employers={emp?.employers || []} onEmployer={setOpen} />}
+      </>
       {adding && <AddEmployerPopup itis={itis?.itis || []} defaultIti={role === 'iti_principal' ? meExtra?.iti?.code : null} onClose={() => setAdding(false)} onDone={() => { setAdding(false); reload(); showToast({ kind: 'success', text: 'Employer added to the directory as interested.' }) }} />}
-    </div>
-  )
-}
-
-function Opportunities({ opps, employers, onEmployer }) {
-  const [all, setAll] = useState(false)
-  const rows = [...opps].sort((a, b) => (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1))
-  const shown = all ? rows : rows.slice(0, 5)
-  const nameOf = id => employers.find(e => e.id === id)?.name || '—'
-  return (
-    <div className="p-4 space-y-5">
-      <StatGrid>
-        <Stat label="Live" value={opps.filter(o => o.status === 'live').length} sub="visible to students" tone="emerald" />
-        <Stat label="Being checked" value={opps.filter(o => o.status === 'checking').length} sub="SPV review before students see it" tone="amber" />
-        <Stat label="Openings" value={fmtNum(opps.filter(o => o.status === 'live').reduce((s, o) => s + o.openings, 0))} sub="across live opportunities" tone="indigo" />
-        <Stat label="Paused or filled" value={opps.filter(o => ['paused', 'filled', 'archived'].includes(o.status)).length} tone="slate" />
-      </StatGrid>
-      <Section title="Opportunities" hint={`Showing ${shown.length} of ${rows.length}.`}>
-        <Table columns={[
-          { key: 'title', label: 'Opportunity', render: o => <div><div className="font-semibold">{o.title}</div><button className="text-[10px] text-primary" onClick={() => onEmployer(o.employerId)}>{nameOf(o.employerId)}</button></div> },
-          { key: 'type', label: 'Type', render: o => <Pill kind={o.type === 'wage' ? 'info' : o.type === 'ojt' ? 'violet' : 'ok'}>{o.type === 'ojt' ? 'OJT' : titleCase(o.type)}</Pill> },
-          { key: 'openings', label: 'Openings', align: 'right', render: o => `${o.openings - o.filled} of ${o.openings}` },
-          { key: 'pay', label: 'Pay', render: o => o.wageMin ? `${fmtInr(o.wageMin)}–${fmtInr(o.wageMax)} / month` : o.stipend ? `${fmtInr(o.stipend)} stipend` : '—' },
-          { key: 'closingAt', label: 'Closes', render: o => fmtDate(o.closingAt) },
-          { key: 'status', label: 'Status', render: o => <Pill kind={stateKind(o.status)}>{titleCase(o.status)}</Pill> },
-        ]} rows={shown} empty="No opportunities." />
-        {rows.length > 5 && <div className="flex items-center justify-between pt-2 text-[11px] text-txt-tertiary"><span>Showing {shown.length} of {rows.length}</span><button className="text-primary font-bold" onClick={() => setAll(a => !a)}>{all ? 'Show five' : `View more (${rows.length - 5})`} →</button></div>}
-      </Section>
     </div>
   )
 }
