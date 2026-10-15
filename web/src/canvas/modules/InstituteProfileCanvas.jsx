@@ -2,7 +2,7 @@
 // to confirm: overview, trades, staffing, infrastructure, budget, targets,
 // launch gates. Every tab says where its values come from.
 import { useMemo, useState } from 'react'
-import { X, Search } from 'lucide-react'
+import { ArrowLeft, Search } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { useApp } from '../../context/AppContext.jsx'
 import { Hero, Stat, StatGrid, Bar, Pill, Section, Table, Loading, Btn, useLoad, Tabs, fmtCr, fmtDate, nil, stateKind, titleCase, NoFeed, inputCls } from './_ui.jsx'
@@ -39,6 +39,8 @@ export default function InstituteProfileCanvas({ context }) {
   const confirmedCount = Object.values(sec).filter(s => s.state === 'confirmed').length
   const y1 = tr => tr.plans[1]
 
+  if (course) return <CourseDetail t={course} kb={kb[course.trade.code]} facility={facilities.find(f => f.linkedTrades.includes(course.trade.code) && f.kind !== 'space')} iti={iti} periods={periods} onBack={() => setCourse(null)} onBatches={() => openCanvas({ type: 'batches', itiId: iti.id })} onWorkshop={() => openFacilityFor(course.trade.code)} />
+  if (facility) return <FacilityDetail f={facility} trades={trades} iti={iti} onBack={() => setFacility(null)} onCourses={() => openCoursesFor(facility)} onMachines={() => openCanvas({ type: 'machines_infra', itiId: iti.id })} />
   return (
     <div className="h-full overflow-y-auto">
       <Hero tone="violet" eyebrow={`${iti.kind === 'hub' ? 'Hub' : 'Spoke'} · ${iti.district} · ${iti.registryConnected ? 'registry connected' : 'no registry feed'}`} title={iti.name} subtitle={`${iti.sectorFocus} · ₹${iti.fiveYearCr} Cr over five years · ${confirmedCount} of 7 profile tabs confirmed`}
@@ -47,40 +49,29 @@ export default function InstituteProfileCanvas({ context }) {
         right={<div className="flex items-center gap-2"><Pill kind={state === 'confirmed' ? 'ok' : 'warn'}>{state}{sec[tab]?.confirmedAt ? ` · ${fmtDate(sec[tab].confirmedAt)}` : ''}</Pill>{canConfirm && (state === 'confirmed' ? <Btn small tone="ghost" onClick={() => confirm('draft')}>Reopen</Btn> : <Btn small tone="ok" onClick={() => confirm('confirmed')}>Confirm tab</Btn>)}</div>} />
       <div className="p-4 space-y-4">
         {tab === 'overview' && role === 'spv_ceo' && (<>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 space-y-4">
-              <Section title="About this institute">
-                <p className="text-[12px] text-txt-secondary mb-3">{iti.kind === 'hub' ? 'The hub institute of the cluster: it hosts the shared specialist labs, coordinates with the four spokes and carries the largest Year-1 programme.' : 'A spoke institute of the cluster: it runs its own core trades and draws on the hub for specialist labs and shared services.'}{iti.sectorFocus ? ` Sector focus: ${iti.sectorFocus}.` : ''}</p>
-                <dl className="text-[12px]">
-                  {[['Institute type', iti.kind === 'hub' ? 'Hub ITI' : 'Spoke ITI'], ['Location', `${iti.district}, Delhi`], ['Institute code', iti.code], ['Cluster role', iti.kind === 'hub' ? 'Shared training and technical support' : 'Core trades; hub for specialist labs'], ['Registry', iti.registryConnected ? 'Connected' : 'Not yet connected'], ['Operating context', `Year 1 of the five-year plan · ₹${iti.fiveYearCr} Cr`]].map(([k, v]) => <div key={k} className="flex gap-3 border-b border-bdr-light/70 py-1.5"><dt className="w-36 text-txt-tertiary flex-shrink-0">{k}</dt><dd className="font-semibold text-txt-primary min-w-0 flex-1">{v}</dd></div>)}
-                </dl>
-              </Section>
-              <StatGrid>
-                <Stat label="Active students" value={students.registryConnected ? students.active.toLocaleString('en-IN') : '—'} sub={students.registryConnected ? `${students.women} women · ${students.pwd} PwD · open roster` : 'registry not connected'} tone="indigo" onClick={() => openCanvas({ type: 'batches', itiId: iti.id })} />
-                <Stat label="Annual places (Y1)" value={iti.seatCapacity} sub={`baseline enrolments ${iti.baselineSeats}`} tone="sky" onClick={() => setTab('trades')} />
-                <Stat label="Trainers" value={`${staffing.registryTrainers || '—'}`} sub={`baseline ${staffing.baseline} · Y1 plan ${staffing.plan.Y1}`} tone="emerald" onClick={() => openCanvas({ type: 'cluster_registry', tab: 'trainers', filters: { scope: iti.id } })} />
-                <Stat label="Year-1 tasks" value={`${tasks.filter(t => ['completed', 'reviewed'].includes(t.state)).length}/${tasks.length}`} sub={`${tasks.filter(t => t.overdue).length} overdue`} tone={tasks.some(t => t.overdue) ? 'rose' : 'teal'} onClick={() => openCanvas({ type: 'annual_plan', itiId: iti.id })} />
-              </StatGrid>
-              <Section title="Campus & access" right={<button className="text-[11px] text-primary font-bold" onClick={() => setTab('infrastructure')}>Explore facilities and labs →</button>}>
-                <dl className="text-[12px]">
-                  {[['Teaching spaces', `${iti.roomsWorking} of ${iti.roomsBaseline} rooms working · Year-5 target ${iti.roomsY5}`], ['Workshops and labs', `${facilities.filter(f => f.kind !== 'space' && f.status !== 'being_set_up').length} in use · ${facilities.filter(f => f.status === 'being_set_up').length} being set up`], ['Shared facilities', facilities.filter(f => /Shared/.test(f.sharing)).map(f => f.name).slice(0, 3).join(', ') || '—'], ['Works on campus', `${facilities.filter(f => f.kind === 'space').length} civil packages · ${infrastructure.civil.filter(w => w.state === 'delayed').length} delayed`], ['Machines', `${infrastructure.machines.filter(m => ['functional', 'installed'].includes(m.status)).length} of ${infrastructure.machines.length} functional`], ['Access', 'Accessibility, sanitation and safety works in progress']].map(([k, v]) => <div key={k} className="flex gap-3 border-b border-bdr-light/70 py-1.5"><dt className="w-36 text-txt-tertiary flex-shrink-0">{k}</dt><dd className="font-semibold text-txt-primary min-w-0 flex-1">{v}</dd></div>)}
-                </dl>
-              </Section>
-            </div>
-            <div className="space-y-4">
-              <Section title="Leadership & contacts">
-                <ul className="space-y-2.5 text-[12px]">
-                  {[contacts.principal, contacts.placement].filter(Boolean).map(c => <li key={c.role} className="flex items-center gap-3"><span className="w-9 h-9 rounded-full bg-primary-light text-primary-dark font-bold flex items-center justify-center text-[12px]">{c.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span><div className="min-w-0"><div className="font-bold text-txt-primary truncate">{c.name}</div><div className="text-[10px] text-txt-tertiary">{c.role}{c.phone ? ` · ${c.phone}` : ''}</div></div></li>)}
-                </ul>
-                <button className="mt-3 text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'cluster_registry', tab: 'trainers', filters: { scope: iti.id } })}>Open linked staff records →</button>
-              </Section>
-              <Section title="Connected sections">
-                <ul className="divide-y divide-bdr-light text-[12px]">
-                  {[['Students & trainers', () => openCanvas({ type: 'cluster_registry', tab: 'students', filters: { scope: iti.id } })], ['Daily operations', () => openCanvas({ type: 'daily_operations', tab: 'attendance', filters: { scope: iti.id } })], ['Employer & placement view', () => openCanvas({ type: 'placement_pipeline', itiId: iti.id })], ['AOP allocation & releases', () => openCanvas({ type: 'budget_analytics', tab: 'overview', filters: { itiId: iti.id } })]].map(([l, fn]) => <li key={l}><button onClick={fn} className="w-full flex items-center justify-between py-2 text-left hover:text-primary"><span className="font-semibold">{l}</span><span className="text-primary">→</span></button></li>)}
-                </ul>
-              </Section>
-            </div>
-          </div>
+          <Section title="About this institute">
+            <p className="text-[12px] text-txt-secondary mb-3">{iti.kind === 'hub' ? 'The hub institute of the cluster: it hosts the shared specialist labs, coordinates with the four spokes and carries the largest Year-1 programme.' : 'A spoke institute of the cluster: it runs its own core trades and draws on the hub for specialist labs and shared services.'}{iti.sectorFocus ? ` Sector focus: ${iti.sectorFocus}.` : ''}</p>
+            <LabelGrid items={[['Institute type', iti.kind === 'hub' ? 'Hub ITI' : 'Spoke ITI'], ['Location', `${iti.district}, Delhi`], ['Institute code', iti.code], ['Cluster role', iti.kind === 'hub' ? 'Shared training and technical support' : 'Core trades; hub for specialist labs'], ['Registry', iti.registryConnected ? 'Connected' : 'Not yet connected'], ['Operating context', `Year 1 of the five-year plan · ₹${iti.fiveYearCr} Cr`]]} />
+          </Section>
+          <StatGrid>
+            <Stat label="Active students" value={students.registryConnected ? students.active.toLocaleString('en-IN') : '—'} sub={students.registryConnected ? `${students.women} women · ${students.pwd} PwD · open roster` : 'registry not connected'} tone="indigo" onClick={() => openCanvas({ type: 'batches', itiId: iti.id })} />
+            <Stat label="Annual places (Y1)" value={iti.seatCapacity} sub={`baseline enrolments ${iti.baselineSeats}`} tone="sky" onClick={() => setTab('trades')} />
+            <Stat label="Trainers" value={`${staffing.registryTrainers || '—'}`} sub={`baseline ${staffing.baseline} · Y1 plan ${staffing.plan.Y1}`} tone="emerald" onClick={() => openCanvas({ type: 'cluster_registry', tab: 'trainers', filters: { scope: iti.id } })} />
+            <Stat label="Year-1 tasks" value={`${tasks.filter(t => ['completed', 'reviewed'].includes(t.state)).length}/${tasks.length}`} sub={`${tasks.filter(t => t.overdue).length} overdue`} tone={tasks.some(t => t.overdue) ? 'rose' : 'teal'} onClick={() => openCanvas({ type: 'annual_plan', itiId: iti.id })} />
+          </StatGrid>
+          <Section title="Campus & access" right={<button className="text-[11px] text-primary font-bold" onClick={() => setTab('infrastructure')}>Explore facilities and labs →</button>}>
+            <LabelGrid items={[['Teaching spaces', `${iti.roomsWorking} of ${iti.roomsBaseline} rooms working · Year-5 target ${iti.roomsY5}`], ['Workshops and labs', `${facilities.filter(f => f.kind !== 'space' && f.status !== 'being_set_up').length} in use · ${facilities.filter(f => f.status === 'being_set_up').length} being set up`], ['Shared facilities', facilities.filter(f => /Shared/.test(f.sharing)).map(f => f.name).slice(0, 3).join(', ') || '—'], ['Works on campus', `${facilities.filter(f => f.kind === 'space').length} civil packages · ${infrastructure.civil.filter(w => w.state === 'delayed').length} delayed`], ['Machines', `${infrastructure.machines.filter(m => ['functional', 'installed'].includes(m.status)).length} of ${infrastructure.machines.length} functional`], ['Access', 'Accessibility, sanitation and safety works in progress']]} />
+          </Section>
+          <Section title="Leadership & contacts" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'cluster_registry', tab: 'trainers', filters: { scope: iti.id } })}>Open linked staff records →</button>}>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">
+              {[contacts.principal, contacts.placement].filter(Boolean).map(c => <li key={c.role} className="flex items-center gap-3"><span className="w-9 h-9 rounded-full bg-primary-light text-primary-dark font-bold flex items-center justify-center text-[12px]">{c.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span><div className="min-w-0"><div className="font-bold text-txt-primary truncate">{c.name}</div><div className="text-[10px] text-txt-tertiary">{c.role}{c.phone ? ` · ${c.phone}` : ''}</div></div></li>)}
+            </ul>
+          </Section>
+          <Section title="Connected sections" hint="Each opens already scoped to this institute.">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 text-[12px]">
+              {[['Students & trainers', () => openCanvas({ type: 'cluster_registry', tab: 'students', filters: { scope: iti.id } })], ['Daily operations', () => openCanvas({ type: 'daily_operations', tab: 'attendance', filters: { scope: iti.id } })], ['Employer & placement view', () => openCanvas({ type: 'placement_pipeline', itiId: iti.id })], ['AOP allocation & releases', () => openCanvas({ type: 'budget_analytics', tab: 'overview', filters: { itiId: iti.id } })]].map(([l, fn]) => <li key={l} className="border-b border-bdr-light"><button onClick={fn} className="w-full flex items-center justify-between py-2 text-left hover:text-primary"><span className="font-semibold">{l}</span><span className="text-primary">→</span></button></li>)}
+            </ul>
+          </Section>
         </>)}
         {tab === 'overview' && role !== 'spv_ceo' && (<>
           <StatGrid>
@@ -153,8 +144,6 @@ export default function InstituteProfileCanvas({ context }) {
           </Section>
         )}
       </div>
-      {course && <CoursePopup t={course} kb={kb[course.trade.code]} facility={facilities.find(f => f.linkedTrades.includes(course.trade.code) && f.kind !== 'space')} iti={iti} periods={periods} onClose={() => setCourse(null)} onBatches={() => { setCourse(null); openCanvas({ type: 'batches', itiId: iti.id }) }} onWorkshop={() => openFacilityFor(course.trade.code)} />}
-      {facility && <FacilityPopup f={facility} trades={trades} iti={iti} onClose={() => setFacility(null)} onCourses={() => openCoursesFor(facility)} onMachines={() => { setFacility(null); openCanvas({ type: 'machines_infra', itiId: iti.id }) }} />}
     </div>
   )
 }
@@ -201,27 +190,24 @@ function TradeOfferings({ trades, otherTrades, kb, facilities, iti, periods, fac
   )
 }
 
-function CoursePopup({ t, kb, facility, iti, periods, onClose, onBatches, onWorkshop }) {
+function CourseDetail({ t, kb, facility, iti, periods, onBack, onBatches, onWorkshop }) {
   const tr = t.trade
   const dur = tr.durationUnit === 'hours' ? `${tr.durationValue} hours` : `${tr.durationValue} ${tr.durationUnit}`
+  const isOffered = offered(t)
   return (
-    <Popup onClose={onClose} eyebrow={`Course · ${tr.code}`} title={tr.name} sub={`${KIND_LABEL[tr.kind] || titleCase(tr.kind)} · ${offered(t) ? 'Offered · Year-1 intake' : `Planned · launch ${t.launch}`}`}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">
-        <div className="rounded-xl bg-surface-page p-2.5 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-txt-tertiary">Course profile</div>
-          {[['Duration', dur], ['Total hours', tr.totalHours ? tr.totalHours.toLocaleString('en-IN') : '—'], ['NSQF level', tr.nsqfLevel], ['Entry requirement', kb?.entryQualification || tr.entryAssumption || '—'], ['Practical focus', kb?.practicalFocus || tr.roleDirection || '—'], ['Sample project', kb?.sampleProject || '—'], ['Job family', kb?.jobFamily || tr.roleDirection || '—']].map(([k, v]) => <div key={k} className="flex gap-2"><span className="w-28 flex-shrink-0 text-txt-tertiary">{k}</span><span className="font-semibold">{v}</span></div>)}
-        </div>
-        <div className="rounded-xl bg-surface-page p-2.5 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-txt-tertiary">Places and intake</div>
-          {periods.map((p, i) => t.plans[i] ? <div key={p} className="flex gap-2"><span className="w-28 flex-shrink-0 text-txt-tertiary">{p}</span><span className="font-semibold">{t.plans[i].enrolments} <span className="text-txt-tertiary font-normal">/ {t.plans[i].places} places</span>{p === 'Y1' && t.actualY1 != null ? <span className="text-emerald-700 font-bold"> · actual {t.actualY1}</span> : ''}</span></div> : null)}
-          <div className="flex gap-2 pt-1"><span className="w-28 flex-shrink-0 text-txt-tertiary">Batches now</span><span className="font-semibold">{t.runningBatches ? `${t.runningBatches} batches · ${t.enrolledNow} students` : 'none running'}</span></div>
-          <div className="flex gap-2"><span className="w-28 flex-shrink-0 text-txt-tertiary">Linked facility</span><span className="font-semibold">{facility ? facility.name : 'to be set up'}</span></div>
-          {t.note && <div className="flex gap-2"><span className="w-28 flex-shrink-0 text-txt-tertiary">Space note</span><span>{t.note}</span></div>}
-        </div>
-      </div>
-      {t.gates?.length > 0 && <div className="mt-3 text-[11px] text-txt-secondary">Launch gates: {t.gates.filter(g => g.state === 'passed').length} of {t.gates.length} passed{t.gates.some(g => g.state === 'ready') ? ` · ${t.gates.filter(g => g.state === 'ready').length} ready` : ''}.</div>}
-      <div className="mt-4 flex gap-2 justify-end flex-wrap"><Btn small tone="ghost" onClick={onClose}>Close</Btn>{facility && <Btn small tone="ghost" onClick={onWorkshop}>Open linked workshop</Btn>}{t.runningBatches > 0 && <Btn small onClick={onBatches}>View batches in registry</Btn>}</div>
-    </Popup>
+    <DetailPage onBack={onBack} eyebrow={`Course profile · ${iti.name}`} title={tr.name} id={`Course code · ${tr.code}`} sub={`${KIND_LABEL[tr.kind] || titleCase(tr.kind)} · NSQF level ${tr.nsqfLevel}`} pill={isOffered ? { kind: 'ok', label: 'Offered · Year-1 intake' } : { kind: 'warn', label: `Planned · ${t.launch}` }}>
+      <DetailCard title="Course profile" icon="📘">
+        <LabelGrid cols={2} items={[['Duration', dur], ['Total hours', tr.totalHours ? tr.totalHours.toLocaleString('en-IN') : '—'], ['Entry requirement', kb?.entryQualification || tr.entryAssumption || '—'], ['Practical focus', kb?.practicalFocus || tr.roleDirection || '—'], ['Sample project', kb?.sampleProject || '—'], ['Common tools', kb?.commonTools || '—'], ['Job family', kb?.jobFamily || tr.roleDirection || '—'], ['Fits a student who', kb?.fitPrompt || '—']]} />
+      </DetailCard>
+      <DetailCard title="Places and intake" icon="🎓">
+        <Table columns={[{ key: 'period', label: 'Period' }, { key: 'places', label: 'Places', align: 'right' }, { key: 'enrolments', label: 'Planned enrolments', align: 'right' }, { key: 'actual', label: 'Actual', align: 'right', render: r => r.actual == null ? <span className="text-txt-tertiary">—</span> : <b className="text-emerald-700">{r.actual}</b> }]} rows={periods.map((p, i) => t.plans[i] ? { period: p, places: t.plans[i].places, enrolments: t.plans[i].enrolments, actual: p === 'Y1' ? t.actualY1 : null } : null).filter(Boolean)} />
+        <div className="text-[12px] mt-3"><span className="text-txt-tertiary">Batches now: </span><b>{t.runningBatches ? `${t.runningBatches} batches · ${t.enrolledNow} students` : 'none running'}</b></div>
+      </DetailCard>
+      <DetailCard title="Training space" icon="🏭">
+        <LabelGrid cols={2} items={[['Linked facility', facility ? facility.name : 'to be set up'], ['Facility status', facility ? (STATUS[facility.status]?.label || facility.status) : '—'], ['Space note', t.note || '—'], ['Launch gates', t.gates?.length ? `${t.gates.filter(g => g.state === 'passed').length} of ${t.gates.length} passed${t.gates.some(g => g.state === 'ready') ? ` · ${t.gates.filter(g => g.state === 'ready').length} ready` : ''}` : 'none required']]} />
+      </DetailCard>
+      <div className="flex gap-2 flex-wrap">{facility && <Btn tone="ghost" onClick={onWorkshop}>Open linked workshop</Btn>}{t.runningBatches > 0 && <Btn onClick={onBatches}>View batches in registry</Btn>}</div>
+    </DetailPage>
   )
 }
 
@@ -257,41 +243,54 @@ function FacilitiesDirectory({ facilities, iti, infrastructure, onOpen, openCanv
   )
 }
 
-function FacilityPopup({ f, trades, iti, onClose, onCourses, onMachines }) {
+function FacilityDetail({ f, trades, iti, onBack, onCourses, onMachines }) {
   const st = STATUS[f.status] || { kind: 'neutral', label: f.status }
   const courseNames = f.linkedTrades.map(c => trades.find(t => t.trade.code === c)?.trade.name || c)
   return (
-    <Popup onClose={onClose} eyebrow={`${KIND[f.kind]} · ${iti.name}`} title={f.name} sub={`${f.location} · ${f.sharing}`}>
-      <div className="flex items-center gap-2 mb-3"><Pill kind={st.kind}>{st.label}</Pill>{f.budgetCr != null && <span className="text-[11px] text-txt-secondary">{fmtCr(f.budgetCr)} package{f.packageId ? ` · ${f.packageId}` : ''}</span>}</div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">
-        <div className="rounded-xl bg-surface-page p-2.5 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-txt-tertiary">Purpose and use</div>
-          <div className="font-semibold">{f.purpose}</div>
-          <div className="pt-1"><span className="text-txt-tertiary">Relevant for: </span><span className="font-semibold">{courseNames.length ? courseNames.join(', ') : 'all courses'}</span></div>
-          <div><span className="text-txt-tertiary">Shared access: </span><span className="font-semibold">{f.sharing}</span></div>
-          {f.progressPct != null && f.kind !== 'workshop' && <div className="pt-1"><Bar pct={f.progressPct} label={`${f.progressPct}% ${f.kind === 'space' ? 'built' : 'set up'}${f.scheduledCompletion ? ` · due ${fmtDate(f.scheduledCompletion)}` : ''}`} tone={f.status === 'delayed' ? 'rose' : 'auto'} /></div>}
-          {f.procurementState && <div className="text-[11px] text-txt-secondary">Procurement: {titleCase(f.procurementState)}</div>}
-        </div>
-        <div className="rounded-xl bg-surface-page p-2.5 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-txt-tertiary">Equipment</div>
-          {f.machines ? (<>
-            <div className="font-semibold">{f.machines.functional} of {f.machines.total} functional{f.machines.nonFunctional ? <span className="text-rose-700"> · {f.machines.nonFunctional} down</span> : ''}{f.machines.awaiting ? ` · ${f.machines.awaiting} awaiting commissioning` : ''}{f.machines.ordered ? ` · ${f.machines.ordered} ordered` : ''}</div>
-            <ul className="text-[11px] space-y-0.5 pt-1">{f.machines.items.slice(0, 8).map(m => <li key={m.name} className={m.status === 'non_functional' ? 'text-rose-700 font-semibold' : ''}>{m.name} <span className="text-txt-tertiary">· {titleCase(m.status)}</span></li>)}</ul>
-          </>) : <div className="text-txt-secondary">Equipment arrives with the package; machines appear on the register once commissioned.</div>}
-        </div>
-      </div>
-      <div className="mt-4 flex gap-2 justify-end flex-wrap"><Btn small tone="ghost" onClick={onClose}>Close</Btn>{f.machines && <Btn small tone="ghost" onClick={onMachines}>Open machine register</Btn>}{f.linkedTrades.length > 0 && <Btn small onClick={onCourses}>View linked courses</Btn>}</div>
-    </Popup>
+    <DetailPage onBack={onBack} eyebrow={`${KIND[f.kind]} · ${iti.name}`} title={f.name} id={f.packageId ? `Package · ${f.packageId}` : `Facility · ${f.id}`} sub={`${f.location} · ${f.sharing}`} pill={st}>
+      <DetailCard title="Purpose and use" icon="🧭">
+        <LabelGrid cols={2} items={[['Purpose', f.purpose], ['Relevant for', courseNames.length ? courseNames.join(', ') : 'All courses'], ['Shared access', f.sharing], ['Location', f.location], ...(f.budgetCr != null ? [['Package value', fmtCr(f.budgetCr)]] : []), ...(f.procurementState ? [['Procurement', titleCase(f.procurementState)]] : []), ...(f.scheduledCompletion ? [['Scheduled completion', fmtDate(f.scheduledCompletion)]] : [])]} />
+        {f.progressPct != null && f.kind !== 'workshop' && <div className="mt-3"><Bar pct={f.progressPct} label={`${f.progressPct}% ${f.kind === 'space' ? 'built' : 'set up'}`} tone={f.status === 'delayed' ? 'rose' : 'auto'} /></div>}
+      </DetailCard>
+      <DetailCard title="Equipment" icon="⚙️">
+        {f.machines ? (<>
+          <div className="text-[12px] mb-2 font-semibold">{f.machines.functional} of {f.machines.total} functional{f.machines.nonFunctional ? <span className="text-rose-700"> · {f.machines.nonFunctional} not functional</span> : ''}{f.machines.awaiting ? ` · ${f.machines.awaiting} awaiting commissioning` : ''}{f.machines.ordered ? ` · ${f.machines.ordered} ordered` : ''}</div>
+          <Table columns={[{ key: 'name', label: 'Machine', render: r => <span className={r.status === 'non_functional' ? 'text-rose-700 font-semibold' : 'font-semibold'}>{r.name}</span> }, { key: 'status', label: 'Status', render: r => <Pill kind={r.status === 'non_functional' ? 'bad' : ['functional', 'installed'].includes(r.status) ? 'ok' : 'info'}>{titleCase(r.status)}</Pill> }]} rows={f.machines.items} />
+        </>) : <div className="text-[12px] text-txt-secondary">Equipment arrives with the package; machines appear on the register once commissioned.</div>}
+      </DetailCard>
+      <div className="flex gap-2 flex-wrap">{f.machines && <Btn tone="ghost" onClick={onMachines}>Open machine register</Btn>}{f.linkedTrades.length > 0 && <Btn onClick={onCourses}>View linked courses</Btn>}</div>
+    </DetailPage>
   )
 }
 
-function Popup({ eyebrow, title, sub, children, onClose }) {
+// A full-screen record page inside the canvas: back arrow and breadcrumb on
+// the top left, name, id line, status pill on the right, then sectioned cards.
+function DetailPage({ onBack, eyebrow, title, id, sub, pill, children }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 p-3" onClick={onClose}>
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-modal overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="px-4 py-3 border-b border-bdr-light flex items-start gap-3"><div className="flex-1 min-w-0"><div className="text-[10px] uppercase tracking-wider font-bold text-primary">{eyebrow}</div><div className="text-[15px] font-bold text-txt-primary mt-0.5">{title}</div>{sub && <div className="text-[11px] text-txt-secondary">{sub}</div>}</div><button onClick={onClose} className="p-1.5 rounded-pill hover:bg-slate-100"><X className="w-4 h-4 text-txt-secondary" /></button></div>
-        <div className="p-4 overflow-y-auto">{children}</div>
+    <div className="h-full overflow-y-auto">
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex items-center gap-3"><button onClick={onBack} className="w-9 h-9 rounded-xl border border-bdr-light bg-surface-page flex items-center justify-center hover:bg-white" title="Back"><ArrowLeft className="w-4 h-4 text-txt-secondary" /></button><div className="text-[11px] font-bold uppercase tracking-[2px] text-txt-secondary">{eyebrow}</div></div>
+        <div className="mt-3 flex items-start gap-3 flex-wrap"><div className="flex-1 min-w-0"><h2 className="text-[24px] font-bold text-txt-primary leading-tight">{title}</h2>{id && <div className="text-[12px] text-txt-secondary mt-1 font-mono">{id}</div>}{sub && <div className="text-[12px] text-txt-secondary">{sub}</div>}</div>{pill && <Pill kind={pill.kind}>{pill.label}</Pill>}</div>
       </div>
+      <div className="px-4 pb-6 space-y-4">{children}</div>
     </div>
+  )
+}
+
+function DetailCard({ title, icon, children }) {
+  return (
+    <div className="rounded-2xl border border-bdr-light bg-white shadow-card p-4">
+      <div className="text-[11px] font-bold uppercase tracking-wider text-txt-primary mb-3 inline-flex items-center gap-2"><span aria-hidden>{icon}</span>{title}</div>
+      {children}
+    </div>
+  )
+}
+
+// Label over value, in one or two columns, as on a record page.
+function LabelGrid({ items, cols = 2 }) {
+  return (
+    <dl className={`grid grid-cols-1 ${cols === 2 ? 'sm:grid-cols-2' : ''} gap-x-8 gap-y-3`}>
+      {items.map(([k, v]) => <div key={k} className="min-w-0"><dt className="text-[10px] uppercase tracking-wider font-bold text-txt-tertiary">{k}</dt><dd className="text-[13px] font-semibold text-txt-primary mt-0.5 break-words">{v}</dd></div>)}
+    </dl>
   )
 }
