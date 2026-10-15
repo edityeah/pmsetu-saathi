@@ -1,5 +1,8 @@
 // Canvas module registry — maps `canvas.type` → component + header metadata.
 import GenericCanvas from './GenericCanvas.jsx'
+import DailyOperationsCanvas from './DailyOperationsCanvas.jsx'
+import ClusterRegistryCanvas from './ClusterRegistryCanvas.jsx'
+import BudgetAnalyticsCanvas from './BudgetAnalyticsCanvas.jsx'
 import NotificationsCanvas from './NotificationsCanvas.jsx'
 import SaathiAssistantCanvas from './SaathiAssistantCanvas.jsx'
 import GrievanceCanvas from './GrievanceCanvas.jsx'
@@ -78,10 +81,14 @@ export const CANVAS_MODULES = {
   placement_pipeline: PlacementPipelineCanvas, employer_register: EmployerRegisterCanvas, for_my_batches: ForMyBatchesCanvas, placements_cluster: PlacementsCanvas, ojt_tracker: OjtTrackerCanvas, confirm_hire: ConfirmHireCanvas, post_opening: PostOpeningCanvas,
   course_builder: CourseBuilderCanvas, ncvet_pipeline: NcvetPipelineCanvas, verification_queue: VerificationQueueCanvas, kpi_audit: KpiAuditCanvas, report_review: ReportReviewCanvas, state_scorecard: StateScorecardCanvas,
   notifications: NotificationsCanvas, saathi_assistant: SaathiAssistantCanvas,
+  daily_operations: DailyOperationsCanvas, cluster_registry: ClusterRegistryCanvas, budget_analytics: BudgetAnalyticsCanvas,
   __default__: GenericCanvas,
 }
 
 const META = {
+  daily_operations: { title: 'Daily Operations', subtitle: 'Attendance · assessment · infrastructure readiness · upcoming events', icon: '🗓️' },
+  cluster_registry: { title: 'Cluster Registry', subtitle: 'Student registry · enrolment analytics · trainer registry', icon: '🗂️' },
+  budget_analytics: { title: 'Budget Analytics', subtitle: 'AOP utilisation against the approved allocation', icon: '🧾' },
   cluster_home: { title: 'Cluster Home', subtitle: 'SIP funding · Year-1 by category and ITI · this month · headline KPIs · risks', icon: '🏠' },
   institute_profile: { title: 'Institute Profile', subtitle: 'Overview · trades · staffing · infrastructure · budget · targets · launch gates', icon: '🏫' },
   five_year_targets: { title: 'Five-Year Targets', subtitle: 'Places, enrolments, KPI trajectories, site budgets, phasing', icon: '📈' },

@@ -6,7 +6,7 @@ import { Router } from 'express'
 import { prisma } from '../db.js'
 import { requireAuth } from '../auth/middleware.js'
 import { clusterFor, itiFor, traineeFor, employerFor, trainerBatchIds } from '../lib/scope.js'
-import { trancheReadiness } from '../lib/kpiEngine.js'
+import { trancheReadiness, utilisation } from '../lib/kpiEngine.js'
 
 const r = Router()
 r.use(requireAuth)
@@ -20,27 +20,45 @@ const item = (o) => ({ pct: null, target: null, hint: '', tone: 'indigo', unit: 
 
 async function ceo(user) {
   const c = await clusterFor(user)
-  const [budgetLines, kpis, reports, deposits, ucs, milestones, itis, overdue, total] = await Promise.all([
-    prisma.budgetLine.findMany({ where: { clusterId: c.id } }), prisma.kpi.findMany({ where: { clusterId: c.id } }),
-    prisma.report.findMany({ where: { clusterId: c.id } }), prisma.escrowDeposit.findMany({ where: { clusterId: c.id } }),
-    prisma.utilisationCertificate.findMany({ where: { clusterId: c.id } }), prisma.milestone.findMany({ where: { clusterId: c.id } }),
-    prisma.iti.findMany({ where: { clusterId: c.id }, select: { registryConnected: true } }),
-    prisma.planTask.count({ where: { clusterId: c.id, dueAt: { lt: new Date() }, state: { notIn: ['completed', 'reviewed'] } } }),
-    prisma.planTask.count({ where: { clusterId: c.id } }),
+  const today = todayUTC()
+  const [budgetLines, itis, womenAll, activeAll] = await Promise.all([
+    prisma.budgetLine.findMany({ where: { clusterId: c.id } }),
+    prisma.iti.findMany({ where: { clusterId: c.id }, select: { id: true, code: true, registryConnected: true, seatCapacity: true, _count: { select: { trainees: { where: { status: 'active' } } } } } }),
+    prisma.trainee.count({ where: { iti: { clusterId: c.id }, status: 'active', gender: 'F' } }),
+    prisma.trainee.count({ where: { iti: { clusterId: c.id }, status: 'active' } }),
   ])
-  const rd = trancheReadiness({ budgetLines, kpis, reports, deposits, ucs, milestones, year: c.currentYear })
-  const k = code => kpis.find(x => x.code === code)
-  const cov = `${itis.filter(i => i.registryConnected).length} of ${itis.length} ITIs reporting`
-  const kpiItem = (code, label, tone, canvas, unit = '') => {
-    const x = k(code); const t = x?.target ?? J(x?.targets, {})[`Y${c.currentYear}`]
-    return item({ key: code, label, value: x?.current == null ? '—' : `${num(x.current)}${unit}`, pct: x?.current == null || !t ? null : Math.min(100, Math.round(100 * x.current / t)), target: t != null ? `Y${c.currentYear} target ${num(Math.round(t * 10) / 10)}${unit}` : null, hint: x?.current == null ? 'no source yet' : (x.coverage || cov), tone, canvas })
-  }
-  return { title: `${c.name} · Year ${c.currentYear}, month ${Math.max(1, Math.min(12, Math.floor((Date.now() - new Date(c.scenarioStart || c.licenseStartAt).getTime()) / (30.4 * 86400000)) + 1))}`, items: [
-    kpiItem('K01', 'Annual enrolment', 'indigo', 'five_year_targets'),
-    kpiItem('K02', 'Seat utilisation', 'sky', 'iti_dashboard', '%'),
-    kpiItem('K11', 'Female enrolment', 'fuchsia', 'five_year_targets', '%'),
-    item({ key: 'util', label: 'Funds utilised', value: `${rd.utilisation.utilisedPct}%`, pct: Math.min(100, Math.round(100 * rd.utilisation.utilisedPct / 75)), target: 'tranche gate 75%', hint: `₹${rd.utilisation.utilisedCr} Cr of ₹${rd.utilisation.budgetCr} Cr · ${rd.utilisation.committedPct}% committed`, tone: 'amber', canvas: 'tranche_readiness' }),
-    item({ key: 'score', label: 'KPI score', value: `${rd.score.score}%`, pct: Math.min(100, Math.round(100 * rd.score.score / 80)), target: 'tranche gate 80%', hint: `cost-weighted · ${overdue} of ${total} tasks overdue`, tone: rd.score.score >= 80 ? 'emerald' : 'rose', canvas: 'tranche_readiness' }),
+  const on = itis.filter(i => i.registryConnected)
+  const cov = `${on.length} of ${itis.length} ITIs reporting`
+  // Attendance for today, or the latest day with sessions.
+  let date = today, fallback = false
+  const repToday = await prisma.session.count({ where: { batch: { iti: { clusterId: c.id } }, date, attendanceState: { not: 'not_reported' } } })
+  if (!repToday) { const last = await prisma.session.findFirst({ where: { batch: { iti: { clusterId: c.id } }, date: { lt: today }, attendanceState: { not: 'not_reported' } }, orderBy: { date: 'desc' }, select: { date: true } }); if (last) { date = last.date; fallback = true } }
+  const sched = await prisma.session.count({ where: { batch: { iti: { clusterId: c.id } }, date, delivery: { not: 'cancelled' } } })
+  const rep = await prisma.session.findMany({ where: { batch: { iti: { clusterId: c.id } }, date, delivery: { not: 'cancelled' }, attendanceState: { not: 'not_reported' } }, select: { presentCount: true, absentCount: true, lateCount: true } })
+  const present = rep.reduce((s, x) => s + (x.presentCount || 0) + (x.lateCount || 0), 0), absent = rep.reduce((s, x) => s + (x.absentCount || 0), 0)
+  const att = pct(present, present + absent), attCov = pct(rep.length, sched)
+  const dateLabel = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+  // Seats and enrolment (registry-connected ITIs only).
+  const seatsOn = on.reduce((s, i) => s + i.seatCapacity, 0), enrolled = on.reduce((s, i) => s + i._count.trainees, 0)
+  // Funds utilised against the Year-1 AOP allocation.
+  const u = utilisation(budgetLines)
+  // Upcoming events in the next 30 days.
+  const to = new Date(today.getTime() + 30 * 86400000)
+  const [ev1, ev2, ev3, ev4, ev5] = await Promise.all([
+    prisma.assessmentPlan.count({ where: { batch: { iti: { clusterId: c.id } }, date: { gte: today, lt: to }, state: 'planned' } }),
+    prisma.milestone.count({ where: { clusterId: c.id, dueAt: { gte: today, lt: to }, state: { in: ['pending', 'submitted'] } } }),
+    prisma.report.count({ where: { clusterId: c.id, dueAt: { gte: today, lt: to }, submittedAt: null } }),
+    prisma.opportunity.count({ where: { clusterId: c.id, closingAt: { gte: today, lt: to }, status: { in: ['live', 'checking'] } } }),
+    prisma.employer.count({ where: { clusterId: c.id, nextEngagementAt: { gte: today, lt: to } } }),
+  ])
+  const events = ev1 + ev2 + ev3 + ev4 + ev5
+  const dateIso = date.toISOString().slice(0, 10)
+  return { title: `${c.name} · ${c.planYearLabel}`, items: [
+    item({ key: 'attendance', label: 'Attendance today', value: att == null ? '—' : `${att}%`, pct: att, target: fallback ? `latest reported day · ${dateLabel}` : `today · ${dateLabel}`, hint: sched ? `${rep.length} of ${sched} sessions reported · ${cov}` : 'no sessions scheduled', tone: att == null ? 'amber' : att >= 85 ? 'emerald' : 'amber', canvas: 'daily_operations', open: { canvas: 'daily_operations', tab: 'attendance', filters: { date: dateIso, scope: 'all' } } }),
+    item({ key: 'women', label: 'Female enrolment', value: num(womenAll), pct: pct(womenAll, activeAll), target: `${pct(womenAll, activeAll) ?? '—'}% of ${num(activeAll)} active students`, hint: cov, tone: 'fuchsia', canvas: 'cluster_registry', open: { canvas: 'cluster_registry', tab: 'students', filters: { gender: 'F', status: 'active', year: 'current' } } }),
+    item({ key: 'funds', label: 'Funds utilised', value: `₹${u.utilisedCr} Cr`, pct: u.utilisedPct, target: `${u.utilisedPct}% of ₹${u.budgetCr} Cr approved AOP`, hint: `${u.committedPct}% committed · tranche gate 75%`, tone: 'amber', canvas: 'budget_analytics', open: { canvas: 'budget_analytics', tab: 'utilisation', filters: { year: 1, scope: 'cluster' } } }),
+    item({ key: 'events', label: 'Upcoming events', value: num(events), target: 'next 30 days', hint: `${ev1} assessments · ${ev2} IMA milestones · ${ev3} reports · ${ev4 + ev5} employer`, tone: 'sky', canvas: 'daily_operations', open: { canvas: 'daily_operations', tab: 'events', filters: { from: today.toISOString().slice(0, 10), days: 30, status: 'scheduled' } } }),
+    item({ key: 'seats', label: 'Enrolment / seat utilisation', value: pct(enrolled, seatsOn) == null ? '—' : `${pct(enrolled, seatsOn)}%`, pct: pct(enrolled, seatsOn), target: `${num(enrolled)} enrolled of ${num(seatsOn)} sanctioned seats`, hint: `${cov} · ${itis.length - on.length} ITIs not yet connected`, tone: 'indigo', canvas: 'cluster_registry', open: { canvas: 'cluster_registry', tab: 'enrolment', filters: { year: 'current', scope: 'all' } } }),
   ] }
 }
 

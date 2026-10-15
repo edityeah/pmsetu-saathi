@@ -29,6 +29,7 @@ import realtimeRoutes from './routes/realtime.js'
 import ocrRoutes from './routes/ocr.js'
 import adminRoutes from './routes/admin.js'
 import headlineRoutes from './routes/headline.js'
+import analyticsRoutes from './routes/analytics.js'
 
 const app = express()
 app.set('trust proxy', 1)
@@ -54,6 +55,7 @@ app.use('/api/lookups', lookupRoutes)
 // authed
 app.use('/api/me', meRoutes)
 app.use('/api/headline', headlineRoutes)
+app.use('/api/analytics', analyticsRoutes)
 app.use('/api/cluster', clusterRoutes)
 app.use('/api/itis', itiRoutes)
 app.use('/api/batches', batchRoutes)

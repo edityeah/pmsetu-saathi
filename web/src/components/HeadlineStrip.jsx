@@ -45,14 +45,14 @@ export default function HeadlineStrip() {
         {data.items.map(it => {
           const t = TONE[it.tone] || TONE.indigo
           return (
-            <button key={it.key} onClick={() => it.canvas && openCanvas({ type: it.canvas })} className={`text-left rounded-2xl bg-white border border-bdr-light p-3.5 hover:shadow-card transition flex items-start gap-3 min-w-0 ${it.canvas ? '' : 'cursor-default'}`}>
+            <button key={it.key} onClick={() => it.open ? openCanvas({ type: it.open.canvas, tab: it.open.tab, filters: it.open.filters }) : it.canvas && openCanvas({ type: it.canvas })} className={`text-left rounded-2xl bg-white border border-bdr-light p-3.5 hover:shadow-card transition flex items-start gap-3 min-w-0 ${it.canvas ? '' : 'cursor-default'}`}>
               <div className="flex-1 min-w-0">
                 <div className={`text-[10px] font-bold uppercase tracking-wider ${t.fg} leading-tight line-clamp-2`}>{it.label}</div>
                 <div className="text-[22px] leading-tight font-bold text-txt-primary mt-1 tabular-nums break-words">{it.value}</div>
                 {it.target && <div className="text-[10px] text-txt-secondary truncate mt-0.5">{it.target}</div>}
                 {it.hint && <div className="text-[10px] text-txt-tertiary truncate">{it.hint}</div>}
               </div>
-              {(it.pct != null || it.target) && <Ring pct={it.pct} color={t.ring} size={40} />}
+              {it.pct != null && <Ring pct={it.pct} color={t.ring} size={40} />}
             </button>
           )
         })}
