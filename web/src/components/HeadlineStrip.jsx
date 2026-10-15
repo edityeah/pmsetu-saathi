@@ -37,10 +37,7 @@ export default function HeadlineStrip() {
   if (!data.items?.length) return null
   return (
     <div className="mt-7">
-      <div className="flex items-baseline justify-between gap-3 mb-2.5 px-0.5">
-        <div className="text-[11px] font-bold uppercase tracking-[2px] text-txt-tertiary">Headline</div>
-        {data.title && <div className="text-[12px] text-txt-secondary truncate">{data.title}</div>}
-      </div>
+      <div className="mb-2.5 px-0.5 text-[11px] font-bold uppercase tracking-[2px] text-txt-tertiary">Headline</div>
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         {data.items.map(it => {
           const t = TONE[it.tone] || TONE.indigo
