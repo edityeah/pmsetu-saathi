@@ -51,7 +51,8 @@ const LEGACY_SAY = {
   verification_queue: ['what needs verification'], kpi_audit: ['audit the KPIs'], report_review: ['review the quarterly report'], course_builder: ['edit the module', 'build a course'], ncvet_pipeline: ['approval status', 'NCVET review'], state_scorecard: ['state scorecard', 'compare clusters'],
 }
 
-const LEGACY_TARGETS = Object.entries(ACTIONS).filter(([id, a]) => id !== 'ANSWER_QUESTION' && a.module).map(([id, a]) => {
+const SECTION_IDS = new Set(SECTION_TARGETS.map(t => t.id))
+const LEGACY_TARGETS = Object.entries(ACTIONS).filter(([id, a]) => id !== 'ANSWER_QUESTION' && a.module && !SECTION_IDS.has(a.module)).map(([id, a]) => {
   let roles = a.roles
   if (SECTION_CANVASES.has(a.module)) roles = roles.filter(r => r !== 'spv_ceo' && r !== 'iti_principal' && r !== 'ima_officer' && r !== 'state_pmu')
   // The CEO navigates only within the six sections.
@@ -71,9 +72,12 @@ export function targetAllowed(id, role) {
 }
 
 // ITI name resolution: "pusa", "ITI Shahdara", "Government ITI Narela", codes.
+const ITI_ALIASES = { 'पूसा': 'pusa', 'पुसा': 'pusa', 'शाहदरा': 'shahdara', 'नरेला': 'narela', 'रोहिणी': 'rohini', 'रोहिनी': 'rohini', 'ओखला': 'okhla' }
 export function resolveIti(text, itis) {
   if (!text) return null
-  const s = String(text).toLowerCase().replace(/government|govt\.?|iti|institute|^\s+|\s+$/g, '').trim()
+  let s = String(text).toLowerCase()
+  for (const [hi, en] of Object.entries(ITI_ALIASES)) if (s.includes(hi)) s = en
+  s = s.replace(/government|govt\.?|iti|institute|आईटीआई|^\s+|\s+$/g, '').trim()
   if (!s) return null
   for (const i of itis) {
     const name = i.name.toLowerCase().replace(/government|govt\.?|iti/g, '').trim()
