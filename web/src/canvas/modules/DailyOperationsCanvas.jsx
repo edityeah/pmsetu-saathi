@@ -77,7 +77,7 @@ function OverviewTab(b) {
     <div className="p-4 space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         <OverviewCard icon="🗓️" title="Attendance" big={`${fmtPct(a.attendancePct)} attendance`} sub={`${a.reported} of ${a.scheduled} registers submitted`} link="View attendance records" onOpen={() => b.setTab('attendance')}>
-          <div style={{ height: 120 }}><ResponsiveContainer><BarChart data={a.byIti.map(i => ({ ...i, v: i.attendancePct || 0 }))} margin={{ top: 16, right: 6, left: 0, bottom: 0 }}><XAxis dataKey="name" fontSize={10} stroke="#7383A5" /><Tooltip formatter={v => `${v}%`} contentStyle={tip} /><RBar dataKey="v" radius={[4, 4, 0, 0]} fill={C.primary}><LabelList dataKey="v" position="top" fontSize={10} formatter={v => `${v}%`} /></RBar></BarChart></ResponsiveContainer></div>
+          <div className="w-full" style={{ height: 130 }}><ResponsiveContainer><BarChart data={a.byIti.map(i => ({ ...i, v: i.attendancePct || 0 }))} margin={{ top: 16, right: 6, left: 0, bottom: 0 }}><XAxis dataKey="name" fontSize={10} stroke="#7383A5" /><Tooltip formatter={v => `${v}%`} contentStyle={tip} /><RBar dataKey="v" radius={[4, 4, 0, 0]} fill={C.primary}><LabelList dataKey="v" position="top" fontSize={10} formatter={v => `${v}%`} /></RBar></BarChart></ResponsiveContainer></div>
         </OverviewCard>
         <OverviewCard icon="📝" title="Assessments" big={`${as.scheduled} scheduled ${as.fallback ? '· ' + fmtDate(as.date).replace(/ \d{4}$/, '') : 'today'}`} sub={`${as.conducted} conducted · ${as.marksUploaded} marks uploaded`} link="View assessment status" onOpen={() => b.setTab('assessment')}>
           <div className="w-full"><Bar pct={as.scheduled ? 100 * as.conducted / as.scheduled : 0} label={`${as.conducted} of ${as.scheduled} conducted · ${as.scheduled ? Math.round(100 * as.conducted / as.scheduled) : 0}%`} tone="emerald" /><div className="mt-2"><Bar pct={as.scheduled ? 100 * as.marksUploaded / as.scheduled : 0} label={`${as.marksUploaded} marks uploaded`} tone="violet" /></div></div>
@@ -108,7 +108,7 @@ function OverviewCard({ icon, title, big, sub, link, onOpen, children, wide }) {
     <button onClick={onOpen} className="text-left rounded-2xl border border-bdr-light bg-white shadow-card p-4 hover:shadow-modal transition flex flex-col">
       <div className={`flex ${wide ? 'flex-col' : 'flex-col sm:flex-row'} gap-4 flex-1`}>
         <div className="flex items-start gap-3 flex-1 min-w-0"><span className="w-11 h-11 rounded-2xl bg-primary-light text-[20px] flex items-center justify-center flex-shrink-0" aria-hidden>{icon}</span><div className="min-w-0"><div className="text-[13px] font-bold text-txt-primary">{title}</div><div className="text-[17px] font-bold text-txt-primary leading-tight mt-0.5">{big}</div><div className="text-[12px] text-txt-secondary mt-1">{sub}</div></div></div>
-        <div className={wide ? 'w-full' : 'sm:w-[45%] sm:border-l sm:border-bdr-light sm:pl-4 flex items-center'}>{children}</div>
+        <div className={wide ? 'w-full' : 'sm:w-[45%] sm:border-l sm:border-bdr-light sm:pl-4 flex items-center min-w-0'}>{children}</div>
       </div>
       <div className="mt-3 text-[11px] text-primary font-bold">{link} →</div>
     </button>
