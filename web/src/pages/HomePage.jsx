@@ -58,8 +58,9 @@ export default function HomePage() {
   }
   function handleResponse(r) {
     if (r.responseType === 'action') {
-      setMessages(m => [...m, { role: 'bot', text: r.meta?.assistantText || 'Opening…' }])
-      dispatchActionForRole({ actionId: r.actionId, entities: r.entities, role: ctx.role, openCanvas: ctx.openCanvas, showToast: ctx.showToast })
+      setMessages(m => [...m, { role: 'bot', text: r.meta?.assistantText || 'Opening…', actions: (r.meta?.chips || []).map(c => ({ label: c, kind: 'chip', value: c })) }])
+      if (r.canvas?.type) ctx.openCanvas(r.canvas)
+      else dispatchActionForRole({ actionId: r.actionId, entities: r.entities, role: ctx.role, openCanvas: ctx.openCanvas, showToast: ctx.showToast })
     } else if (r.responseType === 'answer') {
       const cits = (r.answer.citations || []).map(c => c.source).join(' · ')
       setMessages(m => [...m, { role: 'bot', text: r.answer.text, html: `<div>${r.answer.text}</div>${cits ? `<div class="mt-2 text-[10px] text-slate-500">Sources: ${cits}</div>` : ''}` }])

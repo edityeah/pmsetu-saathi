@@ -177,6 +177,7 @@ export const api = {
   notifications: () => req('GET', '/api/notifications'),
   markRead: (id) => req('POST', `/api/notifications/${id}/read`),
   aiMessage: (text, language) => req('POST', '/api/ai/message', { text, language }),
+  navigate: (body) => req('POST', '/api/ai/navigate', body),
   headline:       () => req('GET', '/api/headline'),
   // analytics views opened by the headline cards
   attendanceDay:  (o) => req('GET', `/api/analytics/attendance${q(o)}`),

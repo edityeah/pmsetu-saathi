@@ -86,7 +86,7 @@ export default function AvatarCall({
   // what the trainee just wrote").
   getExtraSystem,
 }) {
-  const { showToast, meExtra, role, refreshThreads } = useApp()
+  const { showToast, meExtra, role, refreshThreads, openCanvas } = useApp()
   const { setActions } = useContext(CanvasHeaderActionsContext) || {}
   const threadIdRef = useRef(initialThreadId || null)        // persisted thread id (server)
   const profileBlock = buildProfileBlock(meExtra, role)
@@ -310,6 +310,7 @@ export default function AvatarCall({
     let buffer = ''
     const citations = []
     let placeholderIndex = -1
+    let pendingNavigate = null
     // Fresh AbortController per turn so barge-in can cancel the in-flight stream.
     try { streamAbortRef.current?.abort() } catch {}
     const ctrl = new AbortController()
@@ -349,6 +350,10 @@ export default function AvatarCall({
             /* Anam audio is sent once at p.done — see comment above. */
           }
           if (p.citation?.url) citations.push(p.citation)
+          // Screen tool from the server: remember the resolved canvas and
+          // open it once the reply has finished streaming (opening a canvas
+          // replaces this view, so the answer must land in the thread first).
+          if (p.navigate?.canvas?.type) pendingNavigate = p.navigate
               // Card events from the server's card parser — append to the
           // current assistant bubble's `cards` list so ChatBubble can render
           // the rich component below the text.
@@ -365,6 +370,10 @@ export default function AvatarCall({
           }
           if (p.done) {
             console.log('[reply] done', { bufferLen: buffer.length, hasAnamClient: !!anamClient })
+            if (pendingNavigate) {
+              const nav = pendingNavigate; pendingNavigate = null
+              setTimeout(() => { try { openCanvas?.(nav.canvas); showToast?.({ kind: 'info', text: `Opened: ${nav.label || nav.canvas.type}` }) } catch {} }, 600)
+            }
             if (citations.length) {
               const idx = placeholderIndex
               setMessages(m => { const c = m.slice(); if (idx >= 0) c[idx] = { ...c[idx], citations }; return c })

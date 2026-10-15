@@ -20,7 +20,7 @@ export default function SaathiAssistantCanvas({ context }) {
   const c = meExtra?.cluster
   const who = [`User: ${user?.name}`, `Role: ${ROLE_LABELS[role] || role}`, c ? `Cluster: ${c.name} · AIP ${c.aipName} · SIP ₹${c.sipAmountCr} Cr · year ${c.currentYear}` : '', meExtra?.iti ? `ITI: ${meExtra.iti.name}` : '', meExtra?.employer ? `Employer: ${meExtra.employer.name}` : ''].filter(Boolean).join('. ')
   const about = context?.about || null
-  const general = who + '\n\nYou are Saathi inside PM-SETU Saathi. If the user wants a screen, name the module (e.g. "Tranche Readiness", "My Course") and suggest opening it. For scheme or policy questions answer from the facts you have (guidelines Sept 2025); use web search for anything newer. Emit cards (kpi_grid, data_table, info, action_panel) when it helps.'
+  const general = who + '\n\nYou are Saathi inside PM-SETU Saathi. If the user wants a screen, call open_canvas with the right target and ITI; for data questions call lookup_data or open_canvas and answer from the returned data only. For scheme or policy questions answer from the facts you have (guidelines Sept 2025); use web search for anything newer. Emit cards (kpi_grid, data_table, info, action_panel) when it helps.'
   // A thread started from a screen: answer about that screen first, from
   // the data it published when the thread was opened.
   const screen = about ? [

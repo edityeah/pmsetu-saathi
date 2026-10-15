@@ -16,16 +16,14 @@ PM-SETU FACTS (Pradhan Mantri Skilling and Employability Transformation through 
 `
 
 export const CLUSTER_PACK = `
-CLUSTER SNAPSHOT (Delhi ITI Cluster CL-DL-01 · hub Government ITI Pusa, spokes Shahdara, Narela, Rohini, Okhla · AIP "Delhi Industrial Skills Consortium" · SIP ₹213 Cr: civil 36, digital 18.3, equipment 67.7, recurring 91 · funding scenario 50/33/17 · scheme Year 1 = Aug 2026–Jul 2027; today is Year-1 month 3):
-- Year-1 envelope ₹21.3 Cr (10% advance) vs planned Year-1 spend ₹21.08 Cr across 66 work packages (WP-xxx-nn) and 330 AOP records; ~20% utilised so far. Year-2 need ₹68.3 Cr (first tranche due Jul 2027 needs 75% utilisation, FY27-28 AOP approved, 80% cost-weighted KPI score).
-- ITIs: Pusa (hub, ₹76 Cr, automation & robotics + drones; 1,088 Y1 students, 70 batches, 76 trainers), Shahdara (₹23 Cr, advanced welding; 476 students, 32 batches, 33 trainers), Narela (₹39 Cr, machine shop/CNC; 610 students, 38 batches, 40 trainers), Rohini (₹35 Cr, electronics; 550 students, 37 batches, 39 trainers), Okhla (₹40 Cr, HVAC; 651 students, 40 batches, 44 trainers). All five ITIs are registry-connected — dashboards say "5 of 5 ITIs reporting"; never invent numbers that are not on the screenr three.
+CLUSTER STRUCTURE (Delhi ITI Cluster CL-DL-01 · hub Government ITI Pusa, spokes Shahdara, Narela, Rohini, Okhla · AIP "Delhi Industrial Skills Consortium" · SIP ₹213 Cr: civil 36, digital 18.3, equipment 67.7, recurring 91 · funding scenario 50/33/17 · scheme Year 1 = Aug 2026–Jul 2027; today is Year-1 month 3):
+- ITIs and focus: Pusa (hub, ₹76 Cr, automation & robotics + drones), Shahdara (₹23 Cr, advanced welding), Narela (₹39 Cr, machine shop/CNC), Rohini (₹35 Cr, electronics), Okhla (₹40 Cr, HVAC). All five are registry-connected.
 - Courses: existing core ELE/FIT/COPA at all five; new specialist programmes AUT (Pusa, Y2 Q3), DRN drones (Pusa, Y2 Q4), WEL (Shahdara, Y2 Q2), CNC (Narela, Y3 Q1), ELX (Rohini, Y2 Q2), HVC (Okhla, Y2 Q3); each has 4 launch gates (SPACE, STAFF, COURSE, STUDENT). Registry also has Welder, Machinist, Turner, MMV, Electronics Mechanic, Draughtsman, RAC, Steno, Sheet Metal under the OTH portfolio.
-- Year-1 tasks: 50 (10 per ITI) with states planned → in_progress → blocked → reported_complete → completed → reviewed/returned; some month-1/2 tasks overdue, Rohini room survey blocked (utility clearance), Shahdara change request pending (equipment list month 4 → 5).
-- KPIs K01–K27 (enrolment 3000→3400 Y1→7000 Y5; seat utilisation 65%→71%→95%; completion 50→55→85; placement 40→45→75; female 11→15→35; civil 0→40→100; equipment 0→30→100). Actuals exist only where a source exists: enrolment 3,375 (all 5 ITIs), seat utilisation ~70%, female ~15%, civil 14%, equipment 6%, MoUs 4 of 10, apprenticeships/OJT started 32 of 300.
-- Operations (last 3 weeks, connected ITIs): ~1,900 sessions, attendance ~88% where reported, 3 Shahdara batches silent since 8 Oct, 4 trainers on leave today, practical check 1 marks need review at Shahdara (OCR), welding fume extraction fan down at Pusa.
-- Placement pipeline (person-level, evidence-levelled): 64 pre-scheme pass-outs across the live opportunities; joined records at student_reported / document_supported / employer_confirmed / independently_verified, 1 disputed; 20 COPA students on OJT. Median reported wage ~₹13,500/month vs Y1 range ₹12–14k.
-- Student Voice: ~180 companion events in 30 days; top themes travel cost, course interest (AUT), aspiration (apprenticeship), timetable clash, learning needs; direct vs inferred kept separate.
-- Open governance items: Q2 report submitted, 4 milestones with the IMA, FY27-28 AOP not drafted, Rohini milestone returned, registry connection for 3 spokes due 31 Dec.
+- Year-1 tasks: 50 (10 per ITI) with states planned → in_progress → blocked → reported_complete → completed → reviewed/returned.
+- KPIs K01–K27 with baseline → Y1 → Y5 targets (enrolment 3000→3400→7000; seat utilisation 65%→71%→95%; completion 50→55→85; placement 40→45→75; female 11→15→35; civil 0→40→100; equipment 0→30→100). Actuals exist only where a source exists.
+- Placement records are person-level with evidence levels student_reported / document_supported / employer_confirmed / independently_verified / disputed; applications are not people and offers are not joins.
+- Student Voice keeps direct and inferred signals separate. Open governance items live on the milestone board and reports screens.
+ALL COUNTS, PERCENTAGES AND AMOUNTS come from the LIVE CLUSTER DATA block (or a tool result). Never state a figure that is not there.
 `
 
 export const ROLE_OPENERS = {

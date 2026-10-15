@@ -16,7 +16,8 @@ import { z } from 'zod'
 import rateLimit from 'express-rate-limit'
 import { requireAuth } from '../auth/middleware.js'
 import { buildRoleContext } from '../llm/roleContext.js'
-import { toOpenAIToolDefs, toPersonaBriefing } from '../voice/tools.js'
+import { navToolDefs, toPersonaBriefing } from '../voice/tools.js'
+import { livePack } from '../nav/snapshot.js'
 
 const r = Router()
 r.use(requireAuth)
@@ -114,10 +115,13 @@ r.post('/session', async (req, res, next) => {
       const roleAddendum = buildRoleContext({ persona: body.persona, role: body.role })
       const parts = [base]
       if (roleAddendum) parts.push(roleAddendum)
+      // Live numbers from the same routes the dashboards read.
+      const pack = (!body.persona || body.persona === 'general') ? await livePack(req).catch(() => '') : ''
+      if (pack) parts.push(pack)
       parts.push(KB_DIRECTIVE)
       parts.push(LANGUAGE_RULE)
       // Voice-tool routing table appended late so it has recency weight.
-      parts.push(toPersonaBriefing())
+      parts.push(toPersonaBriefing(body.role || req.user.role))
       if (body.extraSystem) parts.push(body.extraSystem)
       instructions = parts.join('\n\n')
     }
@@ -135,7 +139,7 @@ r.post('/session', async (req, res, next) => {
       // live in web/src/utils/voiceTools.js; dispatch happens in
       // web/src/utils/realtimeVoice.js when a response.function_call_
       // arguments.done event arrives on the data channel.
-      tools: toOpenAIToolDefs(),
+      tools: navToolDefs(body.role || req.user.role, 'realtime'),
       // tool_choice: 'auto' is Realtime's default — the model decides
       // when to call a tool vs. just respond. Leaving it implicit.
       output_modalities: ['audio'],

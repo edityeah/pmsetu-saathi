@@ -85,7 +85,7 @@ export function AppProvider({ children }) {
     } catch (e) { console.error('[switchRole]', e?.message || e); return false }
   }, [role])
 
-  const openCanvas = useCallback((ctx) => setCanvas(ctx), [])
+  const openCanvas = useCallback((ctx) => setCanvas(ctx ? { _k: Date.now(), ...ctx } : ctx), [])
   const closeCanvas = useCallback(() => setCanvas(null), [])
   const updateCanvas = useCallback((patch) => setCanvas(c => c ? { ...c, ...patch } : c), [])
 

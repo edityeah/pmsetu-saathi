@@ -20,6 +20,9 @@ import { CardParser } from '../llm/cardParser.js'
 import { CARD_TOOLBOX } from '../llm/cardPrompts.js'
 import { buildRoleContext } from '../llm/roleContext.js'
 import { prisma } from '../db.js'
+import { interpretNavigation, resolveNavigation, answerFromData } from '../nav/interpret.js'
+import { livePack } from '../nav/snapshot.js'
+import { navToolDefs } from '../voice/tools.js'
 
 const r = Router()
 r.use(requireAuth)
@@ -33,56 +36,71 @@ const perSession = rateLimit({
 })
 r.use(perSession)
 
+// Rules appended to the general persona so the streaming chat uses the tools.
+const NAV_TOOL_RULES = (role) => `SCREEN TOOLS: you can open screens in this user's UI with open_canvas(target, iti?, trade?, gender?, date?) and read live platform data with lookup_data(same arguments). When the user asks to see, open, check or review anything a screen covers, CALL open_canvas (never just describe where to click). When the user asks a data question (how many, is it working, what is the attendance…), call lookup_data or open_canvas and answer ONLY from the returned data, quoting the numbers exactly. Targets for role ${role} are listed in the tool's enum; machines, workshops or labs working today → ops_infrastructure; courses or trades offered → institute_trades; facilities and assets installed → institute_facilities.`
+
 function isQuestionLike(text) {
   return /\?\s*$/.test(text) || /\b(why|how|what|when|where|explain|kya|kyun|kaise|samjhao|batao)\b/i.test(text)
 }
 
 r.post('/message', async (req, res, next) => {
   try {
-    if (!hasOpenAI()) return res.json({ responseType: 'none', reason: 'openai_not_configured' })
     const body = z.object({ text: z.string().min(1), language: z.string().optional() }).parse(req.body)
     const text = body.text.trim()
     const role = req.user.role
 
-    const questionFirst = isQuestionLike(text)
-
-    if (questionFirst) {
-      const rag = await ragAnswer({ question: text, role })
-      if (rag.answer) {
+    // 1) Navigation first: any request that a screen answers opens that
+    //    screen (right tab, right ITI) and, when it is a question, reads the
+    //    answer from the live data behind that screen.
+    const nav = await interpretNavigation({ text, role, language: body.language })
+    if (nav?.target && nav.confidence >= 0.5) {
+      const r0 = await resolveNavigation(req, { target: nav.target, ...nav.entities, withData: true })
+      if (!r0.error) {
+        let answer = null
+        if (nav.wantsAnswer || isQuestionLike(text)) answer = await answerFromData({ question: text, label: r0.label, data: r0.data, language: nav.language, target: nav.target, itiName: r0.iti?.name }).catch(() => null)
         return res.json({
-          responseType: 'answer',
-          answer: { text: rag.answer, citations: rag.citations, language: body.language || 'en' },
+          responseType: 'action',
+          target: nav.target,
+          canvas: r0.canvas,
+          actionId: null,
+          entities: nav.entities,
+          confidence: nav.confidence,
+          meta: { assistantText: answer || nav.assistantText || `Opening ${r0.label}.`, chips: nav.chips, language: nav.language, label: r0.label },
         })
       }
     }
 
+    if (!hasOpenAI()) return res.json({ responseType: 'none', reason: 'openai_not_configured' })
+
+    // 2) Knowledge fallback (scheme, policy, platform) from the RAG corpus.
+    const rag = await ragAnswer({ question: text, role })
+    if (rag.answer) {
+      return res.json({ responseType: 'answer', answer: { text: rag.answer, citations: rag.citations, language: body.language || 'en' } })
+    }
+
+    // 3) Legacy intent classifier as a last resort (other roles' actions).
     const intent = await interpretAction({ text, role, language: body.language })
     if (intent?.intent && intent.confidence >= 0.5) {
-      return res.json({
-        responseType: 'action',
-        actionId: intent.intent,
-        module: intent.module,
-        entities: intent.entities,
-        confidence: intent.confidence,
-        meta: { assistantText: intent.assistantText, chips: intent.chips, language: intent.language },
-      })
-    }
-
-    if (!questionFirst) {
-      const rag = await ragAnswer({ question: text, role })
-      if (rag.answer) {
-        return res.json({
-          responseType: 'answer',
-          answer: { text: rag.answer, citations: rag.citations, language: body.language || 'en' },
-        })
-      }
+      return res.json({ responseType: 'action', actionId: intent.intent, module: intent.module, entities: intent.entities, confidence: intent.confidence, meta: { assistantText: intent.assistantText, chips: intent.chips, language: intent.language } })
     }
 
     return res.json({
       responseType: 'none',
-      assistantText: intent?.assistantText || "I'm not sure how to help with that yet. Try one of the suggested chips.",
-      chips: intent?.chips || [],
+      assistantText: nav?.assistantText || intent?.assistantText || "I'm not sure how to help with that yet. Try one of the suggested chips.",
+      chips: nav?.chips?.length ? nav.chips : (intent?.chips || []),
     })
+  } catch (e) { next(e) }
+})
+
+// ── Navigate (voice and streaming tools) ──────────────────────────────────
+// Body: { target, iti?, trade?, gender?, date?, year?, open?: boolean }
+// Returns the canvas context to open and the live data behind that screen.
+r.post('/navigate', async (req, res, next) => {
+  try {
+    const body = z.object({ target: z.string(), iti: z.string().nullable().optional(), trade: z.string().nullable().optional(), gender: z.string().nullable().optional(), date: z.string().nullable().optional(), year: z.union([z.string(), z.number()]).nullable().optional(), open: z.boolean().optional() }).parse(req.body || {})
+    const out = await resolveNavigation(req, { ...body, withData: true })
+    if (out.error) return res.status(400).json({ error: out.error })
+    res.json(out)
   } catch (e) { next(e) }
 })
 
@@ -136,11 +154,14 @@ r.post('/stream', async (req, res, next) => {
       // figures and emits chart cards.
       const roleAddendum = buildRoleContext({ persona: body.persona, role: body.role })
       if (roleAddendum) system += '\n\n' + roleAddendum
+      // Live numbers from the same routes the dashboards read (60 s cache).
+      if (!body.persona || body.persona === 'general') { const pack = await livePack(req).catch(() => ''); if (pack) system += '\n\n' + pack }
       // Card toolbox — tells the LLM when/how to emit <<<KSKCARD>>>...<<<END>>>
       // fences. Skipped in fast mode (cards bloat the system prompt by ~3KB and
       // the agent is speaking, not drawing UI).
       if (!fast) system += '\n\n' + CARD_TOOLBOX
       if (body.extraSystem) system += '\n\nAdditional context:\n' + body.extraSystem
+      if (!body.persona || body.persona === 'general') system += '\n\n' + NAV_TOOL_RULES(req.user.role)
       if (memCtx)           system += '\n\nWhat you remember about this user:\n' + memCtx
     }
 
@@ -188,6 +209,16 @@ r.post('/stream', async (req, res, next) => {
         // fences) and then it forwards clean text to the card parser
         // (peels card fences) and finally out as delta events.
         onChunk: (delta) => { cardParser.feed(delta) },
+        // Screen tools: open_canvas opens a screen in the user's UI (and
+        // returns its live data); lookup_data only returns the data.
+        tools: (!body.persona || body.persona === 'general') ? navToolDefs(req.user.role, 'chat') : [],
+        onToolCall: async (name, args) => {
+          if (name !== 'open_canvas' && name !== 'lookup_data') return { ok: false, error: 'unknown tool' }
+          const out = await resolveNavigation(req, { ...args, withData: true })
+          if (out.error) return { ok: false, error: out.error }
+          if (name === 'open_canvas') res.write(`data: ${JSON.stringify({ navigate: { canvas: out.canvas, label: out.label } })}\n\n`)
+          return { ok: true, opened: name === 'open_canvas' ? out.label : undefined, screen: out.label, data: out.data }
+        },
         onCitation: (c) => {
           if (c.url) {
             citations.push({ url: c.url, title: c.title || c.url })

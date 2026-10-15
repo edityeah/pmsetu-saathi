@@ -105,7 +105,7 @@ export default function CanvasPanel() {
 
         <CanvasHeaderActionsContext.Provider value={{ setActions: setHeaderActions }}>
           <div className="flex-1 min-h-0 overflow-y-auto">
-            <CanvasErrorBoundary key={canvas.type}>{Module ? <Module context={canvas} /> : <NotImplemented type={canvas.type} />}</CanvasErrorBoundary>
+            <CanvasErrorBoundary key={`${canvas.type}:${canvas._k || ''}`}>{Module ? <Module context={canvas} /> : <NotImplemented type={canvas.type} />}</CanvasErrorBoundary>
           </div>
         </CanvasHeaderActionsContext.Provider>
         </CanvasSaathiProvider>
