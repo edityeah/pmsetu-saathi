@@ -36,7 +36,7 @@ export default function BarChartCard({ card }) {
   const cellColors = data.map(d => d.color ? (COLORS[d.color] || d.color) : color)
 
   return (
-    <div className="rounded-2xl border border-bdr-light bg-white shadow-card overflow-hidden">
+    <div className="rounded-2xl border border-bdr-light bg-white shadow-card overflow-hidden h-full flex flex-col">
       <div className="px-4 py-2.5 bg-gradient-to-r from-surface-page/50 to-white border-b border-bdr-light">
         <div className="text-[11px] font-bold uppercase tracking-wider text-primary">{card.title || 'Comparison'}</div>
         {card.unit && <div className="text-[10px] text-txt-tertiary mt-0.5">Unit: {card.unit}</div>}
@@ -48,18 +48,18 @@ export default function BarChartCard({ card }) {
             <span>{card.annotation}</span>
           </div>
         )}
-        <div style={{ width: '100%', height: Math.max(180, data.length * (horizontal ? 32 : 0) + 240) }}>
+        <div style={{ width: '100%', height: card.height || Math.max(180, data.length * (horizontal ? 32 : 0) + 240) }}>
           <ResponsiveContainer>
             <BarChart
               data={data}
               layout={horizontal ? 'vertical' : 'horizontal'}
-              margin={{ top: 8, right: 16, bottom: horizontal ? 8 : 56, left: horizontal ? 110 : 8 }}
+              margin={{ top: 8, right: 24, bottom: horizontal ? 8 : 56, left: 8 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={!horizontal} horizontal={horizontal} />
               {horizontal ? (
                 <>
                   <XAxis type="number" tickFormatter={fmt} fontSize={10} stroke="#7383A5" />
-                  <YAxis type="category" dataKey="label" width={100} fontSize={10} stroke="#7383A5" interval={0} />
+                  <YAxis type="category" dataKey="label" width={card.labelWidth || 100} fontSize={10} stroke="#7383A5" interval={0} />
                 </>
               ) : (
                 <>

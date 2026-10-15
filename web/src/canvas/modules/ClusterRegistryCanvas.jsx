@@ -103,9 +103,9 @@ function Students({ scope, setScope, scopeOpts, canSwitch, f0, onOpen }) {
     </div>
     {!d ? <Loading /> : (
       <div className="p-4 space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <BarChartCard card={{ title: 'Students by trade', unit: 'students', orient: 'horizontal', data: d.byTrade.slice(0, 10).map(t => ({ label: t.name.slice(0, 24), value: t.n, color: 'primary' })) }} />
-          <DonutChartCard card={{ title: `Gender composition · ${fmtNum(d.total)} students`, unit: 'students', data: [{ label: 'Male', value: d.gender.male, color: 'primary' }, { label: 'Female', value: d.gender.female, color: 'teal' }] }} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+          <BarChartCard card={{ title: 'Students by trade', unit: 'students', height: 260, orient: 'horizontal', annotation: d.byTrade.length > 6 ? `Top 6 of ${d.byTrade.length} trades; filter by trade for the rest.` : undefined, data: d.byTrade.slice(0, 6).map(t => ({ label: t.name.slice(0, 22), value: t.n, color: 'primary' })) }} />
+          <DonutChartCard card={{ title: `Gender composition · ${fmtNum(d.total)} students`, unit: 'students', size: 220, data: [{ label: 'Male', value: d.gender.male, color: 'primary' }, { label: 'Female', value: d.gender.female, color: 'teal' }] }} />
         </div>
         <Section title="Student records" hint={`Showing ${d.total ? (d.page - 1) * d.pageSize + 1 : 0}–${Math.min(d.total, d.page * d.pageSize)} of ${fmtNum(d.total)}`}>
           <Table columns={[
@@ -138,9 +138,9 @@ function Trainers({ scope, setScope, scopeOpts, canSwitch, onOpen }) {
     </div>
     {!d ? <Loading /> : (
       <div className="p-4 space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <BarChartCard card={{ title: 'Trainers by trade', unit: 'trainers', orient: 'horizontal', data: d.byTrade.slice(0, 10).map(t => ({ label: t.code, value: t.n, color: 'primary' })) }} />
-          <DonutChartCard card={{ title: `Mapped batch load · ${fmtNum(d.total)} trainers`, unit: 'trainers', annotation: 'Load counts mapped batches, not teaching hours or staffing adequacy.', data: d.byLoad.map((l, i) => ({ label: l.label, value: l.n, color: ['primary', 'sky', 'teal', 'amber', 'rose'][i % 5] })) }} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+          <BarChartCard card={{ title: 'Trainers by trade', unit: 'trainers', height: 260, orient: 'horizontal', annotation: d.byTrade.length > 6 ? `Top 6 of ${d.byTrade.length} trades; filter by trade for the rest.` : undefined, data: d.byTrade.slice(0, 6).map(t => ({ label: t.code, value: t.n, color: 'primary' })) }} />
+          <DonutChartCard card={{ title: `Mapped batch load · ${fmtNum(d.total)} trainers`, unit: 'trainers', size: 220, annotation: 'Load counts mapped batches, not teaching hours or staffing adequacy.', data: d.byLoad.map((l, i) => ({ label: l.label, value: l.n, color: ['primary', 'sky', 'teal', 'amber', 'rose'][i % 5] })) }} />
         </div>
         <Section title="Trainer records" hint={`Showing ${d.total ? (d.page - 1) * d.pageSize + 1 : 0}–${Math.min(d.total, d.page * d.pageSize)} of ${fmtNum(d.total)}`}>
           <Table columns={[

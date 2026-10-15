@@ -37,12 +37,12 @@ export default function DonutChartCard({ card }) {
   }))
 
   return (
-    <div className="rounded-2xl border border-bdr-light bg-white shadow-card overflow-hidden">
+    <div className="rounded-2xl border border-bdr-light bg-white shadow-card overflow-hidden h-full flex flex-col">
       <div className="px-4 py-2.5 bg-gradient-to-r from-surface-page/50 to-white border-b border-bdr-light">
         <div className="text-[11px] font-bold uppercase tracking-wider text-primary">{card.title || 'Breakdown'}</div>
         {card.unit && <div className="text-[10px] text-txt-tertiary mt-0.5">Unit: {card.unit}</div>}
       </div>
-      <div className="p-3">
+      <div className="p-3 flex-1 flex flex-col justify-center">
         {card.annotation && (
           <div className="mb-3 text-[12px] text-txt-secondary inline-flex items-start gap-1.5 px-2">
             <Sparkles className="w-3 h-3 mt-0.5 text-primary flex-shrink-0" />
@@ -50,10 +50,10 @@ export default function DonutChartCard({ card }) {
           </div>
         )}
         <div className="flex items-center gap-3 flex-wrap">
-          <div style={{ width: 200, height: 200 }}>
+          <div style={{ width: card.size || 200, height: card.size || 200 }}>
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                <Pie data={data} dataKey="value" nameKey="name" innerRadius={(card.size || 200) * 0.25} outerRadius={(card.size || 200) * 0.4} paddingAngle={2}>
                   {data.map((d, i) => <Cell key={i} fill={d.color} />)}
                 </Pie>
                 <Tooltip
