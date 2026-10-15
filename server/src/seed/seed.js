@@ -507,10 +507,16 @@ async function main() {
       const needsReview = chance(0.025)
       if (needsReview) attendanceState = 'needs_review'
       const captureMethod = chance(0.85) ? 'trainer_mobile' : chance(0.9) ? 'offline_sync' : 'camera_assisted'
+      // Each ITI has its own attendance level and shape over the window:
+      // Okhla high and steady, Pusa and Narela around 90%, Shahdara lower
+      // with a mid-window dip, Rohini sliding week on week.
+      const nDays = workingDays.length, frac = nDays > 1 ? k / (nDays - 1) : 1
+      const ATT = { PUS: 0.92, NAR: 0.89, OKH: 0.955, ROH: 0.86 - 0.14 * frac, SHA: 0.83 - (k % 6 === 3 ? 0.08 : 0) }
+      const attBase = Math.max(0.5, Math.min(0.98, (ATT[b.itiId] ?? 0.9) + (rnd() - 0.5) * 0.02))
       let present = 0, absent = 0, late = 0
       roster.forEach((t, idx) => {
         let status
-        const pPresent = t.id === DEMO_STU ? 0.95 : chronic.has(t.id) ? 0.5 : 0.92
+        const pPresent = t.id === DEMO_STU ? 0.95 : chronic.has(t.id) ? attBase * 0.55 : attBase
         if (needsReview && idx === 0) status = 'roster_issue'
         else if (chance(pPresent)) { status = chance(0.04) ? 'late' : 'present' } else status = chance(0.15) ? 'excused' : 'absent'
         if (status === 'present') present++; else if (status === 'late') { late++; present++ } else if (status === 'absent') { absent++; absencesByTrainee[t.id] = (absencesByTrainee[t.id] || 0) + 1 }
