@@ -1,24 +1,34 @@
 // Institute profile (Module A) — the seven tabs the PRD asks each principal
 // to confirm: overview, trades, staffing, infrastructure, budget, targets,
 // launch gates. Every tab says where its values come from.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { X, Search } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { useApp } from '../../context/AppContext.jsx'
-import { Hero, Stat, StatGrid, Bar, Pill, Section, Table, Loading, Btn, useLoad, Tabs, fmtCr, fmtDate, nil, stateKind, titleCase, NoFeed } from './_ui.jsx'
+import { Hero, Stat, StatGrid, Bar, Pill, Section, Table, Loading, Btn, useLoad, Tabs, fmtCr, fmtDate, nil, stateKind, titleCase, NoFeed, inputCls } from './_ui.jsx'
 import { useSaathiContext, brief } from '../CanvasSaathi.jsx'
 
 const r1 = v => (v == null || v === '' ? v : Math.round(Number(v) * 10) / 10)
-const TABS = [{ id: 'overview', label: 'Overview' }, { id: 'trades', label: 'Trade offerings' }, { id: 'staffing', label: 'Staffing' }, { id: 'infrastructure', label: 'Facilities and labs' }, { id: 'budget', label: 'Budget' }, { id: 'targets', label: 'Targets' }, { id: 'launch_gates', label: 'Launch gates' }]
+const TABS_ALL = [{ id: 'overview', label: 'Overview' }, { id: 'trades', label: 'Trade offerings' }, { id: 'infrastructure', label: 'Facilities and labs' }, { id: 'staffing', label: 'Staffing' }, { id: 'budget', label: 'Budget' }, { id: 'targets', label: 'Targets' }, { id: 'launch_gates', label: 'Launch gates' }]
+const TABS_CEO = TABS_ALL.slice(0, 3)
+const STATUS = { in_use: { kind: 'ok', label: 'In use' }, partly_down: { kind: 'warn', label: 'Partly down' }, being_set_up: { kind: 'info', label: 'Being set up' }, ready: { kind: 'ok', label: 'Ready' }, under_construction: { kind: 'info', label: 'Under construction' }, delayed: { kind: 'bad', label: 'Delayed' } }
+const KIND = { workshop: 'Workshop', lab: 'Lab', space: 'Space' }
 
 export default function InstituteProfileCanvas({ context }) {
   const { role, showToast, openCanvas } = useApp()
   const { data: itis } = useLoad(() => api.itis())
   const [code, setCode] = useState(context?.itiCode || 'mine')
   const [tab, setTab] = useState(context?.tab || 'overview')
+  const [course, setCourse] = useState(null)
+  const [facility, setFacility] = useState(null)
+  const [facilityPick, setFacilityPick] = useState(null)
   const { data, reload } = useLoad(() => api.itiProfile(code), [code])
   useSaathiContext(data ? `ITI ${data.iti.name} (${data.iti.kind}; registry ${data.iti.registryConnected ? 'connected' : 'not connected'}). Profile tabs: ${Object.entries(data.iti.profileSections || {}).map(([k, v]) => `${k}=${v.state}`).join(', ')}. Students ${data.students.active} (${data.students.women} women, ${data.students.pwd} PwD). Trainers in registry ${data.staffing.registryTrainers}, assigned ${data.staffing.assignedTrainers}, baseline ${data.staffing.baseline}, plan ${JSON.stringify(data.staffing.plan)}. Rooms ${data.infrastructure.rooms.working}/${data.infrastructure.rooms.baseline} (Y5 ${data.infrastructure.rooms.y5}); machines ${data.infrastructure.machines.length}; civil ${data.infrastructure.civil.map(w => `${w.packageId} ${w.pctComplete}% ${w.state}`).join(', ')}. Budget: ${data.budget.length} packages ₹${data.targets.plannedCr} Cr vs anchor ₹${data.targets.fiveYearCr} Cr (civil ₹${data.targets.civilCr} Cr, digital ₹${data.targets.digitalCr} Cr). Offerings: ${data.trades.map(t => `${t.trade.code} launch ${t.launch}, Y1 ${t.plans[1]?.enrolments ?? '—'}/${t.plans[1]?.places ?? '—'} actual ${t.actualY1 ?? '—'}, batches ${t.runningBatches}`).join('; ')}. Gates ${data.gates.filter(g => g.state === 'passed').length}/${data.gates.length} passed (${data.gates.filter(g => g.state === 'ready').length} ready). Year-1 tasks: ${data.tasks.map(t => `${t.id} ${t.title} [${t.state}${t.overdue ? ', OVERDUE ' + t.slipDays + 'd' : ''}; due ${String(t.dueAt).slice(0, 10)}; owner ${t.responsibleRole}]`).join('; ')}.` : '', ['Which profile tabs are still draft and what do they need?', 'Which launch gates are closest to ready?', 'What is overdue at this ITI and who owns it?', 'Summarise this ITI in five lines for the SPV board.'])
   if (!data) return <Loading />
-  const { iti, students, trades, otherTrades, staffing, infrastructure, budget, targets, gates, tasks } = data
+  const { iti, students, trades, otherTrades, staffing, infrastructure, budget, targets, gates, tasks, facilities = [], kb = {}, contacts = {} } = data
+  const TABS = role === 'spv_ceo' ? TABS_CEO : TABS_ALL
+  const openFacilityFor = code => { const f = facilities.find(x => x.linkedTrades.includes(code) && x.kind !== 'space') || facilities.find(x => x.linkedTrades.includes(code)); setCourse(null); setTab('infrastructure'); if (f) setFacility(f) }
+  const openCoursesFor = f => { setFacility(null); setTab('trades'); setFacilityPick(f) }
   const sec = iti.profileSections || {}
   const state = sec[tab]?.state || 'draft'
   const canSwitch = role !== 'iti_principal' && role !== 'trainer'
@@ -27,6 +37,7 @@ export default function InstituteProfileCanvas({ context }) {
   async function gate(g, st) { await api.gateState(g.id, st); showToast({ kind: 'success', text: `${g.id} → ${st}` }); reload() }
   const periods = ['Baseline', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5']
   const confirmedCount = Object.values(sec).filter(s => s.state === 'confirmed').length
+  const y1 = tr => tr.plans[1]
 
   return (
     <div className="h-full overflow-y-auto">
@@ -35,7 +46,43 @@ export default function InstituteProfileCanvas({ context }) {
       <Tabs tabs={TABS.map(t => ({ ...t, badge: sec[t.id]?.state === 'confirmed' ? '✓' : null }))} active={tab} onChange={setTab}
         right={<div className="flex items-center gap-2"><Pill kind={state === 'confirmed' ? 'ok' : 'warn'}>{state}{sec[tab]?.confirmedAt ? ` · ${fmtDate(sec[tab].confirmedAt)}` : ''}</Pill>{canConfirm && (state === 'confirmed' ? <Btn small tone="ghost" onClick={() => confirm('draft')}>Reopen</Btn> : <Btn small tone="ok" onClick={() => confirm('confirmed')}>Confirm tab</Btn>)}</div>} />
       <div className="p-4 space-y-4">
-        {tab === 'overview' && (<>
+        {tab === 'overview' && role === 'spv_ceo' && (<>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 space-y-4">
+              <Section title="About this institute">
+                <p className="text-[12px] text-txt-secondary mb-3">{iti.kind === 'hub' ? 'The hub institute of the cluster: it hosts the shared specialist labs, coordinates with the four spokes and carries the largest Year-1 programme.' : 'A spoke institute of the cluster: it runs its own core trades and draws on the hub for specialist labs and shared services.'}{iti.sectorFocus ? ` Sector focus: ${iti.sectorFocus}.` : ''}</p>
+                <dl className="text-[12px]">
+                  {[['Institute type', iti.kind === 'hub' ? 'Hub ITI' : 'Spoke ITI'], ['Location', `${iti.district}, Delhi`], ['Institute code', iti.code], ['Cluster role', iti.kind === 'hub' ? 'Shared training and technical support' : 'Core trades; hub for specialist labs'], ['Registry', iti.registryConnected ? 'Connected' : 'Not yet connected'], ['Operating context', `Year 1 of the five-year plan · ₹${iti.fiveYearCr} Cr`]].map(([k, v]) => <div key={k} className="flex gap-3 border-b border-bdr-light/70 py-1.5"><dt className="w-36 text-txt-tertiary flex-shrink-0">{k}</dt><dd className="font-semibold text-txt-primary min-w-0 flex-1">{v}</dd></div>)}
+                </dl>
+              </Section>
+              <StatGrid>
+                <Stat label="Active students" value={students.registryConnected ? students.active.toLocaleString('en-IN') : '—'} sub={students.registryConnected ? `${students.women} women · ${students.pwd} PwD · open roster` : 'registry not connected'} tone="indigo" onClick={() => openCanvas({ type: 'batches', itiId: iti.id })} />
+                <Stat label="Annual places (Y1)" value={iti.seatCapacity} sub={`baseline enrolments ${iti.baselineSeats}`} tone="sky" onClick={() => setTab('trades')} />
+                <Stat label="Trainers" value={`${staffing.registryTrainers || '—'}`} sub={`baseline ${staffing.baseline} · Y1 plan ${staffing.plan.Y1}`} tone="emerald" onClick={() => openCanvas({ type: 'cluster_registry', tab: 'trainers', filters: { scope: iti.id } })} />
+                <Stat label="Year-1 tasks" value={`${tasks.filter(t => ['completed', 'reviewed'].includes(t.state)).length}/${tasks.length}`} sub={`${tasks.filter(t => t.overdue).length} overdue`} tone={tasks.some(t => t.overdue) ? 'rose' : 'teal'} onClick={() => openCanvas({ type: 'annual_plan', itiId: iti.id })} />
+              </StatGrid>
+              <Section title="Campus & access" right={<button className="text-[11px] text-primary font-bold" onClick={() => setTab('infrastructure')}>Explore facilities and labs →</button>}>
+                <dl className="text-[12px]">
+                  {[['Teaching spaces', `${iti.roomsWorking} of ${iti.roomsBaseline} rooms working · Year-5 target ${iti.roomsY5}`], ['Workshops and labs', `${facilities.filter(f => f.kind !== 'space' && f.status !== 'being_set_up').length} in use · ${facilities.filter(f => f.status === 'being_set_up').length} being set up`], ['Shared facilities', facilities.filter(f => /Shared/.test(f.sharing)).map(f => f.name).slice(0, 3).join(', ') || '—'], ['Works on campus', `${facilities.filter(f => f.kind === 'space').length} civil packages · ${infrastructure.civil.filter(w => w.state === 'delayed').length} delayed`], ['Machines', `${infrastructure.machines.filter(m => ['functional', 'installed'].includes(m.status)).length} of ${infrastructure.machines.length} functional`], ['Access', 'Accessibility, sanitation and safety works in progress']].map(([k, v]) => <div key={k} className="flex gap-3 border-b border-bdr-light/70 py-1.5"><dt className="w-36 text-txt-tertiary flex-shrink-0">{k}</dt><dd className="font-semibold text-txt-primary min-w-0 flex-1">{v}</dd></div>)}
+                </dl>
+              </Section>
+            </div>
+            <div className="space-y-4">
+              <Section title="Leadership & contacts">
+                <ul className="space-y-2.5 text-[12px]">
+                  {[contacts.principal, contacts.placement].filter(Boolean).map(c => <li key={c.role} className="flex items-center gap-3"><span className="w-9 h-9 rounded-full bg-primary-light text-primary-dark font-bold flex items-center justify-center text-[12px]">{c.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span><div className="min-w-0"><div className="font-bold text-txt-primary truncate">{c.name}</div><div className="text-[10px] text-txt-tertiary">{c.role}{c.phone ? ` · ${c.phone}` : ''}</div></div></li>)}
+                </ul>
+                <button className="mt-3 text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'cluster_registry', tab: 'trainers', filters: { scope: iti.id } })}>Open linked staff records →</button>
+              </Section>
+              <Section title="Connected sections">
+                <ul className="divide-y divide-bdr-light text-[12px]">
+                  {[['Students & trainers', () => openCanvas({ type: 'cluster_registry', tab: 'students', filters: { scope: iti.id } })], ['Daily operations', () => openCanvas({ type: 'daily_operations', tab: 'attendance', filters: { scope: iti.id } })], ['Employer & placement view', () => openCanvas({ type: 'placement_pipeline', itiId: iti.id })], ['AOP allocation & releases', () => openCanvas({ type: 'budget_analytics', tab: 'overview', filters: { itiId: iti.id } })]].map(([l, fn]) => <li key={l}><button onClick={fn} className="w-full flex items-center justify-between py-2 text-left hover:text-primary"><span className="font-semibold">{l}</span><span className="text-primary">→</span></button></li>)}
+                </ul>
+              </Section>
+            </div>
+          </div>
+        </>)}
+        {tab === 'overview' && role !== 'spv_ceo' && (<>
           <StatGrid>
             <Stat label="Active students" value={students.registryConnected ? students.active.toLocaleString('en-IN') : '—'} sub={students.registryConnected ? `${students.women} women · ${students.pwd} PwD · open roster` : 'registry not connected'} tone="indigo" onClick={() => openCanvas({ type: 'batches', itiId: iti.id })} />
             <Stat label="Annual places (Y1)" value={iti.seatCapacity} sub={`baseline enrolments ${iti.baselineSeats}`} tone="sky" />
@@ -51,20 +98,7 @@ export default function InstituteProfileCanvas({ context }) {
             <ul className="text-[12px] space-y-1 text-txt-secondary"><li><b>Budgets</b> — SIP section 7 ITI envelope, derived package allocation (66 packages cluster-wide).</li><li><b>Staff and rooms</b> — planning values; confirm against the sanctioned strength.</li><li><b>Intake</b> — course annual plan (places, enrolments by period); actual Year-1 enrolments from the registry where connected.</li><li><b>Gates</b> — one row per prerequisite per new offering (space, staff, course route, students).</li></ul>
           </Section>
         </>)}
-        {tab === 'trades' && (<>
-          <Section title="SIP offerings" hint="Places and planned enrolments by period; Y1 actual from the registry where connected.">
-            <Table columns={[
-              { key: 'trade', label: 'Course', render: r => <div><div className="font-semibold">{r.trade.name}</div><div className="text-[10px] text-txt-tertiary">{r.trade.code} · {titleCase(r.trade.kind)} · launch {r.launch}</div></div> },
-              ...periods.map((p, i) => ({ key: p, label: p, align: 'right', render: r => r.plans[i] ? <span>{r.plans[i].enrolments}<span className="text-txt-tertiary">/{r.plans[i].places}</span></span> : '—' })),
-              { key: 'actualY1', label: 'Y1 actual', align: 'right', render: r => r.actualY1 == null ? <span className="text-txt-tertiary">—</span> : <b>{r.actualY1}</b> },
-              { key: 'running', label: 'Batches now', align: 'right', render: r => r.runningBatches ? `${r.runningBatches} (${r.enrolledNow})` : '—' },
-              { key: 'gates', label: 'Gates', render: r => r.gates.length ? <Pill kind={r.gates.every(g => g.state === 'passed') ? 'ok' : r.gates.some(g => g.state === 'ready') ? 'warn' : 'info'}>{r.gates.filter(g => g.state === 'passed').length}/{r.gates.length}</Pill> : <span className="text-txt-tertiary">existing</span> },
-            ]} rows={trades} />
-          </Section>
-          {otherTrades.length > 0 && <Section title="Registry programmes counted under OTH" hint="Running batches in the registry that the SIP aggregates as 'other trades'.">
-            <div className="flex flex-wrap gap-2">{otherTrades.map(t => <span key={t.tradeId} className="text-[11px] rounded-pill bg-surface-page px-2.5 py-1"><b>{t.tradeId}</b> · {t.batches} batches · {t.enrolled} students</span>)}</div>
-          </Section>}
-        </>)}
+        {tab === 'trades' && <TradeOfferings trades={trades} otherTrades={otherTrades} kb={kb} facilities={facilities} iti={iti} periods={periods} facilityPick={facilityPick} onClearPick={() => setFacilityPick(null)} onOpen={setCourse} />}
         {tab === 'staffing' && (<>
           <StatGrid>
             <Stat label="Trainers in registry" value={nil(staffing.registryTrainers || null)} sub={iti.registryConnected ? 'faculty file' : 'no feed'} tone="indigo" />
@@ -77,18 +111,7 @@ export default function InstituteProfileCanvas({ context }) {
           </Section>
           <Section title="Trainer plan by year"><div className="grid grid-cols-5 gap-2">{['Y1', 'Y2', 'Y3', 'Y4', 'Y5'].map(y => <div key={y} className="rounded-xl bg-surface-page p-2 text-center"><div className="text-[10px] text-txt-tertiary">{y}</div><div className="text-[16px] font-bold">{staffing.plan[y]}</div></div>)}</div></Section>
         </>)}
-        {tab === 'infrastructure' && (<>
-          <StatGrid>
-            <Stat label="Rooms baseline" value={infrastructure.rooms.baseline} tone="slate" />
-            <Stat label="Rooms working" value={infrastructure.rooms.working} tone={infrastructure.rooms.working < infrastructure.rooms.baseline ? 'amber' : 'emerald'} />
-            <Stat label="Rooms Y5" value={infrastructure.rooms.y5} tone="indigo" />
-            <Stat label="Machines" value={infrastructure.machines.length} sub={`${infrastructure.machines.filter(m => m.status === 'functional').length} functional`} tone="teal" onClick={() => openCanvas({ type: 'machines_infra', itiId: iti.id })} />
-          </StatGrid>
-          <Section title="Civil packages at this ITI" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'civil_works' })}>Civil works →</button>}>
-            {infrastructure.civil.map(w => <div key={w.id} className="mb-2"><div className="flex justify-between text-[12px]"><span className="font-semibold">{w.packageId} · {w.title}</span><Pill kind={stateKind(w.state)}>{w.state.replace(/_/g, ' ')}</Pill></div><Bar pct={w.pctComplete} tone={w.state === 'delayed' ? 'rose' : 'auto'} /><div className="text-[10px] text-txt-tertiary">{fmtCr(w.budgetCr)} · {w.unitsAccepted}/{w.workUnits} work units accepted · due {fmtDate(w.scheduledCompletion)}</div></div>)}
-          </Section>
-          <Section title="Machines"><Table columns={[{ key: 'name', label: 'Asset' }, { key: 'trade', label: 'Trade', render: r => r.trade?.code || '—' }, { key: 'status', label: 'Status', render: r => <Pill kind={stateKind(r.status)}>{titleCase(r.status)}</Pill> }, { key: 'source', label: 'Source', render: r => titleCase(r.source) }, { key: 'packageId', label: 'Package', render: r => r.packageId || '—' }]} rows={infrastructure.machines} /></Section>
-        </>)}
+        {tab === 'infrastructure' && <FacilitiesDirectory facilities={facilities} iti={iti} infrastructure={infrastructure} onOpen={setFacility} openCanvas={openCanvas} />}
         {tab === 'budget' && (<>
           <StatGrid>
             <Stat label="Five-year anchor" value={fmtCr(targets.fiveYearCr)} tone="indigo" />
@@ -129,6 +152,145 @@ export default function InstituteProfileCanvas({ context }) {
             ]} rows={gates} />}
           </Section>
         )}
+      </div>
+      {course && <CoursePopup t={course} kb={kb[course.trade.code]} facility={facilities.find(f => f.linkedTrades.includes(course.trade.code) && f.kind !== 'space')} iti={iti} periods={periods} onClose={() => setCourse(null)} onBatches={() => { setCourse(null); openCanvas({ type: 'batches', itiId: iti.id }) }} onWorkshop={() => openFacilityFor(course.trade.code)} />}
+      {facility && <FacilityPopup f={facility} trades={trades} iti={iti} onClose={() => setFacility(null)} onCourses={() => openCoursesFor(facility)} onMachines={() => { setFacility(null); openCanvas({ type: 'machines_infra', itiId: iti.id }) }} />}
+    </div>
+  )
+}
+
+const KIND_LABEL = { existing_core: 'Long-term trade', new_specialist: 'New specialist programme', short_term: 'Short-term programme', aggregate: 'Portfolio' }
+const offered = t => /Existing/i.test(t.launch || '')
+
+function TradeOfferings({ trades, otherTrades, kb, facilities, iti, periods, facilityPick, onClearPick, onOpen }) {
+  const [q, setQ] = useState('')
+  const [kind, setKind] = useState('all')
+  const [status, setStatus] = useState('all')
+  const list = trades.filter(t => t.trade.kind !== 'aggregate')
+    .filter(t => !facilityPick || facilityPick.linkedTrades.includes(t.trade.code))
+    .filter(t => kind === 'all' || t.trade.kind === kind)
+    .filter(t => status === 'all' || (status === 'offered' ? offered(t) : !offered(t)))
+    .filter(t => !q || `${t.trade.name} ${t.trade.code}`.toLowerCase().includes(q.toLowerCase()))
+  const planned = trades.filter(t => t.trade.kind !== 'aggregate' && !offered(t))
+  return (
+    <div className="space-y-4">
+      {facilityPick && <div className="rounded-xl bg-primary-light/40 border border-primary/20 px-3 py-2 text-[12px] flex items-center gap-2"><span>Courses linked to <b>{facilityPick.name}</b></span><button className="ml-auto text-primary font-bold" onClick={onClearPick}>Show all courses</button></div>}
+      <Section title="Trade offerings" hint="Programme details and linked training spaces. Tap a course for its profile.">
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          <label className="relative"><Search className="w-3.5 h-3.5 absolute left-2 top-2.5 text-txt-tertiary" /><input className={`${inputCls} pl-7 w-[200px]`} placeholder="Search courses" value={q} onChange={e => setQ(e.target.value)} /></label>
+          <select className={inputCls + ' w-auto'} value={kind} onChange={e => setKind(e.target.value)}><option value="all">Programme type: All</option><option value="existing_core">Long-term trades</option><option value="new_specialist">New specialist</option><option value="short_term">Short-term</option></select>
+          <select className={inputCls + ' w-auto'} value={status} onChange={e => setStatus(e.target.value)}><option value="all">Status: All</option><option value="offered">Offered</option><option value="planned">Planned</option></select>
+        </div>
+        <Table columns={[
+          { key: 'name', label: 'Course', render: r => <button className="text-left hover:text-primary" onClick={() => onOpen(r)}><div className="font-semibold">{r.trade.name}</div><div className="text-[10px] text-txt-tertiary">Code: {r.trade.code} · NSQF {r.trade.nsqfLevel}</div></button> },
+          { key: 'kind', label: 'Type', render: r => KIND_LABEL[r.trade.kind] || titleCase(r.trade.kind) },
+          { key: 'status', label: 'Status', render: r => offered(r) ? <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Offered · Year-1 intake</span> : <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Planned · launch {r.launch}</span> },
+          { key: 'y1', label: 'Y1 enrol / places', align: 'right', render: r => r.plans[1] ? `${r.plans[1].enrolments} / ${r.plans[1].places}` : '—' },
+          { key: 'batches', label: 'Batches now', align: 'right', render: r => r.runningBatches ? `${r.runningBatches} (${r.enrolledNow})` : '—' },
+          { key: 'open', label: '', align: 'right', render: r => <Btn small tone="ghost" onClick={() => onOpen(r)}>View details</Btn> },
+        ]} rows={list} empty="No courses match." />
+      </Section>
+      {planned.length > 0 && !facilityPick && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-3.5">
+          <div className="text-[12px] font-bold text-txt-primary mb-1.5">Planned programmes</div>
+          <ul className="space-y-1 text-[12px]">{planned.map(t => <li key={t.id} className="flex items-center gap-2 flex-wrap"><b>{t.trade.name}</b><Pill kind="warn">{KIND_LABEL[t.trade.kind]}</Pill><span className="text-txt-secondary">Launch {t.launch} · not open for Year-1 admission</span><button className="ml-auto text-primary font-bold" onClick={() => onOpen(t)}>View programme reference →</button></li>)}</ul>
+        </div>
+      )}
+      {otherTrades.length > 0 && <Section title="Registry programmes counted under OTH" hint="Running batches in the registry that the SIP aggregates as 'other trades'."><div className="flex flex-wrap gap-2">{otherTrades.map(t => <span key={t.tradeId} className="text-[11px] rounded-pill bg-surface-page px-2.5 py-1"><b>{t.tradeId}</b> · {t.batches} batches · {t.enrolled} students</span>)}</div></Section>}
+    </div>
+  )
+}
+
+function CoursePopup({ t, kb, facility, iti, periods, onClose, onBatches, onWorkshop }) {
+  const tr = t.trade
+  const dur = tr.durationUnit === 'hours' ? `${tr.durationValue} hours` : `${tr.durationValue} ${tr.durationUnit}`
+  return (
+    <Popup onClose={onClose} eyebrow={`Course · ${tr.code}`} title={tr.name} sub={`${KIND_LABEL[tr.kind] || titleCase(tr.kind)} · ${offered(t) ? 'Offered · Year-1 intake' : `Planned · launch ${t.launch}`}`}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">
+        <div className="rounded-xl bg-surface-page p-2.5 space-y-1">
+          <div className="text-[10px] uppercase font-bold text-txt-tertiary">Course profile</div>
+          {[['Duration', dur], ['Total hours', tr.totalHours ? tr.totalHours.toLocaleString('en-IN') : '—'], ['NSQF level', tr.nsqfLevel], ['Entry requirement', kb?.entryQualification || tr.entryAssumption || '—'], ['Practical focus', kb?.practicalFocus || tr.roleDirection || '—'], ['Sample project', kb?.sampleProject || '—'], ['Job family', kb?.jobFamily || tr.roleDirection || '—']].map(([k, v]) => <div key={k} className="flex gap-2"><span className="w-28 flex-shrink-0 text-txt-tertiary">{k}</span><span className="font-semibold">{v}</span></div>)}
+        </div>
+        <div className="rounded-xl bg-surface-page p-2.5 space-y-1">
+          <div className="text-[10px] uppercase font-bold text-txt-tertiary">Places and intake</div>
+          {periods.map((p, i) => t.plans[i] ? <div key={p} className="flex gap-2"><span className="w-28 flex-shrink-0 text-txt-tertiary">{p}</span><span className="font-semibold">{t.plans[i].enrolments} <span className="text-txt-tertiary font-normal">/ {t.plans[i].places} places</span>{p === 'Y1' && t.actualY1 != null ? <span className="text-emerald-700 font-bold"> · actual {t.actualY1}</span> : ''}</span></div> : null)}
+          <div className="flex gap-2 pt-1"><span className="w-28 flex-shrink-0 text-txt-tertiary">Batches now</span><span className="font-semibold">{t.runningBatches ? `${t.runningBatches} batches · ${t.enrolledNow} students` : 'none running'}</span></div>
+          <div className="flex gap-2"><span className="w-28 flex-shrink-0 text-txt-tertiary">Linked facility</span><span className="font-semibold">{facility ? facility.name : 'to be set up'}</span></div>
+          {t.note && <div className="flex gap-2"><span className="w-28 flex-shrink-0 text-txt-tertiary">Space note</span><span>{t.note}</span></div>}
+        </div>
+      </div>
+      {t.gates?.length > 0 && <div className="mt-3 text-[11px] text-txt-secondary">Launch gates: {t.gates.filter(g => g.state === 'passed').length} of {t.gates.length} passed{t.gates.some(g => g.state === 'ready') ? ` · ${t.gates.filter(g => g.state === 'ready').length} ready` : ''}.</div>}
+      <div className="mt-4 flex gap-2 justify-end flex-wrap"><Btn small tone="ghost" onClick={onClose}>Close</Btn>{facility && <Btn small tone="ghost" onClick={onWorkshop}>Open linked workshop</Btn>}{t.runningBatches > 0 && <Btn small onClick={onBatches}>View batches in registry</Btn>}</div>
+    </Popup>
+  )
+}
+
+function FacilitiesDirectory({ facilities, iti, infrastructure, onOpen, openCanvas }) {
+  const [q, setQ] = useState('')
+  const [kind, setKind] = useState('all')
+  const [sharing, setSharing] = useState('all')
+  const list = facilities.filter(f => kind === 'all' || f.kind === kind).filter(f => sharing === 'all' || (sharing === 'shared' ? /Shared|shared/.test(f.sharing) : !/Shared|shared/.test(f.sharing))).filter(f => !q || `${f.name} ${f.purpose} ${f.linkedTrades.join(' ')}`.toLowerCase().includes(q.toLowerCase()))
+  const down = infrastructure.machines.filter(m => m.status === 'non_functional').length
+  return (
+    <div className="space-y-4">
+      <StatGrid>
+        <Stat label="Workshops and labs" value={facilities.filter(f => f.kind !== 'space').length} sub={`${facilities.filter(f => f.kind !== 'space' && f.status === 'being_set_up').length} being set up`} tone="indigo" />
+        <Stat label="Rooms working" value={`${iti.roomsWorking}/${iti.roomsBaseline}`} sub={`Year-5 target ${iti.roomsY5}`} tone={iti.roomsWorking < iti.roomsBaseline ? 'amber' : 'emerald'} />
+        <Stat label="Machines functional" value={`${infrastructure.machines.filter(m => ['functional', 'installed'].includes(m.status)).length}/${infrastructure.machines.length}`} sub={down ? `${down} not functional` : 'all working'} tone={down ? 'rose' : 'emerald'} onClick={() => openCanvas({ type: 'machines_infra', itiId: iti.id })} />
+        <Stat label="Works on campus" value={facilities.filter(f => f.kind === 'space').length} sub={`${facilities.filter(f => f.status === 'delayed').length} delayed`} tone="amber" onClick={() => openCanvas({ type: 'civil_works', itiId: iti.id })} />
+      </StatGrid>
+      <Section title="Facility directory" hint="Workshops, labs and spaces, with the courses that use them. Tap a facility for its details.">
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          <label className="relative"><Search className="w-3.5 h-3.5 absolute left-2 top-2.5 text-txt-tertiary" /><input className={`${inputCls} pl-7 w-[200px]`} placeholder="Search facilities" value={q} onChange={e => setQ(e.target.value)} /></label>
+          <select className={inputCls + ' w-auto'} value={kind} onChange={e => setKind(e.target.value)}><option value="all">Facility type: All</option><option value="workshop">Workshops</option><option value="lab">Labs</option><option value="space">Spaces and works</option></select>
+          <select className={inputCls + ' w-auto'} value={sharing} onChange={e => setSharing(e.target.value)}><option value="all">Sharing: All</option><option value="shared">Shared</option><option value="institute">Institute only</option></select>
+        </div>
+        <Table columns={[
+          { key: 'name', label: 'Facility', render: r => <button className="text-left hover:text-primary" onClick={() => onOpen(r)}><div className="font-semibold">{r.name}</div><div className="text-[10px] text-txt-tertiary">{KIND[r.kind]} · {r.location}</div></button> },
+          { key: 'purpose', label: 'Purpose', render: r => <span className="text-[11px]">{r.purpose}</span> },
+          { key: 'trades', label: 'Courses', render: r => <span className="text-[11px]">{r.linkedTrades.length ? r.linkedTrades.join(', ') : '—'}</span> },
+          { key: 'status', label: 'Status', render: r => <Pill kind={STATUS[r.status]?.kind || 'neutral'}>{STATUS[r.status]?.label || r.status}</Pill> },
+          { key: 'open', label: '', align: 'right', render: r => <Btn small tone="ghost" onClick={() => onOpen(r)}>Details</Btn> },
+        ]} rows={list} empty="No facilities match." />
+      </Section>
+    </div>
+  )
+}
+
+function FacilityPopup({ f, trades, iti, onClose, onCourses, onMachines }) {
+  const st = STATUS[f.status] || { kind: 'neutral', label: f.status }
+  const courseNames = f.linkedTrades.map(c => trades.find(t => t.trade.code === c)?.trade.name || c)
+  return (
+    <Popup onClose={onClose} eyebrow={`${KIND[f.kind]} · ${iti.name}`} title={f.name} sub={`${f.location} · ${f.sharing}`}>
+      <div className="flex items-center gap-2 mb-3"><Pill kind={st.kind}>{st.label}</Pill>{f.budgetCr != null && <span className="text-[11px] text-txt-secondary">{fmtCr(f.budgetCr)} package{f.packageId ? ` · ${f.packageId}` : ''}</span>}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">
+        <div className="rounded-xl bg-surface-page p-2.5 space-y-1">
+          <div className="text-[10px] uppercase font-bold text-txt-tertiary">Purpose and use</div>
+          <div className="font-semibold">{f.purpose}</div>
+          <div className="pt-1"><span className="text-txt-tertiary">Relevant for: </span><span className="font-semibold">{courseNames.length ? courseNames.join(', ') : 'all courses'}</span></div>
+          <div><span className="text-txt-tertiary">Shared access: </span><span className="font-semibold">{f.sharing}</span></div>
+          {f.progressPct != null && f.kind !== 'workshop' && <div className="pt-1"><Bar pct={f.progressPct} label={`${f.progressPct}% ${f.kind === 'space' ? 'built' : 'set up'}${f.scheduledCompletion ? ` · due ${fmtDate(f.scheduledCompletion)}` : ''}`} tone={f.status === 'delayed' ? 'rose' : 'auto'} /></div>}
+          {f.procurementState && <div className="text-[11px] text-txt-secondary">Procurement: {titleCase(f.procurementState)}</div>}
+        </div>
+        <div className="rounded-xl bg-surface-page p-2.5 space-y-1">
+          <div className="text-[10px] uppercase font-bold text-txt-tertiary">Equipment</div>
+          {f.machines ? (<>
+            <div className="font-semibold">{f.machines.functional} of {f.machines.total} functional{f.machines.nonFunctional ? <span className="text-rose-700"> · {f.machines.nonFunctional} down</span> : ''}{f.machines.awaiting ? ` · ${f.machines.awaiting} awaiting commissioning` : ''}{f.machines.ordered ? ` · ${f.machines.ordered} ordered` : ''}</div>
+            <ul className="text-[11px] space-y-0.5 pt-1">{f.machines.items.slice(0, 8).map(m => <li key={m.name} className={m.status === 'non_functional' ? 'text-rose-700 font-semibold' : ''}>{m.name} <span className="text-txt-tertiary">· {titleCase(m.status)}</span></li>)}</ul>
+          </>) : <div className="text-txt-secondary">Equipment arrives with the package; machines appear on the register once commissioned.</div>}
+        </div>
+      </div>
+      <div className="mt-4 flex gap-2 justify-end flex-wrap"><Btn small tone="ghost" onClick={onClose}>Close</Btn>{f.machines && <Btn small tone="ghost" onClick={onMachines}>Open machine register</Btn>}{f.linkedTrades.length > 0 && <Btn small onClick={onCourses}>View linked courses</Btn>}</div>
+    </Popup>
+  )
+}
+
+function Popup({ eyebrow, title, sub, children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 p-3" onClick={onClose}>
+      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-modal overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="px-4 py-3 border-b border-bdr-light flex items-start gap-3"><div className="flex-1 min-w-0"><div className="text-[10px] uppercase tracking-wider font-bold text-primary">{eyebrow}</div><div className="text-[15px] font-bold text-txt-primary mt-0.5">{title}</div>{sub && <div className="text-[11px] text-txt-secondary">{sub}</div>}</div><button onClick={onClose} className="p-1.5 rounded-pill hover:bg-slate-100"><X className="w-4 h-4 text-txt-secondary" /></button></div>
+        <div className="p-4 overflow-y-auto">{children}</div>
       </div>
     </div>
   )

@@ -69,7 +69,7 @@ r.get('/itis/:code/profile', async (req, res, next) => {
   try {
     let iti = req.params.code === 'mine' ? await itiFor(req.user) : await prisma.iti.findFirst({ where: { OR: [{ code: req.params.code }, { id: req.params.code }] } })
     if (!iti) { const c = await clusterFor(req.user); iti = await prisma.iti.findFirst({ where: { clusterId: c.id, kind: 'hub' } }) }
-    const [principal, kpis] = await Promise.all([iti.principalUserId ? prisma.user.findUnique({ where: { id: iti.principalUserId }, select: { name: true, loginId: true } }) : null, prisma.kpi.findMany({ where: { clusterId: iti.clusterId }, orderBy: { code: 'asc' } })])
+    const [principal, kpis, kb, procurement] = await Promise.all([iti.principalUserId ? prisma.user.findUnique({ where: { id: iti.principalUserId }, select: { name: true, loginId: true, phone: true } }) : null, prisma.kpi.findMany({ where: { clusterId: iti.clusterId }, orderBy: { code: 'asc' } }), prisma.kbCourse.findMany({ where: { itiCode: iti.code } }), prisma.procurementPackage.findMany({ where: { forItiCodes: { contains: iti.code } }, select: { code: true, title: true, state: true, category: true } })])
     const [offerings, packages, aops, tasks, gates, machines, civil, trainers, assignments, batches, activeStudents, women, pwd] = await Promise.all([
       prisma.offering.findMany({ where: { itiId: iti.id }, include: { trade: true, plans: { orderBy: { period: 'asc' } } } }),
       prisma.package.findMany({ where: { itiId: iti.id }, orderBy: { id: 'asc' } }),
@@ -99,7 +99,30 @@ r.get('/itis/:code/profile', async (req, res, next) => {
     const staffing = { registryTrainers: trainers.length, assignedTrainers: trainerIds.size, baseline: iti.trainersBaseline, plan: J(iti.trainerPlan, {}), byProgramme: {}, leads: assignments.filter(a => a.responsibility.startsWith('Batch lead')).length }
     for (const t of trainers) { const p = J(t.profile, {}); staffing.byProgramme[p.programme] = (staffing.byProgramme[p.programme] || 0) + 1 }
     const budget = packages.map(p => ({ ...p, yearly: J(p.yearly, {}), aops: aops.filter(a => a.packageId === p.id) }))
-    res.json({ iti: { ...iti, principal, profileSections: J(iti.profileSections, {}), trainerPlan: J(iti.trainerPlan, {}) }, kpis: kpis.map(k => ({ ...k, targets: J(k.targets, {}) })), students: { active: activeStudents, women, pwd, registryConnected: iti.registryConnected },
+    // Facilities and labs: trade workshops from the machine register, new
+    // specialist labs from the equipment packages, spaces from civil works.
+    const LAB_NAME = { electrical: 'Electrical workshop', mechanical: 'Fitting workshop', welding: 'Welding shop', machine_shop: 'Machine shop', it: 'Computer lab', electronics: 'Electronics lab', automation: 'Automation lab', hvac: 'HVAC lab', automotive: 'Automotive workshop' }
+    const tradeName = code => offerings.find(o => o.trade.code === code)?.trade.name || code
+    const scopeCodes = sc => (sc || '').startsWith('Shared') ? offerings.filter(o => o.trade.kind !== 'aggregate').map(o => o.trade.code) : (sc || '').split(/\s+/).filter(Boolean)
+    const facilities = []
+    const byTrade = {}
+    for (const m of machines) { const k = m.trade?.code || m.category; (byTrade[k] ||= { code: m.trade?.code || null, category: m.category, machines: [] }).machines.push(m) }
+    for (const g of Object.values(byTrade)) {
+      const ms = g.machines, cnt = st => ms.filter(m => m.status === st).length
+      const live = cnt('functional') + cnt('installed')
+      facilities.push({ id: `FAC-${iti.code}-${g.code || g.category}`, kind: g.category === 'it' ? 'lab' : 'workshop', name: LAB_NAME[g.category] || (g.code ? `${tradeName(g.code)} workshop` : `${g.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} equipment`), location: g.category === 'it' ? 'Academic block' : 'Workshop block', purpose: g.code ? `${tradeName(g.code)} practical training` : 'Shared practical equipment', linkedTrades: g.code ? [g.code] : [], sharing: g.category === 'it' || !g.code ? 'Shared across courses' : 'Institute', status: !live && (cnt('ordered') + cnt('awaiting_commissioning')) ? 'being_set_up' : cnt('non_functional') ? 'partly_down' : 'in_use', machines: { total: ms.length, functional: cnt('functional') + cnt('installed'), nonFunctional: cnt('non_functional'), awaiting: cnt('awaiting_commissioning'), ordered: cnt('ordered'), items: ms.map(m => ({ name: m.name, status: m.status })) } })
+    }
+    for (const p of packages.filter(x => x.category === 'Equipment')) {
+      const a = aops.find(x => x.packageId === p.id && x.year === 1)
+      const proc = procurement.find(x => x.title === p.title) || null
+      facilities.push({ id: `FAC-${p.id}`, kind: 'lab', name: p.title, location: 'Specialist block (planned)', purpose: p.deliverable || 'Specialist equipment and practice setup', linkedTrades: scopeCodes(p.courseScope), sharing: (p.courseScope || '').startsWith('Shared') ? 'Shared across courses' : iti.kind === 'hub' ? 'Hub specialist lab · shared with spokes' : 'Institute', status: a?.progressPct >= 100 ? 'ready' : 'being_set_up', packageId: p.id, budgetCr: p.totalCr, progressPct: a?.progressPct ?? 0, procurementState: proc?.state || null, machines: null })
+    }
+    for (const w of civil) {
+      const p = packages.find(x => x.id === w.packageId)
+      facilities.push({ id: `FAC-${w.id}`, kind: 'space', name: w.title, location: 'Campus', purpose: p?.deliverable || 'Teaching and service spaces', linkedTrades: scopeCodes(p?.courseScope), sharing: 'Institute', status: w.pctComplete >= 100 ? 'ready' : w.state === 'delayed' ? 'delayed' : 'under_construction', packageId: w.packageId, budgetCr: w.budgetCr, progressPct: w.pctComplete, scheduledCompletion: w.scheduledCompletion, machines: null })
+    }
+    const contacts = { principal: principal ? { name: principal.name, loginId: principal.loginId, phone: principal.phone, role: 'Institute principal' } : null, placement: { name: 'SPV placement cell', role: 'SPV-IEPC · placement coordination', phone: null } }
+    res.json({ iti: { ...iti, principal, profileSections: J(iti.profileSections, {}), trainerPlan: J(iti.trainerPlan, {}) }, kpis: kpis.map(k => ({ ...k, targets: J(k.targets, {}) })), kb: Object.fromEntries(kb.map(k => [k.programCode, k])), facilities, contacts, students: { active: activeStudents, women, pwd, registryConnected: iti.registryConnected },
       trades, otherTrades: Object.values(otherTrades), staffing, infrastructure: { rooms: { baseline: iti.roomsBaseline, working: iti.roomsWorking, y5: iti.roomsY5 }, machines, civil },
       budget, targets: { fiveYearCr: iti.fiveYearCr, civilCr: iti.civilCr, digitalCr: iti.digitalCr, plannedCr: +packages.reduce((s, p) => s + p.totalCr, 0).toFixed(2) }, gates, tasks: tasks.map(taskView) })
   } catch (e) { next(e) }
