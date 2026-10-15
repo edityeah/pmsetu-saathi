@@ -108,6 +108,8 @@ export const api = {
 
   // Module D — placement
   employers:       () => req('GET', '/api/placement/employers'),
+  placementAnalytics: (o) => req('GET', `/api/placement/analytics${q(o)}`),
+  employerProfile: (id) => req('GET', `/api/placement/employers/${id}/profile`),
   createEmployer:  (body) => req('POST', '/api/placement/employers', body),
   updateEmployer:  (id, body) => req('POST', `/api/placement/employers/${id}/update`, body),
   opportunities:   (o) => req('GET', `/api/placement/opportunities${q(o)}`),

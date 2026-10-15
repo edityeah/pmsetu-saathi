@@ -268,4 +268,77 @@ r.post('/feedback', requireRole('employer', 'spv_ceo', 'iti_principal'), async (
   } catch (e) { next(e) }
 })
 
+// ── Section 5: placement analytics and the employer directory ──────────────
+const STAGE_ORDER = ['interested', 'prepared', 'referred', 'applied', 'interviewed', 'offered', 'joined']
+const stageRank = st => st === 'follow_up' ? 7 : STAGE_ORDER.indexOf(st) + 1   // declined / withdrawn / not_selected rank 0
+const J2 = (s, d) => { try { return JSON.parse(s) } catch { return d } }
+
+r.get('/analytics', async (req, res, next) => {
+  try {
+    const c = await clusterFor(req.user)
+    const itis = await prisma.iti.findMany({ where: { clusterId: c.id }, orderBy: [{ kind: 'asc' }, { code: 'asc' }], select: { id: true, code: true, name: true } })
+    let itiIds = itis.map(i => i.id)
+    if (req.user.role === 'iti_principal' || req.user.role === 'trainer') { const i = await itiFor(req.user); itiIds = i ? [i.id] : [] }
+    else if (req.query.itiId && req.query.itiId !== 'all') itiIds = [String(req.query.itiId)]
+    const trade = req.query.trade && req.query.trade !== 'all' ? String(req.query.trade) : null
+    const type = req.query.type && req.query.type !== 'all' ? String(req.query.type) : null
+    const employerId = req.query.employerId && req.query.employerId !== 'all' ? String(req.query.employerId) : null
+    const asOf = req.query.asOf ? new Date(String(req.query.asOf) + 'T23:59:59Z') : new Date()
+    const appWhere = { trainee: { itiId: { in: itiIds }, ...(trade ? { batch: { tradeId: trade } } : {}) }, lastEventAt: { lte: asOf }, ...(type || employerId ? { opportunity: { ...(type ? { type } : {}), ...(employerId ? { employerId } : {}) } } : {}) }
+    const [apps, spells, opps, pool, trades, employers] = await Promise.all([
+      prisma.application.findMany({ where: appWhere, select: { id: true, traineeId: true, stage: true, evidenceLevel: true, joinedAt: true, offerWage: true, opportunity: { select: { type: true, employerId: true } }, trainee: { select: { itiId: true, gender: true } } } }),
+      prisma.employmentSpell.findMany({ where: { trainee: { itiId: { in: itiIds } }, ...(type ? { type } : {}), ...(employerId ? { employerId } : {}), startAt: { lte: asOf } }, include: { followUps: true } }),
+      prisma.opportunity.findMany({ where: { clusterId: c.id, status: 'live', ...(type ? { type } : {}), ...(employerId ? { employerId } : {}) }, select: { openings: true, filled: true } }),
+      prisma.trainee.findMany({ where: { itiId: { in: itiIds }, ...(trade ? { batch: { tradeId: trade } } : {}), OR: [{ status: 'completed' }, { applications: { some: {} } }, { spells: { some: {} } }] }, select: { id: true, itiId: true } }),
+      prisma.trade.findMany({ where: { batches: { some: { itiId: { in: itiIds } } } }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+      prisma.employer.findMany({ where: { clusterId: c.id }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    ])
+    // Distinct people per stage: a person counts at every stage they reached.
+    const best = {}
+    for (const a of apps) { const r = stageRank(a.stage); if (r > (best[a.traineeId] || 0)) best[a.traineeId] = r }
+    const reached = k => Object.values(best).filter(r => r >= k).length
+    const funnel = [{ stage: 'Eligible', n: pool.length }, ...STAGE_ORDER.map((st, i) => ({ stage: st === 'referred' ? 'Applied / referred' : st.charAt(0).toUpperCase() + st.slice(1), n: reached(i + 1) }))]
+    // Collapse referred + applied into one step as in the brief.
+    const f2 = funnel.filter(x => x.stage !== 'Applied'); f2.find(x => x.stage === 'Applied / referred').n = reached(3)
+    for (let i = 1; i < f2.length; i++) f2[i].pct = f2[i - 1].n ? Math.round(100 * f2[i].n / f2[i - 1].n) : null
+    const joinedApps = apps.filter(a => ['joined', 'follow_up'].includes(a.stage))
+    const joinedPeople = new Set(joinedApps.map(a => a.traineeId))
+    const level = l => new Set(joinedApps.filter(a => l.includes(a.evidenceLevel)).map(a => a.traineeId)).size
+    const ladder = { reported: joinedPeople.size, employerConfirmed: level(['employer_confirmed', 'independently_verified']), independentlyVerified: level(['independently_verified']), disputed: level(['disputed']) }
+    const activeSpells = spells.filter(x => x.state === 'active')
+    const outcomes = ['wage', 'apprenticeship', 'ojt'].map(t => ({ type: t, n: new Set(activeSpells.filter(x => x.type === t).map(x => x.traineeId)).size }))
+    // Retention checks: follow-ups bucketed by days after joining.
+    const buckets = [{ label: 'D30', lo: 0, hi: 60 }, { label: 'D90', lo: 60, hi: 135 }, { label: 'D180', lo: 135, hi: 400 }]
+    const retention = buckets.map(b => { const fus = activeSpells.flatMap(x => x.followUps.filter(f => { const d = (f.dueAt - x.startAt) / 86400000; return d >= b.lo && d < b.hi && f.dueAt <= asOf })); const responded = fus.filter(f => f.respondedAt); const working = responded.filter(f => f.status === 'working'); return { label: b.label, due: fus.length, responded: responded.length, coveragePct: fus.length ? Math.round(100 * responded.length / fus.length) : null, retentionPct: responded.length ? Math.round(100 * working.length / responded.length) : null } })
+    const byIti = itis.filter(i => itiIds.includes(i.id)).map(i => { const ids = new Set(pool.filter(t => t.itiId === i.id).map(t => t.id)); const my = apps.filter(a => a.trainee.itiId === i.id); const b = {}; for (const a of my) { const r = stageRank(a.stage); if (r > (b[a.traineeId] || 0)) b[a.traineeId] = r }; const at = k => Object.values(b).filter(r => r >= k).length; return { id: i.id, code: i.code, name: i.name.replace('Government ITI ', ''), pool: ids.size, applied: at(3), interviewed: at(5), offered: at(6), joined: at(7), women: new Set(my.filter(a => ['joined', 'follow_up'].includes(a.stage) && a.trainee.gender === 'F').map(a => a.traineeId)).size } })
+    const wages = joinedApps.map(a => a.offerWage).filter(Boolean).sort((a, b) => a - b)
+    res.json({ filters: { itiId: itiIds.length === itis.length ? 'all' : itiIds[0], trade: trade || 'all', type: type || 'all', employerId: employerId || 'all', asOf: asOf.toISOString().slice(0, 10) }, options: { trades, employers },
+      totals: { liveSeats: opps.reduce((s, o) => s + Math.max(0, o.openings - o.filled), 0), applications: apps.length, reportedJoins: joinedPeople.size, verifiedJoins: ladder.independentlyVerified, employerConfirmed: ladder.employerConfirmed, pool: pool.length, medianWage: wages.length ? wages[Math.floor(wages.length / 2)] : null },
+      funnel: f2, outcomes, ladder, retention, byIti })
+  } catch (e) { next(e) }
+})
+
+r.get('/employers/:id/profile', async (req, res, next) => {
+  try {
+    const e = await prisma.employer.findUnique({ where: { id: req.params.id }, include: { opportunities: { orderBy: { createdAt: 'desc' } }, feedback: { orderBy: { date: 'desc' } }, spells: { include: { trainee: { select: { name: true, itiId: true } } }, orderBy: { startAt: 'desc' } } } })
+    if (!e) return res.status(404).json({ error: 'not_found' })
+    const apps = await prisma.application.findMany({ where: { opportunity: { employerId: e.id } }, select: { stage: true, evidenceLevel: true, traineeId: true, lastEventAt: true, opportunity: { select: { title: true } } }, orderBy: { lastEventAt: 'desc' } })
+    const itis = J2(e.participatingItis, [])
+    const trades = [...new Set(e.opportunities.flatMap(o => J2(o.tradeCodes, [])))]
+    const live = e.opportunities.filter(o => o.status === 'live')
+    const joined = new Set(apps.filter(a => ['joined', 'follow_up'].includes(a.stage)).map(a => a.traineeId)).size
+    const description = `${e.name} is a ${e.sector.toLowerCase()} employer based in ${e.city}${J2(e.sites, []).length > 1 ? ` with sites at ${J2(e.sites, []).join(', ')}` : ''}. It works with ${itis.length ? itis.join(' and ') : 'the cluster'}${trades.length ? ` for ${trades.join(', ')} candidates` : ''}, ${e.mouSignedAt ? `under an MoU signed on ${e.mouSignedAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'with no MoU yet'}, with a commitment of ${e.hiringCommitment} hires${e.ojtSlots ? ` and ${e.ojtSlots} OJT slots` : ''}. The relationship is owned by ${e.relationshipOwnerRole} and is ${e.relationshipStatus}.`
+    const history = [
+      ...e.feedback.map(f => ({ date: f.date, kind: f.kind === 'demand' ? 'Demand note' : f.kind === 'interviewed' ? 'Interview feedback' : 'Joining feedback', text: f.text, by: f.roleTag || 'SPV-IEPC' })),
+      ...(e.mouSignedAt ? [{ date: e.mouSignedAt, kind: 'MoU signed', text: e.mouRef || 'MoU on file', by: e.relationshipOwnerRole }] : []),
+      ...(e.lastInteractionAt ? [{ date: e.lastInteractionAt, kind: 'Last interaction', text: `${e.contactName || 'Contact'} via ${e.contactChannel || 'phone'}`, by: e.relationshipOwnerRole }] : []),
+      ...(e.nextEngagementAt ? [{ date: e.nextEngagementAt, kind: 'Next engagement', text: 'Scheduled', by: e.relationshipOwnerRole }] : []),
+    ].sort((a, b) => new Date(b.date) - new Date(a.date))
+    res.json({ employer: { ...e, sites: J2(e.sites, []), participatingItis: itis, trades, description, opportunities: e.opportunities.map(o => ({ ...o, tradeCodes: J2(o.tradeCodes, []), approvedItis: J2(o.approvedItis, []) })), spells: undefined, feedback: undefined },
+      stats: { liveOpportunities: live.length, liveSeats: live.reduce((s, o) => s + Math.max(0, o.openings - o.filled), 0), candidatesInProcess: apps.filter(a => ['referred', 'applied', 'interviewed', 'offered'].includes(a.stage)).length, joined, onOjt: e.spells.filter(x => x.type === 'ojt' && x.state === 'active').length },
+      placements: e.spells.slice(0, 20).map(x => ({ id: x.id, name: x.trainee.name, itiId: x.trainee.itiId, role: x.role, type: x.type, startAt: x.startAt, state: x.state, evidenceLevel: x.evidenceLevel })),
+      history })
+  } catch (e) { next(e) }
+})
+
 export default r

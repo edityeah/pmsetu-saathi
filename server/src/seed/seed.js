@@ -407,6 +407,9 @@ async function main() {
     { id: 'SYN-PUS-ELE-PRE-B01', iti: 'PUS', trade: 'ELE', n: 24, lead: 'SYN-FAC-0001' },
     { id: 'SYN-PUS-FIT-PRE-B01', iti: 'PUS', trade: 'FIT', n: 20, lead: null },
     { id: 'SYN-SHA-LWD-PRE-B01', iti: 'SHA', trade: 'LWD', n: 20, lead: null },
+    { id: 'SYN-NAR-ELE-PRE-B01', iti: 'NAR', trade: 'ELE', n: 18, lead: null },
+    { id: 'SYN-OKH-FIT-PRE-B01', iti: 'OKH', trade: 'FIT', n: 16, lead: null },
+    { id: 'SYN-ROH-ELE-PRE-B01', iti: 'ROH', trade: 'ELE', n: 14, lead: null },
   ]
   for (const p of PRE) batchRows.push({ id: p.id, name: `${ITI_META[p.iti].name.replace('Government ITI ', '')} · ${p.trade} 2024-26 (pre-scheme)`, itiId: p.iti, tradeId: p.trade, offeringId: null, leadUserId: p.lead ? facUserId(p.lead) : null, startDate: d('2024-08-01'), endDate: d('2026-07-31'), capacity: 24, tenureMonths: 24, studyYear: 2, currentModule: 5, state: 'completed', cohortLabel: 'Pre-scheme cohort 2024-26' })
   await createMany('batch', batchRows)
