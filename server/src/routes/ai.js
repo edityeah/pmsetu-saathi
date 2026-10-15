@@ -97,7 +97,7 @@ r.post('/message', async (req, res, next) => {
 // Returns the canvas context to open and the live data behind that screen.
 r.post('/navigate', async (req, res, next) => {
   try {
-    const body = z.object({ target: z.string(), iti: z.string().nullable().optional(), trade: z.string().nullable().optional(), gender: z.string().nullable().optional(), date: z.string().nullable().optional(), year: z.union([z.string(), z.number()]).nullable().optional(), open: z.boolean().optional() }).parse(req.body || {})
+    const body = z.object({ target: z.string(), iti: z.string().nullable().optional(), trade: z.string().nullable().optional(), gender: z.string().nullable().optional(), date: z.string().nullable().optional(), year: z.union([z.string(), z.number()]).nullable().optional(), category: z.string().nullable().optional(), open: z.boolean().optional() }).parse(req.body || {})
     const out = await resolveNavigation(req, { ...body, withData: true })
     if (out.error) return res.status(400).json({ error: out.error })
     res.json(out)

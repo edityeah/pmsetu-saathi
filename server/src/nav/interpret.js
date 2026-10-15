@@ -4,7 +4,7 @@
 import { chatJSON, chatText, hasOpenAI } from '../llm/openai.js'
 import { prisma } from '../db.js'
 import { clusterFor } from '../lib/scope.js'
-import { targetsForRole, targetAllowed, TARGET_BY_ID, resolveIti, buildContext, catalogBriefing } from './catalog.js'
+import { targetsForRole, targetAllowed, TARGET_BY_ID, resolveIti, buildContext, catalogBriefing, tradeFromText, categoryFromText } from './catalog.js'
 import { summaryFor } from './snapshot.js'
 
 const SCHEMA = `{
@@ -13,6 +13,7 @@ const SCHEMA = `{
   "iti": "<ITI name or code the user mentioned, or null>",
   "trade": "<trade code if named (ELE, FIT, COP, LWD, LMC, LTR, LSM, LRA, LEM, LMV, LDM, LST, CNC), or null>",
   "gender": "<F|M|null>",
+  "category": "<budget work-package category if named: Civil, Digital, Equipment, Faculty, Governance, Operations, Staff, Student industry; else null>",
   "date": "<YYYY-MM-DD if a specific day was named, or null>",
   "wantsAnswer": true|false,
   "assistantText": "<≤120 chars in the user's language: what you are opening / showing>",
@@ -28,14 +29,14 @@ const KEYWORDS = {
   institute_facilities: ['facilities', 'facility', 'rooms', 'asset', 'assets', 'installed', 'civil package'],
   institute_overview: ['profile', 'overview', 'about iti', 'tell me about', 'campus'],
   registry_students: ['student', 'students', 'enrolment', 'enrollment', 'female', 'women', 'girls', 'registry', 'छात्र', 'विद्यार्थी'],
-  registry_trainers: ['trainer', 'trainers', 'faculty', 'instructor', 'instructors', 'teacher', 'teachers', 'प्रशिक्षक'],
+  registry_trainers: ['trainer', 'trainers', 'faculty', 'instructor', 'instructors', 'teacher', 'teachers', 'teach', 'teaches', 'who teaches', 'taught by', 'who takes', 'प्रशिक्षक', 'पढ़ाता', 'पढ़ाते'],
   ops_attendance: ['attendance', 'register', 'registers', 'present', 'absent', 'उपस्थिति', 'हाज़िरी', 'हाजिरी'],
   ops_assessment: ['assessment', 'assessments', 'marks', 'exam', 'test', 'results', 'practical check'],
   ops_events: ['event', 'events', 'upcoming', 'deadline', 'deadlines', 'calendar', 'due'],
   ops_overview: ['daily operations', 'today', 'operations', 'how is the day'],
   budget_utilisation: ['utilised', 'utilisation', 'utilization', 'spent', 'spend', 'tranche gate', 'uc', 'certificate'],
   budget_release_history: ['release history', 'releases', 'released', 'last release'],
-  budget_overview: ['budget', 'allocation', 'allocated', 'funds', 'money', 'aop', 'बजट'],
+  budget_overview: ['budget', 'allocation', 'allocated', 'fund', 'funds', 'money', 'aop', 'provided to', 'given to', 'बजट', 'फंड'],
   placement_analytics: ['placement', 'placements', 'placed', 'joined', 'joins', 'offer', 'offers', 'funnel', 'retention', 'प्लेसमेंट'],
   employer_directory: ['employer', 'employers', 'company', 'companies', 'mou', 'hiring', 'opportunity', 'opportunities', 'industry partner'],
   student_voice: ['student voice', 'students saying', 'barrier', 'barriers', 'complain', 'travel cost', 'themes'],
@@ -59,7 +60,7 @@ export function heuristicNavigation({ text, role }) {
   const m = t.match(ITI_WORDS)
   const iti = m ? (HI_ITI[m[0]] || m[0]) : null
   const gender = /\b(female|women|girls|ladki|महिला)\b/.test(t) ? 'F' : null
-  return { target: best, confidence: Math.min(0.9, 0.5 + bestScore * 0.1), entities: { iti, trade: null, gender, date: null }, wantsAnswer: /\?|how many|kitn|is |are |what|which|kya|kitne|कितने|क्या/.test(t), assistantText: '', language: /[\u0900-\u097F]/.test(t) ? 'hi' : 'en', chips: [], heuristic: true }
+  return { target: best, confidence: Math.min(0.9, 0.5 + bestScore * 0.1), entities: { iti, trade: tradeFromText(t), gender, date: null, category: categoryFromText(t) }, wantsAnswer: /\?|how many|how much|kitn|is |are |what|which|who |kaun|kya|kitne|कितने|क्या|कौन/.test(t), assistantText: '', language: /[\u0900-\u097F]/.test(t) ? 'hi' : 'en', chips: [], heuristic: true }
 }
 
 export async function interpretNavigation({ text, role, language = 'en' }) {
@@ -82,7 +83,7 @@ Rules:
   return {
     target: ok ? out.target : null,
     confidence: ok ? clamp01(out.confidence ?? 0.7) : 0,
-    entities: { iti: out.iti || null, trade: out.trade || null, gender: out.gender || null, date: out.date || null },
+    entities: { iti: out.iti || null, trade: out.trade || tradeFromText(text), gender: out.gender || null, date: out.date || null, category: out.category || categoryFromText(text) },
     wantsAnswer: !!out.wantsAnswer,
     assistantText: out.assistantText || '',
     language: out.language || language,
@@ -93,7 +94,7 @@ Rules:
 // Resolve a target + entities into a canvas context and (optionally) the live
 // data behind that screen. Shared by /api/ai/message, /api/ai/navigate and the
 // streaming chat tool.
-export async function resolveNavigation(req, { target, iti, trade, gender, date, year, withData = true }) {
+export async function resolveNavigation(req, { target, iti, trade, gender, date, year, category, withData = true }) {
   const role = req.user.role
   if (!targetAllowed(target, role)) return { error: `target ${target} is not available for ${role}` }
   const t = TARGET_BY_ID[target]
@@ -101,9 +102,9 @@ export async function resolveNavigation(req, { target, iti, trade, gender, date,
   const itis = await prisma.iti.findMany({ where: { clusterId: c.id }, select: { id: true, code: true, name: true } })
   let itiRow = iti ? resolveIti(iti, itis) : null
   if (!itiRow && (role === 'iti_principal' || role === 'trainer')) itiRow = null // the canvas scopes to their own ITI
-  const ent = { trade: trade || null, gender: gender || null, date: date || null, year: year || null }
+  const ent = { trade: trade || null, gender: gender || null, date: date || null, year: year || null, category: category || null }
   const canvas = buildContext(t, ent, itiRow)
-  const filters = { itiId: itiRow?.id, itiCode: itiRow?.code, trade: ent.trade, gender: canvas.filters?.gender, date: ent.date, year: ent.year }
+  const filters = { itiId: itiRow?.id, itiCode: itiRow?.code, trade: ent.trade, gender: canvas.filters?.gender, date: ent.date, year: ent.year, category: ent.category }
   const data = withData ? await summaryFor(req, target, filters) : null
   return { target, label: t.label + (itiRow ? ` · ${itiRow.name}` : ''), canvas, iti: itiRow, data }
 }
@@ -120,12 +121,12 @@ export function templateAnswer(target, data, itiName) {
       case 'institute_facilities': return `${data.iti}: ${data.rooms.working} of ${data.rooms.baseline} rooms working; ${data.machines.functional} of ${data.machines.total} machines functional, ${data.machines.awaitingCommissioning} awaiting commissioning, ${data.machines.ordered} ordered.`
       case 'institute_overview': return `${data.iti.name} (${data.iti.kind}): ${data.students.active} active students (${data.students.women} women), ${data.staffing.registryTrainers} trainers, ${data.rooms.working} of ${data.rooms.baseline} rooms working, ${data.tasks.completed} of ${data.tasks.total} Year-1 tasks completed.`
       case 'registry_students': return data.filters?.gender ? `${where}${data.total} active ${data.filters.gender === 'F' ? 'female' : 'male'} students${data.byTrade?.length ? `, most in ${data.byTrade[0].name} (${data.byTrade[0].n})` : ''}.` : `${where}${data.total} active students (${data.gender?.female ?? '—'} female, ${data.gender?.male ?? '—'} male). ${data.coverage}.`
-      case 'registry_trainers': return `${where}${data.total} trainers in the registry${data.byIti?.length > 1 ? ` (${data.byIti.map(i => `${i.code} ${i.n}`).join(', ')})` : ''}.`
+      case 'registry_trainers': return data.trade ? `${where}${data.total} ${data.trade} trainers: ${(data.trainers || []).map(x => x.name).join(', ')}${data.total > (data.trainers || []).length ? ' and more' : ''}.` : `${where}${data.total} trainers in the registry${data.byIti?.length > 1 ? ` (${data.byIti.map(i => `${i.code} ${i.n}`).join(', ')})` : ''}.`
       case 'ops_attendance': return `${where}attendance ${data.totals.attendancePct}% with ${data.totals.reported} of ${data.totals.scheduled} registers reported on ${data.date}${data.fallbackToLatestReportedDay ? ' (latest reported day)' : ''}.`
       case 'ops_assessment': return `${where}${data.totals.conducted} of ${data.totals.scheduled} assessments conducted on ${data.date}, ${data.totals.marksUploaded} with marks uploaded, ${data.totals.review} awaiting review.`
       case 'ops_overview': return `${where}attendance ${data.attendance.attendancePct}% (${data.attendance.coveragePct}% coverage) on ${data.date}; ${data.readiness.ready} of ${data.readiness.inScope} workshops ready; ${data.upcomingEvents} events in the next 30 days.`
       case 'ops_events': return `${data.totals.total} events between ${data.from} and ${data.to}: ${Object.entries(data.byKind || {}).map(([k, v]) => `${v} ${k}`).join(', ')}.`
-      case 'budget_overview': return `${where}₹${data.totals.allocationCr} Cr allocated, ₹${data.totals.releasedCr} Cr released (${data.totals.releasedPct}%), balance ₹${data.totals.balanceCr} Cr.`
+      case 'budget_overview': return `${where}${data.category ? data.category + ' work packages: ' : ''}₹${data.totals.allocationCr} Cr allocated, ₹${data.totals.releasedCr} Cr released (${data.totals.releasedPct}%), balance ₹${data.totals.balanceCr} Cr.`
       case 'budget_release_history': return `${data.releases} releases so far; latest ${data.latest?.[0] ? `${data.latest[0].date} ₹${data.latest[0].amountCr} Cr to ${data.latest[0].iti} for ${data.latest[0].package}` : '—'}.`
       case 'budget_utilisation': return `₹${data.totals.utilisedCr} Cr utilised of ₹${data.totals.budgetCr} Cr (${data.totals.utilisedPct}%), ₹${data.totals.committedCr} Cr committed (${data.totals.committedPct}%); the tranche gate is 75%.`
       case 'placement_analytics': return `${where}${data.totals.reportedJoins} reported joins from a pool of ${data.totals.pool}, ${data.totals.employerConfirmed} employer-confirmed and ${data.totals.verifiedJoins} independently verified; ${data.totals.liveSeats} live opening seats.`

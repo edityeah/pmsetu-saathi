@@ -13,6 +13,7 @@ const PARAMS = (role) => ({
     trade: { type: ['string', 'null'], description: 'Trade code if named (ELE, FIT, COP, LWD, LMC, LTR, LSM, LRA, LEM, LMV, LDM, LST, CNC).' },
     gender: { type: ['string', 'null'], description: 'F or M when the user asks about women/female or men/male.' },
     date: { type: ['string', 'null'], description: 'YYYY-MM-DD when a specific day was named.' },
+    category: { type: ['string', 'null'], description: 'Budget work-package category when named: Civil, Digital, Equipment, Faculty, Governance, Operations, Staff, Student industry.' },
   },
   required: ['target'],
   additionalProperties: false,

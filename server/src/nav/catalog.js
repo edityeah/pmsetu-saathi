@@ -11,8 +11,8 @@ const ANALYST_P = ['spv_ceo', 'iti_principal', 'ima_officer', 'state_pmu']
 // Section targets (the CEO's six sections; the principal shares most of them).
 const SECTION_TARGETS = [
   // 1 · Budget analytics
-  { id: 'budget_overview', canvas: 'budget_analytics', tab: 'overview', label: 'Budget analytics · Allocations and releases', roles: ANALYST, params: ['iti', 'year'], say: ['budget', 'how much has been allocated', 'funds released to Narela', 'AOP allocation by ITI', 'release by work package'] },
-  { id: 'budget_release_history', canvas: 'budget_analytics', tab: 'history', label: 'Budget analytics · Release history', roles: ANALYST, params: ['iti', 'year'], say: ['release history', 'every release', 'when was the last release', 'list the releases to Rohini'] },
+  { id: 'budget_overview', canvas: 'budget_analytics', tab: 'overview', label: 'Budget analytics · Allocations and releases', roles: ANALYST, params: ['iti', 'year', 'category'], say: ['budget', 'how much has been allocated', 'funds released to Narela', 'how much fund has been provided to Shahdara for civil', 'AOP allocation by ITI', 'release by work package'] },
+  { id: 'budget_release_history', canvas: 'budget_analytics', tab: 'history', label: 'Budget analytics · Release history', roles: ANALYST, params: ['iti', 'year', 'category'], say: ['release history', 'every release', 'when was the last release', 'list the releases to Rohini'] },
   { id: 'budget_utilisation', canvas: 'budget_analytics', tab: 'utilisation', label: 'Budget analytics · Utilisation', roles: ANALYST, params: ['year'], say: ['funds utilised', 'utilisation against the 75% gate', 'how much have we spent', 'utilisation certificates'] },
   // 2 · Institute profile
   { id: 'institute_overview', canvas: 'institute_profile', tab: 'overview', label: 'Institute profile · Overview', roles: ANALYST_P, params: ['iti'], say: ['institute profile', 'tell me about ITI Okhla', 'overview of Pusa', 'how many students and trainers at Shahdara', 'campus and rooms'] },
@@ -22,7 +22,7 @@ const SECTION_TARGETS = [
   { id: 'institute_launch_gates', canvas: 'institute_profile', tab: 'launch_gates', label: 'Institute profile · Launch gates', roles: ['iti_principal', 'ima_officer'], params: ['iti'], say: ['launch gates', 'is the welding course ready to launch'] },
   // 3 · Cluster registry
   { id: 'registry_students', canvas: 'cluster_registry', tab: 'students', label: 'Cluster registry · Student registry', roles: ANALYST_P, params: ['iti', 'trade', 'gender'], say: ['student registry', 'how many students in Narela', 'female students', 'list electrician students', 'enrolment by trade'] },
-  { id: 'registry_trainers', canvas: 'cluster_registry', tab: 'trainers', label: 'Cluster registry · Trainer registry', roles: ANALYST_P, params: ['iti', 'trade'], say: ['trainer registry', 'how many trainers at Okhla', 'faculty by programme', 'who teaches welding'] },
+  { id: 'registry_trainers', canvas: 'cluster_registry', tab: 'trainers', label: 'Cluster registry · Trainer registry', roles: ANALYST_P, params: ['iti', 'trade'], say: ['trainer registry', 'how many trainers at Okhla', 'faculty by programme', 'who teaches welding', 'who teaches the electrician course in Shahdara', 'which instructors take fitter batches'] },
   // 4 · Daily operations
   { id: 'ops_overview', canvas: 'daily_operations', tab: 'overview', label: 'Daily operations · Overview', roles: ANALYST_P, params: ['iti', 'date'], say: ['daily operations', 'how is today going', 'operations overview', 'what happened today across the ITIs'] },
   { id: 'ops_attendance', canvas: 'daily_operations', tab: 'attendance', label: 'Daily operations · Attendance', roles: ANALYST_P, params: ['iti', 'trade', 'date'], say: ['attendance today', 'attendance at Rohini', 'which registers are pending', 'attendance trend'] },
@@ -54,7 +54,8 @@ const LEGACY_SAY = {
 const LEGACY_TARGETS = Object.entries(ACTIONS).filter(([id, a]) => id !== 'ANSWER_QUESTION' && a.module).map(([id, a]) => {
   let roles = a.roles
   if (SECTION_CANVASES.has(a.module)) roles = roles.filter(r => r !== 'spv_ceo' && r !== 'iti_principal' && r !== 'ima_officer' && r !== 'state_pmu')
-  if (CEO_HIDDEN.has(a.module)) roles = roles.filter(r => r !== 'spv_ceo')
+  // The CEO navigates only within the six sections.
+  roles = roles.filter(r => r !== 'spv_ceo')
   return { id: a.module, canvas: a.module, tab: null, label: a.description.split(':')[0], roles, params: ['iti'], say: LEGACY_SAY[a.module] || [], legacy: true, actionId: id }
 }).filter(t => t.roles.length)
 
@@ -90,12 +91,19 @@ export function buildContext(target, ent = {}, iti = null) {
   if (ent.gender) filters.gender = ent.gender === 'F' || /^f|women|female/i.test(ent.gender) ? 'F' : 'M'
   if (ent.date) filters.date = ent.date
   if (ent.year) filters.year = ent.year
+  if (ent.category && (target.params || []).includes('category')) filters.category = ent.category
   const ctx = { type: target.canvas, _k: Date.now() }
   if (target.tab) ctx.tab = target.tab
   if (iti) { ctx.itiId = iti.id; ctx.itiCode = iti.code }
   if (Object.keys(filters).length) ctx.filters = filters
   return ctx
 }
+
+// Trade names → registry codes; budget words → work-package categories.
+export const TRADE_WORDS = { electrician: 'ELE', electrical: 'ELE', fitter: 'FIT', copa: 'COP', computer: 'COP', welder: 'LWD', welding: 'LWD', machinist: 'LMC', 'machine shop': 'LMC', turner: 'LTR', 'sheet metal': 'LSM', rac: 'LRA', refrigeration: 'LRA', hvac: 'LRA', 'electronics mechanic': 'LEM', electronics: 'LEM', mmv: 'LMV', 'motor vehicle': 'LMV', draughtsman: 'LDM', steno: 'LST', stenographer: 'LST', cnc: 'CNC' }
+export const CATEGORY_WORDS = { civil: 'Civil', construction: 'Civil', building: 'Civil', digital: 'Digital', loms: 'Digital', equipment: 'Equipment', machines: 'Equipment', faculty: 'Faculty', trainers: 'Faculty', governance: 'Governance', operations: 'Operations', recurring: 'Operations', staff: 'Staff', 'student industry': 'Student industry', placement: 'Student industry' }
+export function tradeFromText(text) { const t = String(text || '').toLowerCase(); for (const [w, c] of Object.entries(TRADE_WORDS)) if (t.includes(w)) return c; const m = t.match(/\b(ELE|FIT|COP|LWD|LMC|LTR|LSM|LRA|LEM|LMV|LDM|LST|CNC)\b/i); return m ? m[1].toUpperCase() : null }
+export function categoryFromText(text) { const t = String(text || '').toLowerCase(); for (const [w, c] of Object.entries(CATEGORY_WORDS)) if (t.includes(w)) return c; return null }
 
 export function catalogBriefing(role) {
   const ts = targetsForRole(role)

@@ -37,7 +37,7 @@ export default function ClusterRegistryCanvas({ context }) {
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
       {tab === 'overview' && <Overview scope={scope} setScope={setScope} scopeOpts={scopeOpts} canSwitch={canSwitch} onStudents={() => setTab('students')} onTrainers={() => setTab('trainers')} />}
       {tab === 'students' && <Students scope={scope} setScope={setScope} scopeOpts={scopeOpts} canSwitch={canSwitch} f0={f0} onOpen={setStudent} />}
-      {tab === 'trainers' && <Trainers scope={scope} setScope={setScope} scopeOpts={scopeOpts} canSwitch={canSwitch} onOpen={setTrainer} />}
+      {tab === 'trainers' && <Trainers scope={scope} setScope={setScope} scopeOpts={scopeOpts} canSwitch={canSwitch} f0={f0} onOpen={setTrainer} />}
       {tab === 'enrolment' && <Enrolment scope={scope} setScope={setScope} scopeOpts={scopeOpts} canSwitch={canSwitch} openCanvas={openCanvas} />}
     </div>
   )
@@ -88,7 +88,7 @@ function RegistryCard({ icon, title, desc, a, b, line, rows, max, color, cta, on
 
 // ── Student registry ──────────────────────────────────────────────────────
 function Students({ scope, setScope, scopeOpts, canSwitch, f0, onOpen }) {
-  const [trade, setTrade] = useState('all'), [batch, setBatch] = useState('all'), [gender, setGender] = useState(f0.gender || 'all'), [status, setStatus] = useState(f0.status || 'active'), [q, setQ] = useState(''), [page, setPage] = useState(1)
+  const [trade, setTrade] = useState(f0.trade || 'all'), [batch, setBatch] = useState('all'), [gender, setGender] = useState(f0.gender || 'all'), [status, setStatus] = useState(f0.status || 'active'), [q, setQ] = useState(''), [page, setPage] = useState(1)
   const params = { itiId: scope === 'all' ? undefined : scope, trade, batchId: batch, gender, status, q: q || undefined, page }
   const { data: d } = useLoad(() => api.registryStudents(params), [scope, trade, batch, gender, status, q, page])
   useSaathiContext(d ? `Student registry (${d.coverage}; filters trade ${trade}, batch ${batch}, gender ${gender}, status ${status}): ${d.total} students; by trade ${d.byTrade.map(t => `${t.name} ${t.n}`).join(', ')}; ${d.gender.male} male, ${d.gender.female} female.` : '', ['Show female students in Shahdara', 'Which trade has the most students?'])
@@ -122,8 +122,8 @@ function Students({ scope, setScope, scopeOpts, canSwitch, f0, onOpen }) {
 }
 
 // ── Trainer registry ──────────────────────────────────────────────────────
-function Trainers({ scope, setScope, scopeOpts, canSwitch, onOpen }) {
-  const [trade, setTrade] = useState('all'), [load, setLoad] = useState('all'), [q, setQ] = useState(''), [page, setPage] = useState(1)
+function Trainers({ scope, setScope, scopeOpts, canSwitch, f0 = {}, onOpen }) {
+  const [trade, setTrade] = useState(f0.trade || 'all'), [load, setLoad] = useState('all'), [q, setQ] = useState(''), [page, setPage] = useState(1)
   const params = { itiId: scope === 'all' ? undefined : scope, trade, load, q: q || undefined, page }
   const { data: d } = useLoad(() => api.registryTrainers(params), [scope, trade, load, q, page])
   useSaathiContext(d ? `Trainer registry (${d.coverage}; trade ${trade}, load ${load}): ${d.total} trainers, ${d.assignments} subject assignments; by trade ${d.byTrade.map(t => `${t.code} ${t.n}`).join(', ')}; load ${d.byLoad.map(l => `${l.label} ${l.n}`).join(', ')}.` : '', ['Which trainers are mapped to Electrician batches in Pusa?', 'Who holds the most batches?'])
