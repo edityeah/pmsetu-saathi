@@ -22,15 +22,17 @@ export default function ClusterRegistryCanvas({ context }) {
   const [scope, setScope] = useState(f0.scope || 'all')
   const st = useLoad(() => tab === 'students' ? api.studentsAnalytics({ gender, status, itiId: scope === 'all' ? undefined : scope }) : Promise.resolve(null), [tab, gender, status, scope])
   const en = useLoad(() => tab === 'enrolment' ? api.enrolmentAnalytics({ itiId: scope === 'all' ? undefined : scope }) : Promise.resolve(null), [tab, scope])
-  const s = st.data, e = en.data
-  useSaathiContext(tab === 'students' && s ? `Student registry (${s.coverage}; filters ${JSON.stringify(s.filters)}): ${s.matching} of ${s.base} (${s.pct}%), PwD ${s.pwd}; by ITI ${s.byIti.map(i => `${i.code} ${i.matching ?? 'no feed'}/${i.all ?? '—'}`).join(', ')}; top trades ${s.byTrade.slice(0, 5).map(t => `${t.name} ${t.n}`).join(', ')}.` : tab === 'enrolment' && e ? `Enrolment vs sanctioned seats (${e.coverage}): ${e.totals.enrolled} of ${e.totals.connectedSeats} connected seats (${e.totals.pct}%); total sanctioned ${e.totals.seats}; by ITI ${e.byIti.map(i => `${i.code} ${i.enrolled ?? 'no feed'}/${i.seats}`).join(', ')}.` : '', tab === 'students' ? ['Which ITI has the lowest share of women?', 'Which trades do women choose most?'] : ['Which ITI has the most empty seats?', 'What does connecting the other three ITIs change?'])
+  const [programme, setProgramme] = useState('all')
+  const tr = useLoad(() => tab === 'trainers' ? api.trainerRegistry({ programme, itiId: scope === 'all' ? undefined : scope }) : Promise.resolve(null), [tab, programme, scope])
+  const s = st.data, e = en.data, t = tr.data
+  useSaathiContext(tab === 'trainers' && t ? `Trainer registry (${t.coverage}): ${t.total} trainers, ${t.assigned} with batch assignments, ${t.leads} batch leads, ${t.onLeave} on leave or late today, ${t.women} women; by ITI ${t.byIti.map(i => `${i.code} ${i.registry ?? 'no feed'} (baseline ${i.trainersBaseline}, Y1 plan ${i.trainerPlan?.Y1 ?? '—'})`).join(', ')}; by programme ${t.byProgramme.map(x => `${x.code} ${x.n}`).join(', ')}.` : tab === 'students' && s ? `Student registry (${s.coverage}; filters ${JSON.stringify(s.filters)}): ${s.matching} of ${s.base} (${s.pct}%), PwD ${s.pwd}; by ITI ${s.byIti.map(i => `${i.code} ${i.matching ?? 'no feed'}/${i.all ?? '—'}`).join(', ')}; top trades ${s.byTrade.slice(0, 5).map(t => `${t.name} ${t.n}`).join(', ')}.` : tab === 'enrolment' && e ? `Enrolment vs sanctioned seats (${e.coverage}): ${e.totals.enrolled} of ${e.totals.connectedSeats} connected seats (${e.totals.pct}%); total sanctioned ${e.totals.seats}; by ITI ${e.byIti.map(i => `${i.code} ${i.enrolled ?? 'no feed'}/${i.seats}`).join(', ')}.` : '', tab === 'students' ? ['Which ITI has the lowest share of women?', 'Which trades do women choose most?'] : ['Which ITI has the most empty seats?', 'What does connecting the other three ITIs change?'])
   const scopeOpts = [{ id: 'all', label: 'All 5 ITIs' }, ...((itis?.itis || []).map(i => ({ id: i.id, label: i.name })))]
   const canSwitch = role !== 'iti_principal' && role !== 'trainer'
   const genderLabel = gender === 'F' ? 'female' : gender === 'M' ? 'male' : 'all'
 
   return (
     <div className="h-full overflow-y-auto">
-      <Hero tone="violet" eyebrow="Cluster registry" title={tab === 'students' ? (gender === 'F' ? 'Female students' : gender === 'M' ? 'Male students' : 'Students') : tab === 'enrolment' ? 'Enrolment against sanctioned seats' : 'Trainer registry'} subtitle={tab === 'students' ? 'Registry records with the filters applied below. Counts are distinct active students from registry-connected ITIs.' : tab === 'enrolment' ? 'Enrolled students as a share of sanctioned seats, per ITI and for the cluster.' : 'Being set up for this cluster.'} />
+      <Hero tone="violet" eyebrow="Cluster registry" title={tab === 'students' ? (gender === 'F' ? 'Female students' : gender === 'M' ? 'Male students' : 'Students') : tab === 'enrolment' ? 'Enrolment against sanctioned seats' : 'Trainer registry'} subtitle={tab === 'students' ? 'Registry records with the filters applied below. Counts are distinct active students from registry-connected ITIs.' : tab === 'enrolment' ? 'Enrolled students as a share of sanctioned seats, per ITI and for the cluster.' : 'Faculty on the registry: where they teach, what they hold, and who is away today.'} />
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
 
       {tab === 'students' && (<>
@@ -90,7 +92,43 @@ export default function ClusterRegistryCanvas({ context }) {
         )}
       </>)}
 
-      {tab === 'trainers' && <div className="p-4"><Empty>The trainer registry is being set up. Until then, trainers per ITI are on the <button className="text-primary font-bold" onClick={() => openCanvas({ type: 'institute_profile', tab: 'staffing' })}>institute profile</button>.</Empty></div>}
+      {tab === 'trainers' && (<>
+        <FilterBar items={[{ label: 'Programme', value: programme, options: [{ id: 'all', label: 'All programmes' }, ...((t?.byProgramme || []).map(x => ({ id: x.code, label: x.code })))], onChange: setProgramme }, ...(canSwitch ? [{ label: 'Scope', value: scope, options: scopeOpts, onChange: setScope }] : [])]} note={t ? t.coverage : ''} />
+        {!t ? <Loading /> : (
+          <div className="p-4 space-y-4">
+            <StatGrid>
+              <Stat label="Trainers on registry" value={fmtNum(t.total)} sub={t.coverage} tone="emerald" />
+              <Stat label="With batch assignments" value={fmtNum(t.assigned)} sub={`${t.leads} batch leads`} tone="indigo" />
+              <Stat label="Away today" value={fmtNum(t.onLeave)} sub="on leave or late" tone={t.onLeave ? 'amber' : 'emerald'} />
+              <Stat label="Women" value={fmtNum(t.women)} sub={fmtPct(t.total ? 100 * t.women / t.total : null)} tone="fuchsia" />
+            </StatGrid>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <BarChartCard card={{ title: 'Trainers by ITI · registry vs Year-1 plan', unit: 'trainers', data: t.byIti.filter(i => i.registryConnected).flatMap(i => [{ label: `${i.code} registry`, value: i.registry || 0, color: 'emerald' }, { label: `${i.code} Y1 plan`, value: i.trainerPlan?.Y1 || 0, color: 'sky' }]), annotation: t.byIti.some(i => !i.registryConnected) ? `${t.byIti.filter(i => !i.registryConnected).map(i => i.code).join(', ')}: no registry feed; plan only.` : undefined }} />
+              <BarChartCard card={{ title: 'By programme', unit: 'trainers', orient: 'horizontal', data: t.byProgramme.slice(0, 12).map(x => ({ label: x.code, value: x.n, color: 'teal' })) }} />
+            </div>
+            <Section title="By ITI" hint="Baseline and plan from the SIP; registry count where connected.">
+              <Table columns={[
+                { key: 'name', label: 'ITI', render: r => <div><div className="font-semibold">{r.name}</div><div className="text-[10px] text-txt-tertiary">{r.registryConnected ? 'registry connected' : 'no feed'}</div></div> },
+                { key: 'registry', label: 'On registry', align: 'right', render: r => r.registryConnected ? fmtNum(r.registry) : <Pill kind="warn">no feed</Pill> },
+                { key: 'assigned', label: 'Assigned', align: 'right', render: r => r.registryConnected ? `${r.assigned} (${r.leads} leads)` : '—' },
+                { key: 'trainersBaseline', label: 'Baseline', align: 'right' },
+                { key: 'plan', label: 'Plan Y1 → Y5', align: 'right', render: r => `${r.trainerPlan?.Y1 ?? '—'} → ${r.trainerPlan?.Y5 ?? '—'}` },
+                { key: 'onLeave', label: 'Away today', align: 'right', render: r => r.registryConnected ? r.onLeave : '—' },
+              ]} rows={t.byIti} />
+            </Section>
+            <Section title={`Trainers · ${t.trainers.length}`} hint="Name, institute, programme, batches held and availability today.">
+              <Table columns={[
+                { key: 'name', label: 'Trainer', render: r => <div><div className="font-semibold">{r.name}</div><div className="text-[10px] text-txt-tertiary">{r.facultyCode} · {r.designation || '—'}</div></div> },
+                { key: 'itiCode', label: 'ITI' },
+                { key: 'programme', label: 'Programme' },
+                { key: 'batches', label: 'Batches', render: r => <span className="text-[11px]">{r.batches.length ? r.batches.join(', ') : <span className="text-txt-tertiary">none assigned</span>}{r.lead ? <Pill kind="info">lead</Pill> : null}</span> },
+                { key: 'today', label: 'Today', render: r => <Pill kind={r.today === 'available' ? 'ok' : 'warn'}>{r.today}</Pill> },
+              ]} rows={t.trainers.slice(0, 60)} empty="No trainers in scope." />
+              {t.trainers.length > 60 && <div className="text-[11px] text-txt-tertiary px-2 pt-2">Showing 60 of {t.trainers.length}.</div>}
+            </Section>
+          </div>
+        )}
+      </>)}
     </div>
   )
 }

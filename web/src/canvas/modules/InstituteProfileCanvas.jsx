@@ -8,7 +8,7 @@ import { Hero, Stat, StatGrid, Bar, Pill, Section, Table, Loading, Btn, useLoad,
 import { useSaathiContext, brief } from '../CanvasSaathi.jsx'
 
 const r1 = v => (v == null || v === '' ? v : Math.round(Number(v) * 10) / 10)
-const TABS = [{ id: 'overview', label: 'Overview' }, { id: 'trades', label: 'Trades & intake' }, { id: 'staffing', label: 'Staffing' }, { id: 'infrastructure', label: 'Infrastructure' }, { id: 'budget', label: 'Budget' }, { id: 'targets', label: 'Targets' }, { id: 'launch_gates', label: 'Launch gates' }]
+const TABS = [{ id: 'overview', label: 'Overview' }, { id: 'trades', label: 'Trade offerings' }, { id: 'staffing', label: 'Staffing' }, { id: 'infrastructure', label: 'Facilities and labs' }, { id: 'budget', label: 'Budget' }, { id: 'targets', label: 'Targets' }, { id: 'launch_gates', label: 'Launch gates' }]
 
 export default function InstituteProfileCanvas({ context }) {
   const { role, showToast, openCanvas } = useApp()

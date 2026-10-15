@@ -47,25 +47,27 @@ export const ROLE_TAGLINE = {
 
 export const ROLE_BOTS = {
   spv_ceo: [
-    { id: 'home',        name: 'Cluster Home',             desc: '5 ITIs · Year-1 envelope vs plan · overdue tasks · gates · risks', icon: '🏠', tone: 'indigo',  canvas: 'cluster_home',             section: 'plan' },
-    { id: 'profiles',    name: 'Institute Profiles',       desc: '7 tabs per ITI · confirmed vs draft · registry status',           icon: '🏫', tone: 'violet',  canvas: 'institute_profile',        section: 'plan' },
-    { id: 'targets',     name: 'Five-Year Targets',        desc: 'Places and enrolments by course · KPI trajectories · phasing',    icon: '📈', tone: 'sky',     canvas: 'five_year_targets',        section: 'plan' },
-    { id: 'annual',      name: 'Annual Plan',              desc: 'Outcomes · workplan (AOP records + tasks) · quarterly calendar', icon: '🗓️', tone: 'emerald', canvas: 'annual_plan',              section: 'plan' },
-    { id: 'board',       name: 'Milestone Board',          desc: 'Overdue, blocked, returned · predecessor chain · change requests', icon: '🧭', tone: 'rose',   canvas: 'milestone_board',          section: 'plan' },
-    { id: 'dashboard',   name: 'Transformation Dashboard', desc: 'KPIs vs baseline · per-ITI progress · what the IMA sees',         icon: '🏗️', tone: 'indigo',  canvas: 'transformation_dashboard', section: 'track' },
-    { id: 'tranche',     name: 'Tranche Readiness',        desc: '75% utilised · AOP approved · 80% cost-weighted KPI',             icon: '🎯', tone: 'rose',    canvas: 'tranche_readiness',        section: 'track' },
-    { id: 'milestones',  name: 'Milestones & Evidence',    desc: 'Submit evidence packs · IMA verification status',                 icon: '✅', tone: 'emerald', canvas: 'milestones',               section: 'track' },
-    { id: 'reports',     name: 'Reports & AOP',            desc: 'Quarterly IMA pack · AOP · annual consolidated report',           icon: '📄', tone: 'sky',     canvas: 'reports',                  section: 'track' },
-    { id: 'civil',       name: 'Civil Works',              desc: '15 civil packages · frozen work units · inspection',             icon: '🏢', tone: 'orange',  canvas: 'civil_works',              section: 'build' },
-    { id: 'procurement', name: 'Procurement',              desc: 'Equipment + digital packages: planned → installed',               icon: '📦', tone: 'teal',    canvas: 'procurement',              section: 'build' },
-    { id: 'finance',     name: 'Escrow & UCs',             desc: 'Deposits by source · utilisation certificates · PFMS',            icon: '🏦', tone: 'lime',    canvas: 'finance_escrow',           section: 'build' },
-    { id: 'boardm',      name: 'Board & Reserved Matters', desc: 'What needs Centre/State consent · delegated to CEO',              icon: '⚖️', tone: 'violet',  canvas: 'board_matters',            section: 'build' },
-    { id: 'itis',        name: 'ITI Drill-down',           desc: 'Seats, attendance, trainers, machines, civil works per ITI',      icon: '🔎', tone: 'sky',     canvas: 'iti_dashboard',            section: 'run' },
-    { id: 'pipeline',    name: 'Placement Pipeline',       desc: 'Person-level stages · evidence levels · disputes',                icon: '🤝', tone: 'emerald', canvas: 'placement_pipeline',       section: 'run' },
-    { id: 'employers',   name: 'Employer Register',        desc: 'Relationships · MoUs · opportunities lifecycle · feedback',       icon: '🏭', tone: 'teal',    canvas: 'employer_register',        section: 'run' },
-    { id: 'voice',       name: 'Student Voice',            desc: 'Themes students raise · barriers · course interest',              icon: '🗣️', tone: 'pink',    canvas: 'student_voice',            section: 'run' },
-    { id: 'grievances',  name: 'Grievances',               desc: 'Student + staff register · resolution',                           icon: '🆘', tone: 'rose',    canvas: 'grievances_admin',         section: 'run' },
-    { id: 'updates',     name: 'Updates & Alerts',         desc: 'IMA queries · change requests · deadlines',                       icon: '🔔', tone: 'indigo',  canvas: 'notifications',            section: 'run' },
+    // 1 · Budget Analytics (no modules — one tile)
+    { id: 'budget',      name: 'Budget Analytics',         desc: 'AOP allocation · committed · utilised · export',                 icon: '🧾', tone: 'amber',   canvas: 'budget_analytics',   tab: 'utilisation',    section: 'budget' },
+    // 2 · Institute Profile
+    { id: 'ip_overview', name: 'Overview',                 desc: 'Students, trainers, rooms, budget, tasks per ITI',               icon: '🏫', tone: 'violet',  canvas: 'institute_profile',  tab: 'overview',       section: 'profile' },
+    { id: 'ip_trades',   name: 'Trade offerings',          desc: 'Courses, places and planned enrolments by year',                 icon: '📚', tone: 'indigo',  canvas: 'institute_profile',  tab: 'trades',         section: 'profile' },
+    { id: 'ip_labs',     name: 'Facilities and labs',      desc: 'Rooms, machines, civil packages at the ITI',                     icon: '🏢', tone: 'orange',  canvas: 'institute_profile',  tab: 'infrastructure', section: 'profile' },
+    // 3 · Cluster registry
+    { id: 'reg_students', name: 'Student registry',        desc: 'Active students by ITI, trade, gender, year',                    icon: '🎓', tone: 'fuchsia', canvas: 'cluster_registry',   tab: 'students',       section: 'registry' },
+    { id: 'reg_trainers', name: 'Trainer registry',        desc: 'Faculty by ITI and programme · assignments · availability',      icon: '👩‍🏫', tone: 'emerald', canvas: 'cluster_registry',   tab: 'trainers',       section: 'registry' },
+    // 4 · Daily operations
+    { id: 'ops_att',     name: 'Attendance',               desc: 'Coverage and attendance by ITI and batch for a day',             icon: '🗓️', tone: 'indigo',  canvas: 'daily_operations',   tab: 'attendance',     section: 'ops' },
+    { id: 'ops_assess',  name: 'Assessment',               desc: 'Plans, marks awaiting review, results by ITI and trade',         icon: '📝', tone: 'violet',  canvas: 'daily_operations',   tab: 'assessment',     section: 'ops' },
+    { id: 'ops_infra',   name: 'Infrastructure readiness', desc: 'Rooms, machines, civil works, launch gates',                     icon: '⚙️', tone: 'teal',    canvas: 'daily_operations',   tab: 'infrastructure', section: 'ops' },
+    { id: 'ops_events',  name: 'Upcoming events',          desc: 'Assessments, IMA milestones, reports, employer dates',           icon: '📅', tone: 'sky',     canvas: 'daily_operations',   tab: 'events',         section: 'ops' },
+    // 5 · Placement analytics
+    { id: 'pipeline',    name: 'Placement Pipeline',       desc: 'Person-level stages · evidence levels · disputes',               icon: '🤝', tone: 'emerald', canvas: 'placement_pipeline',                        section: 'placement' },
+    { id: 'employers',   name: 'Employer Directory',       desc: 'Relationships · MoUs · opportunities · feedback',                icon: '🏭', tone: 'teal',    canvas: 'employer_register',                         section: 'placement' },
+    // 6 · Support and alerts
+    { id: 'voice',       name: 'Student voice',            desc: 'Themes students raise · barriers · course interest',             icon: '🗣️', tone: 'pink',    canvas: 'student_voice',                             section: 'support' },
+    { id: 'grievances',  name: 'Grievances',               desc: 'Student + staff register · resolution',                          icon: '🆘', tone: 'rose',    canvas: 'grievances_admin',                          section: 'support' },
+    { id: 'updates',     name: 'Notifications and alerts', desc: 'IMA queries · status requests · deadlines',                      icon: '🔔', tone: 'indigo',  canvas: 'notifications',                             section: 'support' },
   ],
   iti_principal: [
     { id: 'today',       name: 'Institute Today',    desc: 'Coverage · classes without reports · trainers on leave · reviews', icon: '🌅', tone: 'indigo',  canvas: 'institute_today',   section: 'today' },
@@ -156,12 +158,14 @@ export const ROLE_BOTS = {
 
 export const ROLE_SECTIONS = {
   spv_ceo: {
-    order: ['plan', 'track', 'build', 'run'],
+    order: ['budget', 'profile', 'registry', 'ops', 'placement', 'support'],
     meta: {
-      plan:  { title: 'Plan the five years', subtitle: 'SIP, institute profiles, targets, annual plan, milestones', accent: 'from-violet-50 to-white', ring: 'ring-violet-200', dot: 'bg-violet-500' },
-      track: { title: 'Track the transformation', subtitle: 'What the IMA, SSC and NSC will ask for', accent: 'from-indigo-50 to-white', ring: 'ring-indigo-200', dot: 'bg-indigo-500' },
-      build: { title: 'Build & spend', subtitle: 'Civil, procurement, escrow, board', accent: 'from-amber-50 to-white', ring: 'ring-amber-200', dot: 'bg-amber-500' },
-      run:   { title: 'Run the cluster', subtitle: 'Operations, students, employers, placements', accent: 'from-emerald-50 to-white', ring: 'ring-emerald-200', dot: 'bg-emerald-500' },
+      budget:    { title: 'Budget Analytics',   subtitle: 'The AOP money: allocation, committed, utilised',             accent: 'from-amber-50 to-white',   ring: 'ring-amber-200',   dot: 'bg-amber-500' },
+      profile:   { title: 'Institute Profile',  subtitle: 'One ITI at a time: overview, trade offerings, facilities',    accent: 'from-violet-50 to-white',  ring: 'ring-violet-200',  dot: 'bg-violet-500' },
+      registry:  { title: 'Cluster Registry',   subtitle: 'Students and trainers across the five ITIs',                  accent: 'from-fuchsia-50 to-white', ring: 'ring-fuchsia-200', dot: 'bg-fuchsia-500' },
+      ops:       { title: 'Daily Operations',   subtitle: 'Attendance, assessment, infrastructure, upcoming events',     accent: 'from-indigo-50 to-white',  ring: 'ring-indigo-200',  dot: 'bg-indigo-500' },
+      placement: { title: 'Placement Analytics', subtitle: 'Pipeline and employers',                                     accent: 'from-emerald-50 to-white', ring: 'ring-emerald-200', dot: 'bg-emerald-500' },
+      support:   { title: 'Support and Alerts', subtitle: 'What students raise, grievances, notifications',              accent: 'from-rose-50 to-white',    ring: 'ring-rose-200',    dot: 'bg-rose-500' },
     },
   },
   iti_principal: {

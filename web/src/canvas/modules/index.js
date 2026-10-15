@@ -138,7 +138,7 @@ const META = {
   jobs: { title: 'Opportunities', subtitle: 'Checked by the SPV · approved for your ITI', icon: '💼' },
   grievance: { title: 'Grievance', subtitle: 'Raise and track', icon: '🆘' },
   placement_pipeline: { title: 'Placement Pipeline', subtitle: 'Person-level stages · evidence levels · conversion', icon: '🤝' },
-  employer_register: { title: 'Employer Register', subtitle: 'Relationships · MoUs · opportunity lifecycle · feedback', icon: '🏭' },
+  employer_register: { title: 'Employer Directory', subtitle: 'Relationships · MoUs · opportunity lifecycle · feedback', icon: '🏭' },
   for_my_batches: { title: 'Placement · My Batches', subtitle: 'Résumé reviews · mock interviews · referrals', icon: '🤝' },
   placements_cluster: { title: 'Joined Records', subtitle: 'Evidence levels · IMA sampling', icon: '🤝' },
   ojt_tracker: { title: 'OJT Tracker', subtitle: 'Spells · hours · mentor + ITI sign-off', icon: '🛠️' },

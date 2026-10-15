@@ -69,7 +69,7 @@ export default function HomePage() {
       setMessages(m => [...m, { role: 'bot', text: r.assistantText || "I'm not sure how to help with that yet.", actions: (r.chips || []).map(c => ({ label: c, kind: 'chip', value: c })) }])
     }
   }
-  function openBot(b) { if (b.canvas) ctx.openCanvas({ type: b.canvas }); else send(`Open ${b.name}`) }
+  function openBot(b) { if (b.canvas) ctx.openCanvas({ type: b.canvas, ...(b.tab ? { tab: b.tab } : {}) }); else send(`Open ${b.name}`) }
   const greeted = messages.length === 0
 
   return (

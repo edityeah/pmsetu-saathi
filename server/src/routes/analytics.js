@@ -142,4 +142,71 @@ r.get('/utilisation', async (req, res, next) => {
   } catch (e) { next(e) }
 })
 
+// Trainer registry: faculty records per ITI with their assignments and
+// today's availability. Only registry-connected ITIs have records.
+r.get('/trainers', async (req, res, next) => {
+  try {
+    const { c, itiIds } = await scopeItiIds(req)
+    const itis = await prisma.iti.findMany({ where: { clusterId: c.id }, orderBy: [{ kind: 'asc' }, { code: 'asc' }], select: { id: true, code: true, name: true, registryConnected: true, trainersBaseline: true, trainerPlan: true } })
+    const codes = itis.filter(i => itiIds.includes(i.id)).map(i => i.code)
+    const programme = req.query.programme ? String(req.query.programme) : null
+    const today = dayUTC()
+    const [users, assignments, availability] = await Promise.all([
+      prisma.user.findMany({ where: { role: 'trainer' }, select: { id: true, name: true, loginId: true, profile: true } }),
+      prisma.trainerAssignment.findMany({ where: { batch: { itiId: { in: itiIds } } }, select: { trainerUserId: true, responsibility: true, batch: { select: { name: true, itiId: true, tradeId: true } }, subject: { select: { name: true } } } }),
+      prisma.trainerAvailability.findMany({ where: { date: today }, select: { trainerUserId: true, status: true } }),
+    ])
+    const rows = users.map(u => { const pr = J(u.profile, {}); return { id: u.id, name: u.name, loginId: u.loginId, itiCode: pr.itiCode, programme: pr.programme, designation: pr.designation, joinedAt: pr.joinedAt, gender: pr.gender, facultyCode: pr.facultyCode } })
+      .filter(t => codes.includes(t.itiCode) && (!programme || programme === 'all' || t.programme === programme))
+      .map(t => { const as = assignments.filter(a => a.trainerUserId === t.id); const av = availability.find(a => a.trainerUserId === t.id); return { ...t, batches: [...new Set(as.map(a => a.batch.name))], subjects: [...new Set(as.map(a => a.subject.name))], lead: as.some(a => a.responsibility.startsWith('Batch lead')), today: av?.status || 'available' } })
+    const byIti = itis.filter(i => itiIds.includes(i.id)).map(i => { const tr = rows.filter(t => t.itiCode === i.code); return { ...i, trainerPlan: J(i.trainerPlan, {}), registry: i.registryConnected ? tr.length : null, assigned: i.registryConnected ? tr.filter(t => t.batches.length).length : null, leads: tr.filter(t => t.lead).length, onLeave: tr.filter(t => t.today !== 'available').length } })
+    const byProgramme = Object.entries(rows.reduce((m, t) => { m[t.programme || '—'] = (m[t.programme || '—'] || 0) + 1; return m }, {})).map(([code, n]) => ({ code, n })).sort((a, b) => b.n - a.n)
+    res.json({ filters: { programme: programme || 'all', scope: itiIds.length === itis.length ? 'All ITIs' : codes.join(', ') }, coverage: `${itis.filter(i => i.registryConnected && itiIds.includes(i.id)).length} of ${itiIds.length} ITIs reporting`, total: rows.length, assigned: rows.filter(t => t.batches.length).length, leads: rows.filter(t => t.lead).length, onLeave: rows.filter(t => t.today !== 'available').length, women: rows.filter(t => t.gender === 'Female').length, byIti, byProgramme, trainers: rows.sort((a, b) => (a.itiCode || '').localeCompare(b.itiCode || '') || a.name.localeCompare(b.name)) })
+  } catch (e) { next(e) }
+})
+
+// Assessment analytics: plans by state, marks awaiting review, results
+// distribution and what is scheduled next.
+r.get('/assessments', async (req, res, next) => {
+  try {
+    const { c, itiIds } = await scopeItiIds(req)
+    const today = dayUTC(), in14 = addDays(today, 14), since = addDays(today, -60)
+    const itis = await prisma.iti.findMany({ where: { clusterId: c.id }, orderBy: [{ kind: 'asc' }, { code: 'asc' }], select: { id: true, code: true, name: true, registryConnected: true } })
+    const [plans, entries] = await Promise.all([
+      prisma.assessmentPlan.findMany({ where: { batch: { itiId: { in: itiIds } } }, include: { batch: { select: { name: true, itiId: true, tradeId: true, trade: { select: { name: true } } } }, _count: { select: { entries: true } } }, orderBy: { date: 'asc' } }),
+      prisma.markEntry.findMany({ where: { marks: { not: null }, assessment: { batch: { itiId: { in: itiIds } }, date: { gte: since } } }, select: { marks: true, assessment: { select: { maxMarks: true, batch: { select: { itiId: true, tradeId: true } } } } } }),
+    ])
+    const byState = plans.reduce((m, p) => { m[p.state] = (m[p.state] || 0) + 1; return m }, {})
+    const pctOf = e => Math.round(100 * e.marks / (e.assessment.maxMarks || 100))
+    const bands = { '< 40%': 0, '40–60%': 0, '60–80%': 0, '> 80%': 0 }
+    for (const e of entries) { const v = pctOf(e); bands[v < 40 ? '< 40%' : v < 60 ? '40–60%' : v < 80 ? '60–80%' : '> 80%']++ }
+    const avg = arr => arr.length ? Math.round(arr.reduce((s, e) => s + pctOf(e), 0) / arr.length) : null
+    const byIti = itis.filter(i => itiIds.includes(i.id)).map(i => { const pl = plans.filter(p => p.batch.itiId === i.id), en = entries.filter(e => e.assessment.batch.itiId === i.id); return { ...i, planned: pl.filter(p => p.state === 'planned').length, conducted: pl.filter(p => p.state !== 'planned').length, toReview: pl.filter(p => ['needs_review', 'submitted'].includes(p.state)).length, marksPending: pl.filter(p => ['marks_pending', 'conducted'].includes(p.state)).length, avgPct: i.registryConnected ? avg(en) : null, entries: en.length } })
+    const byTrade = Object.values(entries.reduce((m, e) => { const k = e.assessment.batch.tradeId; const t = m[k] ||= { trade: k, n: 0, sum: 0 }; t.n++; t.sum += pctOf(e); return m }, {})).map(t => ({ trade: t.trade, n: t.n, avgPct: Math.round(t.sum / t.n) })).sort((a, b) => b.n - a.n).slice(0, 10)
+    const upcoming = plans.filter(p => p.state === 'planned' && p.date >= today && p.date < in14).slice(0, 40).map(p => ({ id: p.id, date: p.date, title: p.title, type: p.type, batch: p.batch.name, itiCode: itis.find(i => i.id === p.batch.itiId)?.code, maxMarks: p.maxMarks }))
+    const review = plans.filter(p => ['needs_review', 'submitted', 'marks_pending', 'conducted'].includes(p.state)).slice(0, 40).map(p => ({ id: p.id, date: p.date, title: p.title, state: p.state, batch: p.batch.name, itiCode: itis.find(i => i.id === p.batch.itiId)?.code, entries: p._count.entries }))
+    res.json({ filters: { period: 'last 60 days + next 14', scope: itiIds.length === itis.length ? 'All ITIs' : byIti.map(i => i.code).join(', ') }, coverage: `${itis.filter(i => i.registryConnected && itiIds.includes(i.id)).length} of ${itiIds.length} ITIs reporting`, totals: { plans: plans.length, byState, entries: entries.length, avgPct: avg(entries), passPct: entries.length ? Math.round(100 * entries.filter(e => pctOf(e) >= 40).length / entries.length) : null }, bands: Object.entries(bands).map(([label, n]) => ({ label, n })), byIti, byTrade, upcoming, review })
+  } catch (e) { next(e) }
+})
+
+// Infrastructure readiness: rooms, machines, civil works and launch gates
+// per ITI — what is usable today against what the plan needs.
+r.get('/infrastructure', async (req, res, next) => {
+  try {
+    const { c, itiIds } = await scopeItiIds(req)
+    const itis = await prisma.iti.findMany({ where: { clusterId: c.id, id: { in: itiIds } }, orderBy: [{ kind: 'asc' }, { code: 'asc' }], select: { id: true, code: true, name: true, kind: true, registryConnected: true, roomsBaseline: true, roomsWorking: true, roomsY5: true } })
+    const [machines, civil, gates] = await Promise.all([
+      prisma.machine.findMany({ where: { itiId: { in: itiIds } }, include: { trade: { select: { code: true } } } }),
+      prisma.civilWork.findMany({ where: { itiId: { in: itiIds } }, orderBy: { scheduledCompletion: 'asc' } }),
+      prisma.launchGate.findMany({ where: { offering: { itiId: { in: itiIds } } }, include: { offering: { select: { itiId: true, tradeId: true, launch: true } } } }),
+    ])
+    const st = s => machines.filter(m => m.status === s).length
+    const mach = { total: machines.length, functional: st('functional') + st('installed'), awaiting: st('awaiting_commissioning'), nonFunctional: st('non_functional'), ordered: st('ordered') }
+    const byIti = itis.map(i => { const ms = machines.filter(m => m.itiId === i.id), cw = civil.filter(w => w.itiId === i.id), gs = gates.filter(g => g.offering.itiId === i.id); const bud = cw.reduce((s, w) => s + w.budgetCr, 0); return { ...i, machines: { total: ms.length, functional: ms.filter(m => ['functional', 'installed'].includes(m.status)).length, nonFunctional: ms.filter(m => m.status === 'non_functional').length, awaiting: ms.filter(m => m.status === 'awaiting_commissioning').length, ordered: ms.filter(m => m.status === 'ordered').length }, civil: { works: cw.length, pct: bud ? Math.round(cw.reduce((s, w) => s + w.pctComplete * w.budgetCr, 0) / bud) : null, delayed: cw.filter(w => w.state === 'delayed').length }, gates: { total: gs.length, passed: gs.filter(g => g.state === 'passed').length, ready: gs.filter(g => g.state === 'ready').length } } })
+    const nonFunctional = machines.filter(m => m.status === 'non_functional').map(m => ({ id: m.id, name: m.name, itiCode: itis.find(i => i.id === m.itiId)?.code, trade: m.trade?.code, category: m.category, lastServiceAt: m.lastServiceAt }))
+    const works = civil.map(w => ({ id: w.id, title: w.title, itiCode: itis.find(i => i.id === w.itiId)?.code, pctComplete: w.pctComplete, state: w.state, scheduledCompletion: w.scheduledCompletion, budgetCr: w.budgetCr }))
+    res.json({ filters: { scope: itiIds.length === 5 ? 'All ITIs' : itis.map(i => i.code).join(', ') }, totals: { rooms: { baseline: itis.reduce((s, i) => s + i.roomsBaseline, 0), working: itis.reduce((s, i) => s + i.roomsWorking, 0), y5: itis.reduce((s, i) => s + i.roomsY5, 0) }, machines: mach, civil: { works: civil.length, delayed: civil.filter(w => w.state === 'delayed').length, pct: civil.length ? Math.round(civil.reduce((s, w) => s + w.pctComplete * w.budgetCr, 0) / Math.max(0.001, civil.reduce((s, w) => s + w.budgetCr, 0))) : null }, gates: { total: gates.length, passed: gates.filter(g => g.state === 'passed').length, ready: gates.filter(g => g.state === 'ready').length } }, byIti, nonFunctional, works })
+  } catch (e) { next(e) }
+})
+
 export default r
