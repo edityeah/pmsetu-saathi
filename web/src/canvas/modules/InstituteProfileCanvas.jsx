@@ -2,11 +2,12 @@
 // to confirm: overview, trades, staffing, infrastructure, budget, targets,
 // launch gates. Every tab says where its values come from.
 import { useMemo, useState } from 'react'
-import { ArrowLeft, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { useApp } from '../../context/AppContext.jsx'
 import { Hero, Stat, StatGrid, Bar, Pill, Section, Table, Loading, Btn, useLoad, Tabs, fmtCr, fmtDate, nil, stateKind, titleCase, NoFeed, inputCls } from './_ui.jsx'
 import { useSaathiContext, brief } from '../CanvasSaathi.jsx'
+import { DetailPage, DetailCard, LabelGrid } from './_Detail.jsx'
 
 const r1 = v => (v == null || v === '' ? v : Math.round(Number(v) * 10) / 10)
 const TABS_ALL = [{ id: 'overview', label: 'Overview' }, { id: 'trades', label: 'Trade offerings' }, { id: 'infrastructure', label: 'Facilities and labs' }, { id: 'staffing', label: 'Staffing' }, { id: 'budget', label: 'Budget' }, { id: 'targets', label: 'Targets' }, { id: 'launch_gates', label: 'Launch gates' }]
@@ -263,34 +264,3 @@ function FacilityDetail({ f, trades, iti, onBack, onCourses, onMachines }) {
   )
 }
 
-// A full-screen record page inside the canvas: back arrow and breadcrumb on
-// the top left, name, id line, status pill on the right, then sectioned cards.
-function DetailPage({ onBack, eyebrow, title, id, sub, pill, children }) {
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="px-4 pt-4 pb-3">
-        <div className="flex items-center gap-3"><button onClick={onBack} className="w-9 h-9 rounded-xl border border-bdr-light bg-surface-page flex items-center justify-center hover:bg-white" title="Back"><ArrowLeft className="w-4 h-4 text-txt-secondary" /></button><div className="text-[11px] font-bold uppercase tracking-[2px] text-txt-secondary">{eyebrow}</div></div>
-        <div className="mt-3 flex items-start gap-3 flex-wrap"><div className="flex-1 min-w-0"><h2 className="text-[24px] font-bold text-txt-primary leading-tight">{title}</h2>{id && <div className="text-[12px] text-txt-secondary mt-1 font-mono">{id}</div>}{sub && <div className="text-[12px] text-txt-secondary">{sub}</div>}</div>{pill && <Pill kind={pill.kind}>{pill.label}</Pill>}</div>
-      </div>
-      <div className="px-4 pb-6 space-y-4">{children}</div>
-    </div>
-  )
-}
-
-function DetailCard({ title, icon, children }) {
-  return (
-    <div className="rounded-2xl border border-bdr-light bg-white shadow-card p-4">
-      <div className="text-[11px] font-bold uppercase tracking-wider text-txt-primary mb-3 inline-flex items-center gap-2"><span aria-hidden>{icon}</span>{title}</div>
-      {children}
-    </div>
-  )
-}
-
-// Label over value, in one or two columns, as on a record page.
-function LabelGrid({ items, cols = 2 }) {
-  return (
-    <dl className={`grid grid-cols-1 ${cols === 2 ? 'sm:grid-cols-2' : ''} gap-x-8 gap-y-3`}>
-      {items.map(([k, v]) => <div key={k} className="min-w-0"><dt className="text-[10px] uppercase tracking-wider font-bold text-txt-tertiary">{k}</dt><dd className="text-[13px] font-semibold text-txt-primary mt-0.5 break-words">{v}</dd></div>)}
-    </dl>
-  )
-}

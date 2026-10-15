@@ -249,4 +249,108 @@ r.get('/budget', async (req, res, next) => {
   } catch (e) { next(e) }
 })
 
+// ── Registry: students and trainers as records ─────────────────────────────
+const PAGE = 25
+const traineeView = (t, codeOf) => ({ id: t.id, name: t.name, itiId: t.itiId, itiCode: codeOf(t.itiId), batchId: t.batchId, batch: t.batch?.name || null, tradeId: t.batch?.tradeId || null, trade: t.batch?.trade?.name || null, gender: t.gender, status: t.status, studyYear: t.studyYear, pwd: t.pwd })
+
+r.get('/registry/students', async (req, res, next) => {
+  try {
+    const { c, itiIds } = await scopeItiIds(req)
+    const itis = await prisma.iti.findMany({ where: { clusterId: c.id }, orderBy: [{ kind: 'asc' }, { code: 'asc' }], select: { id: true, code: true, name: true, registryConnected: true } })
+    const codeOf = id => itis.find(i => i.id === id)?.code || id
+    const trade = req.query.trade && req.query.trade !== 'all' ? String(req.query.trade) : null
+    const batchId = req.query.batchId && req.query.batchId !== 'all' ? String(req.query.batchId) : null
+    const gender = req.query.gender && req.query.gender !== 'all' ? String(req.query.gender) : null
+    const status = String(req.query.status || 'active')
+    const q = req.query.q ? String(req.query.q).trim() : ''
+    const page = Math.max(1, Number(req.query.page || 1))
+    const where = { itiId: { in: itiIds }, registryMatched: true, ...(status !== 'all' ? { status } : {}), ...(gender ? { gender } : {}), ...(batchId ? { batchId } : {}), ...(trade ? { batch: { tradeId: trade } } : {}), ...(q ? { OR: [{ name: { contains: q } }, { id: { contains: q } }] } : {}) }
+    const [total, rows, all, batches, trades] = await Promise.all([
+      prisma.trainee.count({ where }),
+      prisma.trainee.findMany({ where, orderBy: [{ itiId: 'asc' }, { id: 'asc' }], skip: (page - 1) * PAGE, take: PAGE, include: { batch: { select: { name: true, tradeId: true, trade: { select: { name: true } } } } } }),
+      prisma.trainee.findMany({ where, select: { gender: true, itiId: true, batch: { select: { tradeId: true, trade: { select: { name: true } } } } } }),
+      prisma.batch.findMany({ where: { itiId: { in: itiIds }, state: 'running', ...(trade ? { tradeId: trade } : {}) }, orderBy: { name: 'asc' }, select: { id: true, name: true, tradeId: true, itiId: true } }),
+      prisma.trade.findMany({ where: { batches: { some: { itiId: { in: itiIds } } } }, orderBy: { name: 'asc' }, select: { id: true, code: true, name: true } }),
+    ])
+    const byTrade = Object.values(all.reduce((m, t) => { const k = t.batch?.trade?.name || 'Unassigned'; (m[k] ||= { name: k, n: 0 }).n++; return m }, {})).sort((a, b) => b.n - a.n)
+    const byIti = itis.filter(i => itiIds.includes(i.id)).map(i => ({ ...i, n: i.registryConnected ? all.filter(t => t.itiId === i.id).length : null }))
+    res.json({ coverage: `${itis.filter(i => i.registryConnected && itiIds.includes(i.id)).length} of ${itiIds.length} ITIs reporting`, options: { trades, batches }, total, page, pageSize: PAGE, pages: Math.max(1, Math.ceil(total / PAGE)), gender: { male: all.filter(t => t.gender === 'M').length, female: all.filter(t => t.gender === 'F').length }, byTrade, byIti, rows: rows.map(t => traineeView(t, codeOf)) })
+  } catch (e) { next(e) }
+})
+
+r.get('/registry/students/:id', async (req, res, next) => {
+  try {
+    const t = await prisma.trainee.findUnique({ where: { id: req.params.id }, include: { user: { select: { email: true, profile: true, loginId: true } }, iti: { select: { code: true, name: true, district: true } }, batch: { include: { trade: { select: { code: true, name: true, durationValue: true, durationUnit: true } }, lead: { select: { name: true } } } } } })
+    if (!t) return res.status(404).json({ error: 'not_found' })
+    if (req.user.role === 'iti_principal' || req.user.role === 'trainer') { const i = await itiFor(req.user); if (i && i.id !== t.itiId) return res.status(403).json({ error: 'forbidden' }) }
+    const since = addDays(dayUTC(), -15)
+    const [marks, entries, apps, spells, artifacts, support] = await Promise.all([
+      prisma.attendanceMark.findMany({ where: { traineeId: t.id, session: { date: { gte: since } } }, select: { status: true } }),
+      prisma.markEntry.findMany({ where: { traineeId: t.id, marks: { not: null } }, include: { assessment: { select: { title: true, maxMarks: true, date: true } } }, orderBy: { assessment: { date: 'desc' } }, take: 5 }),
+      prisma.application.findMany({ where: { traineeId: t.id }, include: { opportunity: { select: { title: true, employer: { select: { name: true } } } } }, orderBy: { lastEventAt: 'desc' }, take: 5 }),
+      prisma.employmentSpell.findMany({ where: { traineeId: t.id }, include: { employer: { select: { name: true } } } }),
+      prisma.companionArtifact.findMany({ where: { traineeId: t.id }, select: { kind: true, title: true, updatedAt: true, content: true } }),
+      prisma.supportAction.findMany({ where: { traineeId: t.id, state: { not: 'closed' } }, select: { reason: true, state: true, dueAt: true } }),
+    ])
+    const prof = J(t.user?.profile, {})
+    const present = marks.filter(m => m.status === 'present' || m.status === 'late').length
+    const resume = artifacts.find(a => a.kind === 'resume')
+    res.json({ student: { id: t.id, name: t.name, status: t.status, gender: t.gender, dob: t.dob, education: t.education, category: t.category, pwd: t.pwd, pwdType: t.pwdType, district: t.district, phone: t.phone, email: t.user?.email || null, fatherName: prof.father || null, motherName: prof.mother || null, enrolledAt: t.enrolledAt, studyYear: t.studyYear, languagePref: t.languagePref, registryMatched: t.registryMatched, loginId: t.user?.loginId || null },
+      iti: t.iti, batch: t.batch ? { id: t.batch.id, name: t.batch.name, startDate: t.batch.startDate, endDate: t.batch.endDate, tenureMonths: t.batch.tenureMonths, lead: t.batch.lead?.name || null, trade: t.batch.trade } : null,
+      attendance: { total: marks.length, present, pct: marks.length ? Math.round(100 * present / marks.length) : null },
+      marks: entries.map(e => ({ title: e.assessment.title, date: e.assessment.date, marks: e.marks, maxMarks: e.assessment.maxMarks })),
+      applications: apps.map(a => ({ id: a.id, title: a.opportunity.title, employer: a.opportunity.employer.name, stage: a.stage, evidenceLevel: a.evidenceLevel })),
+      spells: spells.map(x => ({ employer: x.employer.name, type: x.type, role: x.role, startAt: x.startAt, state: x.state })),
+      resume: resume ? { title: resume.title, updatedAt: resume.updatedAt, content: J(resume.content, {}) } : null,
+      support: support })
+  } catch (e) { next(e) }
+})
+
+r.get('/registry/trainers', async (req, res, next) => {
+  try {
+    const { c, itiIds } = await scopeItiIds(req)
+    const itis = await prisma.iti.findMany({ where: { clusterId: c.id }, orderBy: [{ kind: 'asc' }, { code: 'asc' }], select: { id: true, code: true, name: true, registryConnected: true } })
+    const codes = itis.filter(i => itiIds.includes(i.id)).map(i => i.code)
+    const trade = req.query.trade && req.query.trade !== 'all' ? String(req.query.trade) : null
+    const load = req.query.load && req.query.load !== 'all' ? String(req.query.load) : null
+    const q = req.query.q ? String(req.query.q).trim().toLowerCase() : ''
+    const page = Math.max(1, Number(req.query.page || 1))
+    const [users, assignments, availability] = await Promise.all([
+      prisma.user.findMany({ where: { role: 'trainer' }, select: { id: true, name: true, loginId: true, profile: true } }),
+      prisma.trainerAssignment.findMany({ where: { batch: { itiId: { in: itiIds } } }, select: { trainerUserId: true, responsibility: true, batch: { select: { id: true, name: true, tradeId: true } }, subject: { select: { name: true } } } }),
+      prisma.trainerAvailability.findMany({ where: { date: dayUTC() }, select: { trainerUserId: true, status: true } }),
+    ])
+    let rows = users.map(u => { const pr = J(u.profile, {}); const as = assignments.filter(a => a.trainerUserId === u.id); return { id: u.id, name: u.name, loginId: u.loginId, facultyCode: pr.facultyCode, itiCode: pr.itiCode, programme: pr.programme, designation: pr.designation, gender: pr.gender, batches: [...new Set(as.map(a => a.batch.name))], subjects: [...new Set(as.map(a => a.subject.name))], lead: as.some(a => a.responsibility.startsWith('Batch lead')), today: availability.find(a => a.trainerUserId === u.id)?.status || 'available' } })
+      .filter(t => codes.includes(t.itiCode)).filter(t => !trade || t.programme === trade).filter(t => !q || t.name.toLowerCase().includes(q) || (t.facultyCode || '').toLowerCase().includes(q))
+    if (load) rows = rows.filter(t => load === '4+' ? t.batches.length >= 4 : load === '0' ? t.batches.length === 0 : t.batches.length === Number(load))
+    const byTrade = Object.values(rows.reduce((m, t) => { (m[t.programme] ||= { code: t.programme, n: 0 }).n++; return m }, {})).sort((a, b) => b.n - a.n)
+    const byLoad = Object.values(rows.reduce((m, t) => { const k = t.batches.length >= 4 ? '4+ batches' : `${t.batches.length} batch${t.batches.length === 1 ? '' : 'es'}`; (m[k] ||= { label: k, n: 0 }).n++; return m }, {})).sort((a, b) => b.n - a.n)
+    const byIti = itis.filter(i => itiIds.includes(i.id)).map(i => ({ ...i, n: i.registryConnected ? rows.filter(t => t.itiCode === i.code).length : null }))
+    const trades = [...new Set(users.map(u => J(u.profile, {})).filter(p => codes.includes(p.itiCode)).map(p => p.programme).filter(Boolean))].sort()
+    const total = rows.length
+    rows.sort((a, b) => (a.itiCode || '').localeCompare(b.itiCode || '') || (a.facultyCode || '').localeCompare(b.facultyCode || ''))
+    res.json({ coverage: `${itis.filter(i => i.registryConnected && itiIds.includes(i.id)).length} of ${itiIds.length} ITIs reporting`, options: { trades }, total, page, pageSize: PAGE, pages: Math.max(1, Math.ceil(total / PAGE)), byTrade, byLoad, byIti, assignments: rows.reduce((s, t) => s + t.subjects.length * Math.max(1, t.batches.length), 0), rows: rows.slice((page - 1) * PAGE, page * PAGE) })
+  } catch (e) { next(e) }
+})
+
+r.get('/registry/trainers/:id', async (req, res, next) => {
+  try {
+    const u = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, name: true, loginId: true, phone: true, email: true, profile: true, role: true } })
+    if (!u || u.role !== 'trainer') return res.status(404).json({ error: 'not_found' })
+    const pr = J(u.profile, {})
+    if (req.user.role === 'iti_principal' || req.user.role === 'trainer') { const i = await itiFor(req.user); if (i && i.code !== pr.itiCode) return res.status(403).json({ error: 'forbidden' }) }
+    const today = dayUTC()
+    const [iti, assignments, availability, sessions, marksPending, referrals] = await Promise.all([
+      prisma.iti.findUnique({ where: { code: pr.itiCode || '__' }, select: { code: true, name: true, district: true } }),
+      prisma.trainerAssignment.findMany({ where: { trainerUserId: u.id }, include: { batch: { select: { id: true, name: true, tradeId: true, studyYear: true, _count: { select: { trainees: true } } } }, subject: { select: { name: true, type: true } } } }),
+      prisma.trainerAvailability.findUnique({ where: { trainerUserId_date: { trainerUserId: u.id, date: today } } }),
+      prisma.session.findMany({ where: { trainerUserId: u.id, date: { gte: addDays(today, -15), lte: today } }, select: { attendanceState: true, delivery: true } }),
+      prisma.assessmentPlan.count({ where: { batch: { assignments: { some: { trainerUserId: u.id } } }, state: { in: ['marks_pending', 'conducted'] } } }),
+      prisma.referral.count({ where: { toUserId: u.id, state: { in: ['sent', 'accepted', 'contacted'] } } }),
+    ])
+    const batches = Object.values(assignments.reduce((m, a) => { const b = m[a.batch.id] ||= { id: a.batch.id, name: a.batch.name, tradeId: a.batch.tradeId, studyYear: a.batch.studyYear, students: a.batch._count.trainees, subjects: [], lead: false }; b.subjects.push(a.subject.name); if (a.responsibility.startsWith('Batch lead')) b.lead = true; return m }, {}))
+    res.json({ trainer: { id: u.id, name: u.name, loginId: u.loginId, facultyCode: pr.facultyCode, phone: u.phone, email: u.email, designation: pr.designation, programme: pr.programme, joinedAt: pr.joinedAt, gender: pr.gender, today: availability?.status || 'available', todayNote: availability?.note || null }, iti, batches, subjects: [...new Set(assignments.map(a => a.subject.name))], sessions15: { scheduled: sessions.length, reported: sessions.filter(s => s.attendanceState !== 'not_reported').length }, marksPending, referrals })
+  } catch (e) { next(e) }
+})
+
 export default r
