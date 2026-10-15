@@ -7,7 +7,7 @@
 //   Utilisation: what the CA has certified against each line (the view the
 //   "Funds utilised" headline card opens).
 // Same PM-SETU Saathi design as every other screen; Download report exports CSV.
-import { useMemo, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Download, X } from 'lucide-react'
 import { BarChart, Bar as RBar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 import BarChartCard from '../../components/cards/BarChartCard.jsx'
@@ -17,7 +17,7 @@ import { useApp } from '../../context/AppContext.jsx'
 import { useLoad, Loading, Hero, Stat, StatGrid, Bar, Section, Table, Tabs, Pill, Btn, fmtCr, fmtDate, fmtPct } from './_ui.jsx'
 import { useSaathiContext } from '../CanvasSaathi.jsx'
 
-const TABS = [{ id: 'overview', label: 'Allocations & releases' }, { id: 'utilisation', label: 'Utilisation' }]
+const TABS = [{ id: 'overview', label: 'Allocations & releases' }, { id: 'history', label: 'Release history' }, { id: 'utilisation', label: 'Utilisation' }]
 const PALETTE = ['#386AF6', '#F59E0B', '#10B981', '#8B5CF6', '#0EA5E9', '#F43F5E', '#14B8A6', '#D946EF', '#6366F1', '#84CC16']
 const STATE = { completed: { kind: 'ok', label: 'Completed' }, in_progress: { kind: 'info', label: 'In progress' }, stopped: { kind: 'bad', label: 'Stopped' } }
 const todayIso = () => new Date().toISOString().slice(0, 10)
@@ -28,14 +28,16 @@ const tip = { background: 'white', border: '1px solid #CFD8E6', borderRadius: 8,
 export default function BudgetAnalyticsCanvas({ context }) {
   const { openCanvas } = useApp()
   const f0 = context?.filters || {}
-  const [tab, setTab] = useState(context?.tab === 'utilisation' ? 'utilisation' : 'overview')
+  const [tab, setTabRaw] = useState(['utilisation', 'history'].includes(context?.tab) ? context.tab : 'overview')
+  const scrollRef = useRef(null)
+  const setTab = t => { setTabRaw(t); scrollRef.current?.scrollTo({ top: 0 }) }
   const [year, setYear] = useState(String(f0.year || 1))
   const [itiId, setItiId] = useState(f0.itiId || 'all')
   const [category, setCategory] = useState(f0.category || 'all')
   const [asOf, setAsOf] = useState(f0.asOf || todayIso())
   const [release, setRelease] = useState(null)
   const { data: itis } = useLoad(() => api.itis())
-  const { data } = useLoad(() => tab === 'overview' ? api.budgetAnalytics({ year, itiId, category, asOf }) : Promise.resolve(null), [tab, year, itiId, category, asOf])
+  const { data } = useLoad(() => tab !== 'utilisation' ? api.budgetAnalytics({ year, itiId, category, asOf }) : Promise.resolve(null), [tab, year, itiId, category, asOf])
   const { data: util } = useLoad(() => tab === 'utilisation' ? api.aopUtilisation({ year }) : Promise.resolve(null), [tab, year])
   const scopeName = itiId === 'all' ? 'Cluster' : (itis?.itis?.find(i => i.id === itiId)?.name || itiId)
   useSaathiContext(data ? `Budget analytics (Year ${year}, ${scopeName}, package ${category}, as of ${asOf}): allocation ₹${data.totals.allocationCr} Cr, released ₹${data.totals.releasedCr} Cr (${data.totals.releasedPct}%), balance ₹${data.totals.balanceCr} Cr, utilised ₹${data.totals.spentCr} Cr. By ITI: ${data.byIti.map(i => `${i.code} ₹${i.releasedCr}/${i.allocationCr} Cr`).join(', ')}. By work package: ${data.byPackage.map(p => `${p.category} ₹${p.releasedCr}/${p.allocationCr} Cr`).join(', ')}. Releases: ${data.releases.length}; stopped projects: ${data.releases.filter(r => r.projectState === 'stopped').map(r => r.project).join('; ') || 'none'}.` : util ? `AOP utilisation: ${JSON.stringify(util.totals)}` : '', ['How much has Pusa received against its allocation?', 'Which work package has the largest balance to release?', 'Which released projects are stopped?'])
@@ -56,7 +58,7 @@ export default function BudgetAnalyticsCanvas({ context }) {
   const catOpts = [{ id: 'all', label: 'All work packages' }, ...((data?.categories || []).map(c => ({ id: c, label: c })))]
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div ref={scrollRef} className="h-full overflow-y-auto">
       <Hero tone="amber" eyebrow="Budget analytics" title={tab === 'overview' ? (data ? `Year ${year}: ${fmtCr(data.totals.releasedCr)} released of ${fmtCr(data.totals.allocationCr)} allocated` : 'AOP allocations and funds released') : (util ? `Year ${year}: ${fmtCr(util.totals.utilisedCr)} utilised of ${fmtCr(util.totals.budgetCr)} approved` : 'Utilisation')} subtitle={tab === 'overview' ? 'Released is money moved to the ITIs against their AOP allocation. It is not spent; utilisation is certified separately.' : 'Utilisation is what the Chartered Accountant has certified against each line; committed is contracted but not yet paid.'} right={exportBtn} />
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
 
@@ -90,16 +92,25 @@ export default function BudgetAnalyticsCanvas({ context }) {
               </div>
             </Section>
 
-            <Section title={`Release history · ${data.releases.length}`} hint="Tap a release to see the work package, the project it funded, the date and where the project stands.">
-              <Table columns={[
-                { key: 'releasedAt', label: 'Date', render: r => <b>{fmtDate(r.releasedAt)}</b> },
-                { key: 'itiCode', label: 'ITI' },
-                { key: 'project', label: 'Work package · project', render: r => <button className="text-left hover:text-primary" onClick={() => setRelease(r)}><div className="font-semibold">{r.category}</div><div className="text-[10px] text-txt-tertiary">{r.packageTitle}</div></button> },
-                { key: 'amountCr', label: 'Amount', align: 'right', render: r => fmtCr(r.amountCr) },
-                { key: 'projectState', label: 'Project', render: r => <Pill kind={STATE[r.projectState]?.kind || 'neutral'}>{STATE[r.projectState]?.label || r.projectState}</Pill> },
-                { key: 'open', label: '', align: 'right', render: r => <Btn small tone="ghost" onClick={() => setRelease(r)}>Details</Btn> },
-              ]} rows={data.releases.slice(0, 60)} empty="No releases in this scope." />
-              {data.releases.length > 60 && <div className="text-[11px] text-txt-tertiary px-2 pt-2">Showing 60 of {data.releases.length}. Narrow the filters or download the report.</div>}
+            <Section title="Latest releases" hint="The five most recent releases in this scope. Tap a release for the project behind it." right={data.releases.length > 5 ? <button className="text-[11px] text-primary font-bold" onClick={() => setTab('history')}>View all {data.releases.length} →</button> : null}>
+              <ReleaseTable rows={data.releases.slice(0, 5)} onPick={setRelease} />
+            </Section>
+          </div>
+        )}
+      </>)}
+
+      {tab === 'history' && (<>
+        <FilterBar items={[{ label: 'Year', value: year, options: [{ id: '1', label: 'Year 1' }], onChange: setYear }, { label: 'ITI', value: itiId, options: itiOpts, onChange: setItiId }, { label: 'Work package', value: category, options: catOpts, onChange: setCategory }, { label: 'Releases as of', type: 'date', value: asOf, onChange: setAsOf }]} note={data ? `${data.releases.length} releases · ${fmtCr(data.totals.releasedCr)}` : ''} />
+        {!data ? <Loading /> : (
+          <div className="p-4 space-y-4">
+            <StatGrid>
+              <Stat label="Releases" value={data.releases.length} sub={`as of ${fmtDate(asOf)}`} tone="indigo" />
+              <Stat label="Released" value={fmtCr(data.totals.releasedCr)} sub={`of ${fmtCr(data.totals.allocationCr)} allocated`} tone="emerald" />
+              <Stat label="Projects in progress" value={data.releases.filter(r => r.projectState === 'in_progress').length} sub={`${data.releases.filter(r => r.projectState === 'completed').length} completed`} tone="sky" />
+              <Stat label="Projects stopped" value={data.releases.filter(r => r.projectState === 'stopped').length} sub="funded, work blocked" tone={data.releases.some(r => r.projectState === 'stopped') ? 'rose' : 'emerald'} />
+            </StatGrid>
+            <Section title={`Release history · ${data.releases.length}`} hint="Every release in this scope, newest first. Tap a release to see the work package, the project it funded, the date and where the project stands.">
+              <ReleaseTable rows={data.releases} onPick={setRelease} />
             </Section>
           </div>
         )}
@@ -135,6 +146,19 @@ export default function BudgetAnalyticsCanvas({ context }) {
 
       {release && <ReleasePopup r={release} onClose={() => setRelease(null)} onOpenIti={() => { setRelease(null); openCanvas({ type: 'institute_profile', itiCode: release.itiCode, tab: 'budget' }) }} />}
     </div>
+  )
+}
+
+function ReleaseTable({ rows, onPick }) {
+  return (
+    <Table columns={[
+      { key: 'releasedAt', label: 'Date', render: r => <b>{fmtDate(r.releasedAt)}</b> },
+      { key: 'itiCode', label: 'ITI' },
+      { key: 'project', label: 'Work package · project', render: r => <button className="text-left hover:text-primary" onClick={() => onPick(r)}><div className="font-semibold">{r.category}</div><div className="text-[10px] text-txt-tertiary">{r.packageTitle}</div></button> },
+      { key: 'amountCr', label: 'Amount', align: 'right', render: r => fmtCr(r.amountCr) },
+      { key: 'projectState', label: 'Project', render: r => <Pill kind={STATE[r.projectState]?.kind || 'neutral'}>{STATE[r.projectState]?.label || r.projectState}</Pill> },
+      { key: 'open', label: '', align: 'right', render: r => <Btn small tone="ghost" onClick={() => onPick(r)}>Details</Btn> },
+    ]} rows={rows} empty="No releases in this scope." />
   )
 }
 
