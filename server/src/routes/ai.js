@@ -21,6 +21,8 @@ import { CARD_TOOLBOX } from '../llm/cardPrompts.js'
 import { buildRoleContext } from '../llm/roleContext.js'
 import { prisma } from '../db.js'
 import { interpretNavigation, resolveNavigation, answerFromData } from '../nav/interpret.js'
+import { targetsForRole } from '../nav/catalog.js'
+import { chatText } from '../llm/openai.js'
 import { livePack } from '../nav/snapshot.js'
 import { navToolDefs } from '../voice/tools.js'
 
@@ -78,7 +80,17 @@ r.post('/message', async (req, res, next) => {
       return res.json({ responseType: 'answer', answer: { text: rag.answer, citations: rag.citations, language: body.language || 'en' } })
     }
 
-    // 3) Legacy intent classifier as a last resort (other roles' actions).
+    // 3) Roles whose catalog is section-only (the CEO) get a direct answer
+    //    from the scheme facts and the live cluster pack instead of a jump
+    //    to a screen outside their sections.
+    if (!targetsForRole(role).some(t => t.legacy)) {
+      const pack = await livePack(req).catch(() => '')
+      const roleCtx = buildRoleContext({ persona: 'general', role }) || ''
+      const ans = await chatText({ system: `You are Saathi inside PM-SETU Saathi, talking to the ${role}. Answer in at most three short sentences, plain text, in the user's language. Use the facts below; for cluster numbers use only the LIVE CLUSTER DATA. If the answer needs a screen, name the section it lives in (Budget Analytics, Institute Profile, Cluster Registry, Daily Operations, Placement Analytics, Support and Alerts).\n\n${roleCtx}\n\n${pack}`, user: text }).catch(() => null)
+      if (ans) return res.json({ responseType: 'answer', answer: { text: ans, citations: [], language: nav?.language || body.language || 'en' } })
+    }
+
+    // 4) Legacy intent classifier as a last resort (other roles' actions).
     const intent = await interpretAction({ text, role, language: body.language })
     if (intent?.intent && intent.confidence >= 0.5) {
       return res.json({ responseType: 'action', actionId: intent.intent, module: intent.module, entities: intent.entities, confidence: intent.confidence, meta: { assistantText: intent.assistantText, chips: intent.chips, language: intent.language } })
