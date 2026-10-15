@@ -209,4 +209,44 @@ r.get('/infrastructure', async (req, res, next) => {
   } catch (e) { next(e) }
 })
 
+// Budget analytics: AOP allocation vs funds released, per ITI and per work
+// package (category), a cumulative release timeline and the release history.
+// Filters: year, ITI, work package (category), releases as of a date.
+r.get('/budget', async (req, res, next) => {
+  try {
+    const c = await clusterFor(req.user)
+    const year = Number(req.query.year || c.currentYear)
+    const itiId = req.query.itiId && req.query.itiId !== 'all' ? String(req.query.itiId) : null
+    const category = req.query.category && req.query.category !== 'all' ? String(req.query.category) : null
+    const asOf = req.query.asOf ? new Date(String(req.query.asOf) + 'T23:59:59Z') : new Date()
+    const [itis, aops, releasesAll] = await Promise.all([
+      prisma.iti.findMany({ where: { clusterId: c.id }, orderBy: [{ kind: 'asc' }, { code: 'asc' }], select: { id: true, code: true, name: true, kind: true } }),
+      prisma.aopRecord.findMany({ where: { year, package: { clusterId: c.id } }, include: { package: { select: { id: true, itiId: true, category: true, title: true } } } }),
+      prisma.fundRelease.findMany({ where: { clusterId: c.id, year, releasedAt: { lte: asOf } }, include: { package: { select: { category: true, title: true } }, iti: { select: { code: true, name: true } } }, orderBy: { releasedAt: 'desc' } }),
+    ])
+    const inScope = (itiIdX, cat) => (!itiId || itiIdX === itiId) && (!category || cat === category)
+    const aopsIn = aops.filter(a => inScope(a.package.itiId, a.package.category))
+    const relIn = releasesAll.filter(r => inScope(r.itiId, r.package.category))
+    const sum = (rows, k) => +rows.reduce((s, x) => s + (x[k] || 0), 0).toFixed(3)
+    const allocation = sum(aopsIn, 'budgetCr'), released = sum(relIn, 'amountCr')
+    const totals = { allocationCr: allocation, releasedCr: released, balanceCr: +(allocation - released).toFixed(3), releasedPct: pct(released, allocation), spentCr: sum(aopsIn, 'spentCr') }
+    // By ITI (always all ITIs, category filter applied) so the bar chart can switch the selection.
+    const byIti = itis.map(i => { const a = aops.filter(x => x.package.itiId === i.id && (!category || x.package.category === category)), r = releasesAll.filter(x => x.itiId === i.id && (!category || x.package.category === category)); const al = sum(a, 'budgetCr'), re = sum(r, 'amountCr'); return { id: i.id, code: i.code, name: i.name, kind: i.kind, allocationCr: al, releasedCr: re, balanceCr: +(al - re).toFixed(3), releasedPct: pct(re, al), spentCr: sum(a, 'spentCr'), selected: itiId === i.id } })
+    // By work package (category) within the ITI scope; the category filter only highlights.
+    const cats = {}
+    for (const a of aops.filter(x => !itiId || x.package.itiId === itiId)) { const k = cats[a.package.category] ||= { category: a.package.category, allocationCr: 0, releasedCr: 0, spentCr: 0, packages: 0 }; k.allocationCr += a.budgetCr; k.spentCr += a.spentCr; k.packages++ }
+    for (const r of releasesAll.filter(x => !itiId || x.itiId === itiId)) { const k = cats[r.package.category] ||= { category: r.package.category, allocationCr: 0, releasedCr: 0, spentCr: 0, packages: 0 }; k.releasedCr += r.amountCr }
+    const byPackage = Object.values(cats).map(k => ({ ...k, allocationCr: +k.allocationCr.toFixed(3), releasedCr: +k.releasedCr.toFixed(3), spentCr: +k.spentCr.toFixed(3), balanceCr: +(k.allocationCr - k.releasedCr).toFixed(3), releasedPct: pct(k.releasedCr, k.allocationCr), selected: category === k.category })).sort((a, b) => b.allocationCr - a.allocationCr)
+    // Cumulative releases by month for the scope.
+    const start = new Date(c.scenarioStart || c.licenseStartAt || '2026-08-01')
+    const months = []
+    for (let i = 0; i < 12; i++) { const m0 = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i, 1)); if (m0 > asOf) break; months.push(m0) }
+    let cum = 0
+    const timeline = months.map(m0 => { const m1 = new Date(Date.UTC(m0.getUTCFullYear(), m0.getUTCMonth() + 1, 1)); const inM = relIn.filter(r => r.releasedAt >= m0 && r.releasedAt < m1); cum += inM.reduce((s, r) => s + r.amountCr, 0); return { month: m0.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }), releasedCr: +inM.reduce((s, r) => s + r.amountCr, 0).toFixed(3), cumulativeCr: +cum.toFixed(3) } })
+    const aopById = Object.fromEntries(aops.map(a => [a.id, a]))
+    const releases = relIn.map(r => { const a = r.aopId ? aopById[r.aopId] : null; return { id: r.id, releasedAt: r.releasedAt, itiCode: r.iti.code, itiName: r.iti.name, category: r.package.category, packageId: r.packageId, packageTitle: r.package.title, project: r.project, amountCr: r.amountCr, reference: r.reference, note: r.note, projectState: r.projectState, progressPct: a?.progressPct ?? null, aopState: a?.state ?? null, aopBudgetCr: a?.budgetCr ?? null, aopSpentCr: a?.spentCr ?? null, deliverable: a?.deliverable ?? null } })
+    res.json({ filters: { year, itiId: itiId || 'all', category: category || 'all', asOf: asOf.toISOString().slice(0, 10) }, cluster: { code: c.code, name: c.name, envelopeY1Cr: c.envelopeY1Cr }, categories: [...new Set(aops.map(a => a.package.category))].sort(), totals, byIti, byPackage, timeline, releases })
+  } catch (e) { next(e) }
+})
+
 export default r

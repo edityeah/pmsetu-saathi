@@ -82,7 +82,7 @@ async function wipe() {
     'supportAction', 'practicalObservation', 'practicalTask', 'markEntry', 'assessmentPlan', 'attendanceMark', 'session',
     'trainerAvailability', 'finding', 'visit', 'opsIssue', 'trainerAssignment', 'moduleProgress', 'courseModule', 'grievance',
     'trainee', 'batch', 'subject', 'machine', 'civilWork', 'procurementPackage', 'budgetLine', 'escrowDeposit', 'utilisationCertificate',
-    'milestone', 'report', 'boardItem', 'changeRequest', 'kpi', 'launchGate', 'offeringPlan', 'offering', 'planTask', 'aopRecord', 'package',
+    'milestone', 'report', 'boardItem', 'changeRequest', 'kpi', 'launchGate', 'offeringPlan', 'offering', 'planTask', 'fundRelease', 'aopRecord', 'package',
     'evidenceRule', 'risk', 'iti', 'trade', 'cluster', 'user',
   ]
   for (const m of order) await prisma[m].deleteMany()
@@ -245,6 +245,31 @@ async function main() {
   }
   await createMany('aopRecord', aopRows)
   const aopIds = new Set(aopRows.map(a => a.id))
+
+  // Fund releases: SPV → ITI against each Year-1 AOP record, in one or two
+  // tranches dated Aug–Oct 2026. Released ≈ 1.6 × spent (capped at budget),
+  // so released > utilised, as it is in practice. Project state follows the
+  // record: a stopped project is one whose work is blocked.
+  const pkgById = Object.fromEntries(plan.Packages.map(p => [p['Package ID'], { id: p['Package ID'], itiId: p.ITI, category: p.Category, title: p['Work package'] }]))
+  const releaseRows = []
+  const PROJECT = { Civil: 'Civil works', Equipment: 'Machinery and lab equipment', Digital: 'Digital and technology', Staff: 'Trainer development and hiring', Operations: 'Operations and consumables', Governance: 'Governance and SPV running', 'Student support': 'Student support and activities', Industry: 'Industry linkage' }
+  for (const a of aopRows.filter(x => x.year === 1)) {
+    const pkg = pkgById[a.packageId]
+    if (!pkg) continue
+    const total = Math.min(a.budgetCr, +(a.spentCr * (1.4 + rnd() * 0.5)).toFixed(3))
+    if (total <= 0.005) continue
+    const tranches = total > 0.12 && rnd() < 0.55 ? 2 : 1
+    const first = tranches === 2 ? +(total * (0.5 + rnd() * 0.2)).toFixed(3) : total
+    const m1 = pick(['08', '08', '09']), m2 = pick(['09', '10', '10'])
+    const dates = [d(`2026-${m1}-${String(rand(3, 28)).padStart(2, '0')}`), d(`2026-${m2}-${String(rand(1, 12)).padStart(2, '0')}`)]
+    const stopped = a.state === 'in_progress' && rnd() < 0.08
+    const projectState = a.progressPct >= 100 ? 'completed' : stopped ? 'stopped' : 'in_progress'
+    for (let i = 0; i < tranches; i++) {
+      const amt = i === 0 ? first : +(total - first).toFixed(3)
+      releaseRows.push({ id: `REL-${a.id}-${i + 1}`, clusterId: C, itiId: pkg.itiId, packageId: pkg.id, aopId: a.id, year: 1, amountCr: amt, releasedAt: dates[i], reference: `PFMS/${pkg.itiId}/${String(releaseRows.length + 1).padStart(4, '0')}`, project: `${PROJECT[pkg.category] || pkg.category}: ${pkg.title}`, projectState, note: tranches === 2 ? `Tranche ${i + 1} of 2` : 'Single release' })
+    }
+  }
+  await createMany('fundRelease', releaseRows)
 
   const BLOCK_REASONS = ['Contractor awaiting utility shutdown clearance', 'Specification query from procurement cell unanswered', 'Named instructor not yet released by parent department', 'Registry export from state MIS pending']
   const tasks = []

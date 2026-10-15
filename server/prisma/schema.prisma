@@ -129,6 +129,7 @@ model Iti {
   visits          Visit[]
   issues          OpsIssue[]
   companionEvents CompanionEvent[]
+  releases        FundRelease[]
 }
 
 model Trade {
@@ -197,6 +198,26 @@ model Package {
   deliverable     String?
   sourceStatus    String?
   aops            AopRecord[]
+  releases      FundRelease[]
+}
+
+// Funds released by the SPV to an ITI against a work package (AOP record).
+// Released is not spent: utilisation is certified separately.
+model FundRelease {
+  id           String    @id
+  clusterId    String
+  itiId        String
+  iti          Iti       @relation(fields: [itiId], references: [id])
+  packageId    String
+  package      Package   @relation(fields: [packageId], references: [id])
+  aopId        String?
+  year         Int       @default(1)
+  amountCr     Float
+  releasedAt   DateTime
+  reference    String? // PFMS / sanction reference
+  project      String // the specific project the money was released for
+  projectState String    @default("in_progress") // completed | in_progress | stopped
+  note         String?
 }
 
 model AopRecord {

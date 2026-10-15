@@ -48,7 +48,7 @@ export const ROLE_TAGLINE = {
 export const ROLE_BOTS = {
   spv_ceo: [
     // 1 · Budget Analytics (no modules — one tile)
-    { id: 'budget',      name: 'Budget Analytics',         desc: 'AOP allocation · committed · utilised · export',                 icon: '🧾', tone: 'amber',   canvas: 'budget_analytics',   tab: 'utilisation',    section: 'budget' },
+    { id: 'budget',      name: 'Budget Analytics',         desc: 'Allocation · released to ITIs · balance · release history',                 icon: '🧾', tone: 'amber',   canvas: 'budget_analytics',   tab: 'overview',       section: 'budget' },
     // 2 · Institute Profile
     { id: 'ip_overview', name: 'Overview',                 desc: 'Students, trainers, rooms, budget, tasks per ITI',               icon: '🏫', tone: 'violet',  canvas: 'institute_profile',  tab: 'overview',       section: 'profile' },
     { id: 'ip_trades',   name: 'Trade offerings',          desc: 'Courses, places and planned enrolments by year',                 icon: '📚', tone: 'indigo',  canvas: 'institute_profile',  tab: 'trades',         section: 'profile' },

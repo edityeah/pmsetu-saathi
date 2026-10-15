@@ -182,6 +182,7 @@ export const api = {
   studentsAnalytics: (o) => req('GET', `/api/analytics/students${q(o)}`),
   enrolmentAnalytics: (o) => req('GET', `/api/analytics/enrolment${q(o)}`),
   aopUtilisation: (o) => req('GET', `/api/analytics/utilisation${q(o)}`),
+  budgetAnalytics: (o) => req('GET', `/api/analytics/budget${q(o)}`),
   trainerRegistry: (o) => req('GET', `/api/analytics/trainers${q(o)}`),
   assessmentAnalytics: (o) => req('GET', `/api/analytics/assessments${q(o)}`),
   infrastructureReadiness: (o) => req('GET', `/api/analytics/infrastructure${q(o)}`),
