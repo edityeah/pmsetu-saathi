@@ -47,8 +47,10 @@ export const ROLE_TAGLINE = {
 
 export const ROLE_BOTS = {
   spv_ceo: [
-    // 1 · Budget Analytics (no modules — one tile)
-    { id: 'budget',      name: 'Budget Analytics',         desc: 'Allocation · released to ITIs · balance · release history',                 icon: '🧾', tone: 'amber',   canvas: 'budget_analytics',   tab: 'overview',       section: 'budget' },
+    // 1 · Budget Analytics
+    { id: 'bud_alloc',   name: 'Allocations and releases', desc: 'AOP allocation · released to ITIs · balance · by work package', icon: '🧾', tone: 'amber',   canvas: 'budget_analytics',   tab: 'overview',       section: 'budget' },
+    { id: 'bud_hist',    name: 'Release history',          desc: 'Every release: work package, project, date, project status',     icon: '🗂️', tone: 'orange',  canvas: 'budget_analytics',   tab: 'history',        section: 'budget' },
+    { id: 'bud_util',    name: 'Utilisation',              desc: 'Certified utilisation by line against the 75% tranche gate',     icon: '🏦', tone: 'lime',    canvas: 'budget_analytics',   tab: 'utilisation',    section: 'budget' },
     // 2 · Institute Profile
     { id: 'ip_overview', name: 'Overview',                 desc: 'Students, trainers, rooms, budget, tasks per ITI',               icon: '🏫', tone: 'violet',  canvas: 'institute_profile',  tab: 'overview',       section: 'profile' },
     { id: 'ip_trades',   name: 'Trade offerings',          desc: 'Courses, places and planned enrolments by year',                 icon: '📚', tone: 'indigo',  canvas: 'institute_profile',  tab: 'trades',         section: 'profile' },
@@ -160,7 +162,7 @@ export const ROLE_SECTIONS = {
   spv_ceo: {
     order: ['budget', 'profile', 'registry', 'ops', 'placement', 'support'],
     meta: {
-      budget:    { title: 'Budget Analytics',   subtitle: 'The AOP money: allocation, committed, utilised',             accent: 'from-amber-50 to-white',   ring: 'ring-amber-200',   dot: 'bg-amber-500' },
+      budget:    { title: 'Budget Analytics',   subtitle: 'Allocations and releases, release history, utilisation',             accent: 'from-amber-50 to-white',   ring: 'ring-amber-200',   dot: 'bg-amber-500' },
       profile:   { title: 'Institute Profile',  subtitle: 'One ITI at a time: overview, trade offerings, facilities',    accent: 'from-violet-50 to-white',  ring: 'ring-violet-200',  dot: 'bg-violet-500' },
       registry:  { title: 'Cluster Registry',   subtitle: 'Students and trainers across the five ITIs',                  accent: 'from-fuchsia-50 to-white', ring: 'ring-fuchsia-200', dot: 'bg-fuchsia-500' },
       ops:       { title: 'Daily Operations',   subtitle: 'Attendance, assessment, infrastructure, upcoming events',     accent: 'from-indigo-50 to-white',  ring: 'ring-indigo-200',  dot: 'bg-indigo-500' },
