@@ -48,8 +48,13 @@ export default function HomePage() {
   function startNewChat() { setMessages([]); setShowSidebar(false); ctx.newChat?.() }
   function openThread(t) { setShowSidebar(false); ctx.openThread?.(t) }
 
-  async function send(text) {
-    if (!text?.trim()) return
+  const followRef = useRef([])
+  async function send(raw) {
+    let text = raw?.trim()
+    if (!text) return
+    // A bare 1, 2 or 3 picks that numbered follow-up from the last answer.
+    const pick = /^[1-3]$/.test(text) ? followRef.current[Number(text) - 1] : null
+    if (pick) text = pick
     setMessages(m => [...m, { role: 'user', text }])
     setTyping(true)
     try { handleResponse(await api.aiMessage(text, ctx.lang)) }
@@ -57,13 +62,17 @@ export default function HomePage() {
     finally { setTyping(false) }
   }
   function handleResponse(r) {
+    const follow = (r.followUps || []).slice(0, 3)
+    followRef.current = follow
+    const followActions = follow.map((q, i) => ({ label: `${i + 1}. ${q}`, kind: 'chip', value: q }))
     if (r.responseType === 'action') {
-      setMessages(m => [...m, { role: 'bot', text: r.meta?.assistantText || 'Opening…', actions: (r.meta?.chips || []).map(c => ({ label: c, kind: 'chip', value: c })) }])
+      setMessages(m => [...m, { role: 'bot', text: r.meta?.assistantText || 'Opening…', actions: [...followActions, ...(follow.length ? [] : (r.meta?.chips || []).map(c => ({ label: c, kind: 'chip', value: c })))] }])
       if (r.canvas?.type) ctx.openCanvas(r.canvas)
       else dispatchActionForRole({ actionId: r.actionId, entities: r.entities, role: ctx.role, openCanvas: ctx.openCanvas, showToast: ctx.showToast })
     } else if (r.responseType === 'answer') {
       const cits = (r.answer.citations || []).map(c => c.source).join(' · ')
-      setMessages(m => [...m, { role: 'bot', text: r.answer.text, html: `<div>${r.answer.text}</div>${cits ? `<div class="mt-2 text-[10px] text-slate-500">Sources: ${cits}</div>` : ''}` }])
+      const actions = [...(r.cta?.canvas?.type ? [{ label: r.cta.label, kind: 'open', canvas: r.cta.canvas }] : []), ...followActions]
+      setMessages(m => [...m, { role: 'bot', text: r.answer.text, html: `<div>${r.answer.text}</div>${cits ? `<div class="mt-2 text-[10px] text-slate-500">Sources: ${cits}</div>` : ''}${follow.length ? '<div class="mt-2 text-[11px] text-slate-500">Reply with 1, 2 or 3 to ask a follow-up.</div>' : ''}`, actions }])
     } else if (r.responseType === 'none' && r.reason === 'openai_not_configured') {
       setMessages(m => [...m, { role: 'bot', text: 'Saathi needs an OpenAI key on the server to understand free text. Tap an app tile below — every screen works without AI.' }])
     } else {
@@ -96,7 +105,7 @@ export default function HomePage() {
             <BellButton />
           </div>
         </div>
-        {greeted ? <GreetingPanel ctx={ctx} bots={bots} chips={chips} onSend={send} onPickBot={openBot} mobile={mobile} /> : <ChatThread messages={messages} typing={typing} onPick={(c) => c.kind === 'chip' && send(c.value)} />}
+        {greeted ? <GreetingPanel ctx={ctx} bots={bots} chips={chips} onSend={send} onPickBot={openBot} mobile={mobile} /> : <ChatThread messages={messages} typing={typing} onPick={(c) => c.kind === 'open' ? ctx.openCanvas(c.canvas) : c.kind === 'chip' && send(c.value)} />}
         <MessageInput onSend={send} />
         <CanvasPanel />
       </main>

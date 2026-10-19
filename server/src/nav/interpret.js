@@ -16,6 +16,8 @@ const SCHEMA = `{
   "category": "<budget work-package category if named: Civil, Digital, Equipment, Faculty, Governance, Operations, Staff, Student industry; else null>",
   "date": "<YYYY-MM-DD if a specific day was named, or null>",
   "wantsAnswer": true|false,
+  "wantsScreen": true|false,
+  "followUps": ["<deeper-dive question 1>", "<deeper-dive question 2>", "<deeper-dive question 3>"],
   "assistantText": "<≤120 chars in the user's language: what you are opening / showing>",
   "language": "en" | "hi" | "...",
   "chips": ["<follow-up 1>", "<follow-up 2>"]
@@ -26,7 +28,7 @@ const SCHEMA = `{
 const KEYWORDS = {
   ops_infrastructure: ['machine', 'machines', 'workshop', 'workshops', 'lab', 'labs', 'equipment', 'working', 'ready', 'readiness', 'usable', 'functional', 'infrastructure', 'मशीन', 'वर्कशॉप'],
   institute_trades: ['course', 'courses', 'trade offering', 'trades offered', 'trades', 'programme', 'programmes', 'offered', 'offer', 'कोर्स', 'ट्रेड'],
-  institute_facilities: ['facilities', 'facility', 'rooms', 'asset', 'assets', 'installed', 'civil package'],
+  institute_facilities: ['facilities', 'facility', 'rooms', 'asset', 'assets', 'installed', 'labs and rooms'],
   institute_overview: ['profile', 'overview', 'about iti', 'tell me about', 'campus'],
   registry_students: ['student', 'students', 'enrolment', 'enrollment', 'female', 'women', 'girls', 'registry', 'छात्र', 'विद्यार्थी'],
   my_institute_batches: ['batch', 'batches', 'roster', 'at-risk', 'at risk'],
@@ -37,7 +39,7 @@ const KEYWORDS = {
   ops_overview: ['daily operations', 'today', 'operations', 'how is the day'],
   budget_utilisation: ['utilised', 'utilisation', 'utilization', 'spent', 'spend', 'tranche gate', 'uc', 'certificate'],
   budget_release_history: ['release history', 'releases', 'released', 'last release'],
-  budget_overview: ['budget', 'allocation', 'allocated', 'fund', 'funds', 'money', 'aop', 'provided to', 'given to', 'बजट', 'फंड'],
+  budget_overview: ['budget', 'allocation', 'allocated', 'fund', 'funds', 'money', 'aop', 'provided to', 'given to', 'remaining', 'balance', 'allocated fund', 'fund remaining', 'बजट', 'फंड'],
   placement_analytics: ['placement', 'placements', 'placed', 'joined', 'joins', 'offer', 'offers', 'funnel', 'retention', 'प्लेसमेंट'],
   employer_directory: ['employer', 'employers', 'company', 'companies', 'mou', 'hiring', 'opportunity', 'opportunities', 'industry partner'],
   student_voice: ['student voice', 'students saying', 'barrier', 'barriers', 'complain', 'travel cost', 'themes'],
@@ -63,7 +65,7 @@ export function heuristicNavigation({ text, role }) {
   const m = t.match(ITI_WORDS)
   const iti = m ? (HI_ITI[m[0]] || m[0]) : null
   const gender = /\b(female|women|girls|ladki|महिला)\b/.test(t) ? 'F' : null
-  return { target: best, confidence: Math.min(0.9, 0.5 + bestScore * 0.1), entities: { iti, trade: tradeFromText(t), gender, date: null, category: categoryFromText(t) }, wantsAnswer: /\?|how many|how much|kitn|is |are |what|which|who |kaun|kya|kitne|कितने|क्या|कौन/.test(t), assistantText: '', language: /[\u0900-\u097F]/.test(t) ? 'hi' : 'en', chips: [], heuristic: true }
+  return { target: best, confidence: Math.min(0.9, 0.5 + bestScore * 0.1), entities: { iti, trade: tradeFromText(t), gender, date: null, category: categoryFromText(t) }, wantsAnswer: /\?|how many|how much|kitn|is |are |what|which|who |kaun|kya|kitne|कितने|क्या|कौन/.test(t), wantsScreen: /\b(open|show|display|see|view|dashboard|graph|chart|screen|table|list)\b|dikha|khol|दिखा|खोल/.test(t), followUps: [], assistantText: '', language: /[\u0900-\u097F]/.test(t) ? 'hi' : 'en', chips: [], heuristic: true }
 }
 
 export async function interpretNavigation({ text, role, language = 'en' }) {
@@ -75,7 +77,8 @@ ${catalogBriefing(role)}
 
 Rules:
 1. Pick the most specific target. Questions about machines, workshops, labs, equipment "working" or "ready" today → ops_infrastructure. Courses, trades, programmes offered at an ITI → institute_trades. Rooms, labs, assets installed at an ITI → institute_facilities. Counts of students → registry_students; trainers → registry_trainers. Money → budget_*. Joins, placements, offers → placement_analytics. Employers, MoUs, openings → employer_directory.
-2. A question about data ("how many…", "is… working", "what is the attendance at…") is STILL a navigation to the screen that shows it; set wantsAnswer=true so the number is read out from live data.
+2. A question about data ("how many…", "is… working", "what is the attendance at…", "how much is remaining…") maps to the screen that shows it; set wantsAnswer=true so the number is read out from live data. Set wantsScreen=true ONLY when the user asks to open, show, see or display a screen, dashboard, graph, chart, list or table; a plain question gets the answer with an offer to open the screen.
+2b. followUps: three deeper-dive questions the user could ask next, specific to this target and the entities named (e.g. for budget: an action on these funds, the same figure for another package, the same figure for another ITI). Short, in the user's language.
 3. Return target=null only for scheme/policy knowledge questions or chit-chat with no screen.
 4. iti: copy the ITI the user named (Pusa, Shahdara, Narela, Rohini, Okhla, or a code). Hindi/transliterated names count (पूसा, शाहदरा, नरेला, रोहिणी, ओखला).
 5. confidence 0.85+ only when the target is unambiguous. Strict JSON only.`
@@ -88,6 +91,8 @@ Rules:
     confidence: ok ? clamp01(out.confidence ?? 0.7) : 0,
     entities: { iti: out.iti || null, trade: out.trade || tradeFromText(text), gender: out.gender || null, date: out.date || null, category: out.category || categoryFromText(text) },
     wantsAnswer: !!out.wantsAnswer,
+    wantsScreen: !!out.wantsScreen,
+    followUps: Array.isArray(out.followUps) ? out.followUps.filter(Boolean).slice(0, 3) : [],
     assistantText: out.assistantText || '',
     language: out.language || language,
     chips: Array.isArray(out.chips) ? out.chips.slice(0, 3) : [],
@@ -97,6 +102,38 @@ Rules:
 // Resolve a target + entities into a canvas context and (optionally) the live
 // data behind that screen. Shared by /api/ai/message, /api/ai/navigate and the
 // streaming chat tool.
+// Three deeper-dive questions for a target when the model gave none.
+export function followUpsFor(target, ent = {}, itiName = null) {
+  const iti = itiName || 'this ITI'
+  const other = itiName ? 'another ITI' : 'a specific ITI'
+  const F = {
+    budget_overview: [`Which actions are pending on these funds at ${iti}?`, `Show the same figures for another work package`, `Show the same figures for ${other}`],
+    budget_release_history: [`Which releases are still awaiting utilisation?`, `Show releases for another work package`, `Show releases for ${other}`],
+    budget_utilisation: [`How far is the cluster from the 75% tranche gate?`, `Which line is furthest behind on utilisation?`, `Show utilisation for ${other}`],
+    institute_trades: [`Which courses launch next and are their gates ready?`, `How full is each course against its places?`, `Show the courses at ${other}`],
+    my_institute_trades: [`Which courses launch next and are their gates ready?`, `How full is each course against its places?`, `Which trainers teach each course?`],
+    institute_facilities: [`Which facilities are being set up?`, `Which machines are not functional?`, `Show the facilities at ${other}`],
+    my_institute_facilities: [`Which facilities are being set up?`, `Which machines are not functional?`, `Is every workshop ready for today's sessions?`],
+    institute_overview: [`What is overdue at ${iti}?`, `How many women and PwD students are enrolled?`, `Show the overview for ${other}`],
+    my_institute_profile: [`What is overdue at ${iti}?`, `How many women and PwD students are enrolled?`, `Which facilities are being set up?`],
+    registry_students: [`How many of them are women?`, `Split them by trade`, `Show the students at ${other}`],
+    my_institute_students: [`How many of them are women?`, `Split them by trade`, `Who is under early warning for attendance?`],
+    registry_trainers: [`Who carries the most batches?`, `Which trainers are on leave today?`, `Show the trainers at ${other}`],
+    my_institute_trainers: [`Who carries the most batches?`, `Which trainers are on leave today?`, `Which programme is short of trainers?`],
+    ops_attendance: [`Which registers are still pending today?`, `How does this compare with the previous day?`, `Show attendance for ${other}`],
+    ops_assessment: [`Which marks are awaiting review?`, `What is scheduled next week?`, `Show assessments for ${other}`],
+    ops_infrastructure: [`What is blocking the workshops that are not ready?`, `Which sessions today are affected?`, `Show readiness for ${other}`],
+    ops_events: [`What is due this week?`, `Which IMA milestones are coming up?`, `Show events for ${other}`],
+    ops_overview: [`Which ITI needs attention today?`, `What is pending for review?`, `Show today's readiness`],
+    placement_analytics: [`How many joins are employer-confirmed?`, `Where does the funnel lose most candidates?`, `Show placements for ${other}`],
+    employer_directory: [`Which employers have live openings?`, `Which employers have an MoU?`, `Who is hiring welders?`],
+    student_voice: [`What are students raising most this month?`, `Which theme needs an action from us?`, `Show student voice for ${other}`],
+    grievances: [`Which cases are overdue?`, `What is escalated to the SPV?`, `How many were resolved within the SLA?`],
+    notifications: [`What needs a reply from me?`, `Which deadlines fall this week?`, `Show escalated cases`],
+  }
+  return F[target] || [`Tell me more about this`, `Show the same for ${other}`, `What should I do next on this?`]
+}
+
 export async function resolveNavigation(req, { target, iti, trade, gender, date, year, category, withData = true }) {
   const role = req.user.role
   if (!targetAllowed(target, role)) return { error: `target ${target} is not available for ${role}` }

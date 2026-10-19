@@ -69,7 +69,7 @@ export default function CanvasPanel() {
             : 'absolute inset-0 md:inset-y-0 md:right-0 md:left-auto md:w-[min(820px,72%)] md:border-l md:border-bdr-strong md:shadow-canvas md:animate-canvas-slide z-40 bg-white flex flex-col'
         }
       >
-        <CanvasSaathiProvider key={canvas.type}>
+        <CanvasSaathiProvider key={canvas.type} screen={{ type: canvas.type, title, subtitle, tab: canvas.tab || null }}>
         <header className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-3 border-b border-bdr bg-gradient-to-b from-surface-page/50 to-white sticky top-0 z-10">
           <button onClick={back} title="Back" className="p-1.5 rounded-pill hover:bg-slate-100 flex-shrink-0">
             <ArrowLeft className="w-5 h-5 text-txt-secondary" />

@@ -20,7 +20,7 @@ import { CardParser } from '../llm/cardParser.js'
 import { CARD_TOOLBOX } from '../llm/cardPrompts.js'
 import { buildRoleContext } from '../llm/roleContext.js'
 import { prisma } from '../db.js'
-import { interpretNavigation, resolveNavigation, answerFromData } from '../nav/interpret.js'
+import { interpretNavigation, resolveNavigation, answerFromData, followUpsFor } from '../nav/interpret.js'
 import { targetsForRole } from '../nav/catalog.js'
 import { chatText } from '../llm/openai.js'
 import { livePack } from '../nav/snapshot.js'
@@ -39,7 +39,7 @@ const perSession = rateLimit({
 r.use(perSession)
 
 // Rules appended to the general persona so the streaming chat uses the tools.
-const NAV_TOOL_RULES = (role) => `SCREEN TOOLS: you can open screens in this user's UI with open_canvas(target, iti?, trade?, gender?, date?) and read live platform data with lookup_data(same arguments). When the user asks to see, open, check or review anything a screen covers, CALL open_canvas (never just describe where to click). When the user asks a data question (how many, is it working, what is the attendance…), call lookup_data or open_canvas and answer ONLY from the returned data, quoting the numbers exactly. Targets for role ${role} are listed in the tool's enum; machines, workshops or labs working today → ops_infrastructure; courses or trades offered → institute_trades; facilities and assets installed → institute_facilities.`
+const NAV_TOOL_RULES = (role) => `SCREEN TOOLS: you can open screens in this user's UI with open_canvas(target, iti?, trade?, gender?, date?) and read live platform data with lookup_data(same arguments). Two modes. (1) Orchestration: when the user asks to open, show, see or display a screen, dashboard, graph, chart or list, CALL open_canvas and say in one line that you are showing it ("I'm showing you the Infrastructure readiness screen for Pusa."). (2) Insight: when the user asks a data question (how many, how much, is it working, what is remaining…), call lookup_data, answer ONLY from the returned data quoting the numbers exactly, then offer the screen in one line ("I can open the Budget analytics screen for Pusa if you want.") and end with three numbered deeper-dive questions the user could ask next (1. … 2. … 3. …). Do not open a screen the user did not ask to see; if they reply yes or pick a number, act on it. Targets for role ${role} are listed in the tool's enum; machines, workshops or labs working today → ops_infrastructure; courses or trades offered → institute_trades; facilities and assets installed → institute_facilities.`
 
 function isQuestionLike(text) {
   return /\?\s*$/.test(text) || /\b(why|how|what|when|where|explain|kya|kyun|kaise|samjhao|batao)\b/i.test(text)
@@ -58,8 +58,14 @@ r.post('/message', async (req, res, next) => {
     if (nav?.target && nav.confidence >= 0.5) {
       const r0 = await resolveNavigation(req, { target: nav.target, ...nav.entities, withData: true })
       if (!r0.error) {
-        let answer = null
-        if (nav.wantsAnswer || isQuestionLike(text)) answer = await answerFromData({ question: text, label: r0.label, data: r0.data, language: nav.language, target: nav.target, itiName: r0.iti?.name }).catch(() => null)
+        const followUps = nav.followUps?.length === 3 ? nav.followUps : followUpsFor(nav.target, nav.entities, r0.iti?.name)
+        const cta = { label: `Open ${r0.label}`, canvas: r0.canvas }
+        // Insight question: answer from the live data and offer the screen.
+        if (nav.wantsAnswer && !nav.wantsScreen) {
+          const answer = await answerFromData({ question: text, label: r0.label, data: r0.data, language: nav.language, target: nav.target, itiName: r0.iti?.name }).catch(() => null)
+          if (answer) return res.json({ responseType: 'answer', target: nav.target, answer: { text: answer, citations: [], language: nav.language }, cta, followUps, meta: { label: r0.label } })
+        }
+        // Orchestration: open the screen, with a line that says so.
         return res.json({
           responseType: 'action',
           target: nav.target,
@@ -67,7 +73,9 @@ r.post('/message', async (req, res, next) => {
           actionId: null,
           entities: nav.entities,
           confidence: nav.confidence,
-          meta: { assistantText: answer || nav.assistantText || `Opening ${r0.label}.`, chips: nav.chips, language: nav.language, label: r0.label },
+          cta,
+          followUps,
+          meta: { assistantText: nav.language === 'hi' ? `मैं आपको ${r0.label} दिखा रहा हूँ।` : `I'm showing you ${r0.label}.`, chips: nav.chips, language: nav.language, label: r0.label },
         })
       }
     }
@@ -229,6 +237,7 @@ r.post('/stream', async (req, res, next) => {
           const out = await resolveNavigation(req, { ...args, withData: true })
           if (out.error) return { ok: false, error: out.error }
           if (name === 'open_canvas') res.write(`data: ${JSON.stringify({ navigate: { canvas: out.canvas, label: out.label } })}\n\n`)
+          else res.write(`data: ${JSON.stringify({ offer: { canvas: out.canvas, label: out.label } })}\n\n`)
           return { ok: true, opened: name === 'open_canvas' ? out.label : undefined, screen: out.label, data: out.data }
         },
         onCitation: (c) => {
@@ -296,17 +305,18 @@ r.post('/describe-screen',
         persona:      z.string().optional(),
         lastQuestion: z.string().optional(),
         role:         z.string().optional(),
+        screen:       z.object({ title: z.string().optional(), tab: z.string().nullable().optional(), context: z.string().optional() }).optional(),
       }).parse(req.body)
       if (!hasOpenAI()) return res.status(503).json({ error: 'openai_not_configured' })
 
       const roleLine = body.role ? `User's role: ${body.role}.` : ''
       const askLine  = body.lastQuestion ? `User just asked: "${body.lastQuestion}".` : ''
+      const screenLine = body.screen ? `The app reports the open screen is "${body.screen.title}"${body.screen.tab ? ` (${body.screen.tab} tab)` : ''} and its data is: ${body.screen.context || 'not published'}. Where the picture shows a figure, transcribe it exactly as printed; if it disagrees with the reported data, say which you read from the picture.` : ''
       const system = [
         "You are the eyes of a live AI assistant guiding an Indian skilling-platform user (PM-SETU Saathi).",
-        "Look at the screenshot and reply with ONE compact paragraph (≤60 words) describing:",
-        "1) which screen is visible (Home / a specific module / a dialog), 2) the key clickable elements the user can tap RIGHT NOW (by visible label + location, e.g. \"top-right blue 'New chat' button\", \"the third card labelled 'Skill Passport' in the OPEN AN APP grid\"), 3) any in-progress state the user might be stuck on.",
-        "Do NOT speculate beyond what's visible. Use the exact button / card labels you can read. No markdown, no preamble — just the description.",
-        roleLine, askLine,
+        "Look at the screenshot and reply with ONE compact paragraph (≤90 words): 1) which screen and tab is visible, 2) the headline figures exactly as printed (label: value), 3) the clickable elements the user can tap right now by visible label and location, 4) anything selected or in progress.",
+        "Transcribe numbers digit by digit; never round or guess. Do NOT speculate beyond what is visible. No markdown, no preamble.",
+        roleLine, askLine, screenLine,
       ].filter(Boolean).join(' ')
 
       const resp = await openai.chat.completions.create({
@@ -315,11 +325,11 @@ r.post('/describe-screen',
           { role: 'system', content: system },
           { role: 'user', content: [
             { type: 'text', text: 'Describe the current screen.' },
-            { type: 'image_url', image_url: { url: body.image, detail: 'low' } },
+            { type: 'image_url', image_url: { url: body.image, detail: 'high' } },
           ] },
         ],
-        max_tokens: 220,
-        temperature: 0.2,
+        max_tokens: 320,
+        temperature: 0.1,
       })
       const description = resp.choices?.[0]?.message?.content?.trim() || ''
       res.json({ description })

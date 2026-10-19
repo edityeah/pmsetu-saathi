@@ -9,8 +9,8 @@ export default function ChatBubble({ role, text, html, actions, onAction }) {
         <div className="flex flex-wrap gap-2">
           {actions.map((a, i) => (
             <button key={i} onClick={() => onAction?.(a)}
-              className="px-3 py-1.5 text-xs rounded-pill bg-white border border-primary text-primary-dark hover:bg-primary-50">
-              {a.label}
+              className={a.kind === 'open' ? 'px-3 py-1.5 text-xs font-bold rounded-pill bg-primary text-white hover:opacity-90' : 'px-3 py-1.5 text-xs rounded-pill bg-white border border-primary text-primary-dark hover:bg-primary-50'}>
+              {a.kind === 'open' ? `${a.label} →` : a.label}
             </button>
           ))}
         </div>

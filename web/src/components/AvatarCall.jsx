@@ -354,6 +354,7 @@ export default function AvatarCall({
           // open it once the reply has finished streaming (opening a canvas
           // replaces this view, so the answer must land in the thread first).
           if (p.navigate?.canvas?.type) pendingNavigate = p.navigate
+          if (p.offer?.canvas?.type) { const idx = placeholderIndex; const offer = p.offer; setMessages(m => { const c = m.slice(); if (idx >= 0 && c[idx]) c[idx] = { ...c[idx], offer }; return c }) }
               // Card events from the server's card parser — append to the
           // current assistant bubble's `cards` list so ChatBubble can render
           // the rich component below the text.
@@ -639,6 +640,9 @@ export default function AvatarCall({
             {Array.isArray(m.cards) && m.cards.map((card, j) => (
               <CardRenderer key={j} card={card} onChip={(text) => streamReply(text, null)} />
             ))}
+            {m.offer?.canvas?.type && (
+              <div className="mt-1.5 ml-2"><button onClick={() => { try { openCanvas?.(m.offer.canvas); showToast?.({ kind: 'info', text: `Opened: ${m.offer.label}` }) } catch {} }} className="px-3 py-1.5 text-xs font-bold rounded-pill bg-primary text-white hover:opacity-90">Open {m.offer.label} →</button></div>
+            )}
             {m.citations?.length > 0 && (
               <div className="text-[10px] text-txt-tertiary mt-1 ml-2 flex flex-wrap gap-x-3">
                 {m.citations.map((c, j) => (

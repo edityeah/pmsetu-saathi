@@ -11,9 +11,24 @@ import { createContext, useContext, useEffect, useState, useMemo } from 'react'
 
 const Ctx = createContext(null)
 
-export function CanvasSaathiProvider({ children }) {
+// What the user is looking at right now, for live calls and screen share:
+// the open canvas's title, tab and the data it published. One global store
+// so the call layer (above the canvas tree) can read it and subscribe.
+export const screenStore = {
+  current: null,
+  listeners: new Set(),
+  set(next) { this.current = next; for (const l of this.listeners) { try { l(next) } catch {} } },
+  subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn) },
+}
+
+export function CanvasSaathiProvider({ children, screen }) {
   const [published, setPublished] = useState({ context: '', quickAsks: [] })
   const value = useMemo(() => ({ published, setPublished }), [published])
+  useEffect(() => {
+    screenStore.set(screen ? { ...screen, context: published.context, quickAsks: published.quickAsks } : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen?.type, screen?.title, screen?.tab, published.context])
+  useEffect(() => () => screenStore.set(null), [])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

@@ -22,6 +22,7 @@ import { loadAnam } from '../utils/anamSdk.js'
 import { api } from '../api/client.js'
 import { useApp } from './AppContext.jsx'
 import { handleVoiceToolCall } from '../utils/voiceTools.js'
+import { screenStore } from '../canvas/CanvasSaathi.jsx'
 
 const CallCtx = createContext(null)
 export const useCall = () => useContext(CallCtx)
@@ -63,6 +64,8 @@ export function CallProvider({ children }) {
   const screenVideoRef    = useRef(null)
   const screenIntervalRef = useRef(null)
   const lastDescriptionRef = useRef('')
+  const lastScreenKeyRef = useRef('')
+  const unsubScreenRef = useRef(null)
   const handlersRef       = useRef({})         // current view's onTranscript / onDelta / onDone
   const videoElementRef   = useRef(null)       // <video> for Anam (provided by current view)
   const userRoleRef       = useRef(null)
@@ -129,6 +132,19 @@ export function CallProvider({ children }) {
     })
     realtimeRef.current = rt
     try { await rt.connect() } catch { /* surfaced via onError */ }
+    // The open screen's own data goes into the call as it changes, so the
+    // agent quotes what the user sees. Screen share adds layout on top.
+    const sendScreen = (sc) => {
+      if (!realtimeRef.current) return
+      const key = sc ? `${sc.type}|${sc.tab}|${(sc.context || '').slice(0, 4000)}` : 'none'
+      if (key === lastScreenKeyRef.current) return
+      lastScreenKeyRef.current = key
+      if (!sc) { realtimeRef.current.sendContext?.('[SCREEN DATA] The user closed the screen; nothing is open now.'); return }
+      realtimeRef.current.sendContext?.(`[SCREEN DATA] The user is looking at "${sc.title}"${sc.tab ? ` · ${sc.tab} tab` : ''}. The figures on that screen right now: ${sc.context || 'the screen has not published its data yet'}. When the user asks about what they see, use these exact figures; never estimate from the picture.`)
+    }
+    unsubScreenRef.current?.()
+    unsubScreenRef.current = screenStore.subscribe(sendScreen)
+    setTimeout(() => sendScreen(screenStore.current), 1500)
   }, [activeCall])
 
   // ── Video call (Anam) — the view that opens it must hand us a <video> el.
@@ -291,14 +307,10 @@ export function CallProvider({ children }) {
   // can't see your screen" because nothing told it that it can.
   const VISION_ON = `SCREEN SHARE IS NOW ACTIVE.
 
-You can now SEE the user's screen via live descriptions delivered as system messages prefixed with [SCREEN]. Every 5 seconds you receive a fresh description of what is currently visible to the user.
-
-CRITICAL BEHAVIOUR while screen share is active:
-- Treat [SCREEN] descriptions as your eyes — answer EXACTLY as if you are looking at the user's monitor.
-- NEVER say "I can't see your screen" or "I'm a voice assistant without vision". You can see. You do see.
-- When the user points at something ("this button", "this number"), use the latest [SCREEN] description to identify what they mean.
-- Be specific: name the visible button labels, KPIs, headings, sectors, partners, numbers — whatever is in the description.
-- If the description is stale (user mentions something not in the latest snapshot), say "give me a second to refresh my view" — a new description arrives within 5 seconds.`
+You receive two kinds of system notes while it is on:
+- [SCREEN DATA]: the exact figures the open screen is showing, published by the screen itself. This is the source of truth for every number the user points at.
+- [SCREEN]: a description of the shared picture every 5 seconds (which screen, which buttons and headings are visible, what the user has selected). Use it for layout and for guiding clicks; if it quotes a number that differs from [SCREEN DATA], trust [SCREEN DATA].
+Rules: answer about what is on screen from these notes without calling a tool unless the user asks for something the screen does not show; name the visible labels and buttons when guiding; if the user mentions something not in the latest note, say you are refreshing your view and wait for the next note.`
 
   const VISION_OFF = 'SCREEN SHARE ENDED. You no longer have screen visibility. Go back to answering based on conversation + your baked-in knowledge.'
 
@@ -360,10 +372,12 @@ CRITICAL BEHAVIOUR while screen share is active:
     canvas.getContext('2d').drawImage(video, 0, 0, w, h)
     const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
     try {
+      const sc = screenStore.current
       const r = await api.post('/api/ai/describe-screen', {
         image: dataUrl,
         persona: personaRef.current,
         role: userRoleRef.current,
+        screen: sc ? { title: sc.title, tab: sc.tab, context: (sc.context || '').slice(0, 3000) } : undefined,
       })
       const desc = (r?.description || '').trim()
       if (!desc) return
@@ -400,6 +414,8 @@ CRITICAL BEHAVIOUR while screen share is active:
   // ── End ──────────────────────────────────────────────────────────────────
   const endCall = useCallback(() => {
     stopScreenShareInternal(true)
+    try { unsubScreenRef.current?.() } catch {}
+    unsubScreenRef.current = null; lastScreenKeyRef.current = ''
     try { realtimeRef.current?.close() } catch {}
     try { anamRef.current?.stopStreaming?.() } catch {}
     try { anamRef.current?.disconnect?.() } catch {}
