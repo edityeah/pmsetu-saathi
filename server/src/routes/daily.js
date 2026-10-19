@@ -103,7 +103,7 @@ r.get('/assessments', async (req, res, next) => {
 // A workshop per (ITI, trade) from the machine register; five checks from
 // the registers that exist: space (civil works), electricity and safety and
 // consumables (open operations issues), equipment (machine status).
-async function readiness(sc, date) {
+export async function readiness(sc, date) {
   const [machines, issues, civil, sessions] = await Promise.all([
     prisma.machine.findMany({ where: { itiId: { in: sc.itiIds } }, include: { trade: { select: { code: true, name: true } } } }),
     prisma.opsIssue.findMany({ where: { itiId: { in: sc.itiIds }, state: { not: 'resolved' } }, include: { batch: { select: { tradeId: true } } } }),

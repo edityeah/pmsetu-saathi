@@ -7,6 +7,7 @@ import { prisma } from '../db.js'
 import { requireAuth } from '../auth/middleware.js'
 import { clusterFor, itiFor, traineeFor, employerFor, trainerBatchIds } from '../lib/scope.js'
 import { trancheReadiness, utilisation } from '../lib/kpiEngine.js'
+import { readiness as workshopReadiness } from './daily.js'
 
 const r = Router()
 r.use(requireAuth)
@@ -68,26 +69,50 @@ async function principal(user) {
   if (!iti.registryConnected) return { title: `${iti.name} · no registry feed yet`, items: [
     item({ key: 'feed', label: 'Registry feed', value: '—', hint: 'attendance, marks and support appear once connected', tone: 'amber', canvas: 'institute_profile' }),
   ] }
-  const today = todayUTC(), since = daysAgo(15)
-  const [trainees, women, sched, rep, sessions, needsReview, marksReview, supportOpen, overdue] = await Promise.all([
+  const today = todayUTC()
+  const [trainees, women] = await Promise.all([
     prisma.trainee.count({ where: { itiId: iti.id, status: 'active' } }),
     prisma.trainee.count({ where: { itiId: iti.id, status: 'active', gender: 'F' } }),
-    prisma.session.count({ where: { batch: { itiId: iti.id }, date: { gte: since, lte: today }, delivery: { notIn: ['cancelled'] } } }),
-    prisma.session.count({ where: { batch: { itiId: iti.id }, date: { gte: since, lte: today }, attendanceState: { not: 'not_reported' } } }),
-    prisma.session.findMany({ where: { batch: { itiId: iti.id }, date: { gte: since, lte: today }, attendanceState: { not: 'not_reported' } }, select: { presentCount: true, absentCount: true } }),
-    prisma.session.count({ where: { batch: { itiId: iti.id }, attendanceState: 'needs_review' } }),
-    prisma.assessmentPlan.count({ where: { batch: { itiId: iti.id }, state: { in: ['needs_review', 'submitted'] } } }),
-    prisma.supportAction.count({ where: { trainee: { itiId: iti.id }, state: { not: 'closed' } } }),
-    prisma.planTask.count({ where: { itiId: iti.id, dueAt: { lt: new Date() }, state: { notIn: ['completed', 'reviewed'] } } }),
   ])
-  const present = sessions.reduce((s, x) => s + (x.presentCount || 0), 0), absent = sessions.reduce((s, x) => s + (x.absentCount || 0), 0)
-  const att = pct(present, present + absent), cov = pct(rep, sched)
+  // Attendance for today, or the latest reported day.
+  let date = today, fallback = false
+  const repToday = await prisma.session.count({ where: { batch: { itiId: iti.id }, date, attendanceState: { not: 'not_reported' } } })
+  if (!repToday) { const last = await prisma.session.findFirst({ where: { batch: { itiId: iti.id }, date: { lt: today }, attendanceState: { not: 'not_reported' } }, orderBy: { date: 'desc' }, select: { date: true } }); if (last) { date = last.date; fallback = true } }
+  const prev = new Date(date.getTime() - 86400000)
+  const attOn = async (d) => { const rep = await prisma.session.findMany({ where: { batch: { itiId: iti.id }, date: d, delivery: { not: 'cancelled' }, attendanceState: { not: 'not_reported' } }, select: { presentCount: true, absentCount: true, lateCount: true } }); const p = rep.reduce((s, x) => s + (x.presentCount || 0) + (x.lateCount || 0), 0), a = rep.reduce((s, x) => s + (x.absentCount || 0), 0); return { pct: p + a ? Math.round(1000 * p / (p + a)) / 10 : null, n: rep.length } }
+  const [sched, attT, attP] = await Promise.all([
+    prisma.session.count({ where: { batch: { itiId: iti.id }, date, delivery: { not: 'cancelled' } } }), attOn(date), attOn(prev),
+  ])
+  const dateLabel = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+  const delta = attT.pct != null && attP.pct != null ? Math.round(10 * (attT.pct - attP.pct)) / 10 : null
+  // Assessments today (or the next scheduled day).
+  let aDate = today
+  let aSched = await prisma.assessmentPlan.count({ where: { batch: { itiId: iti.id }, date: aDate } })
+  if (!aSched) { const nx = await prisma.assessmentPlan.findFirst({ where: { batch: { itiId: iti.id }, date: { gt: today } }, orderBy: { date: 'asc' }, select: { date: true } }); if (nx) { aDate = nx.date; aSched = await prisma.assessmentPlan.count({ where: { batch: { itiId: iti.id }, date: aDate } }) } }
+  const aDone = await prisma.assessmentPlan.count({ where: { batch: { itiId: iti.id }, date: aDate, state: { in: ['conducted', 'marks_pending', 'submitted', 'needs_review', 'reviewed', 'published'] } } })
+  // Workshop readiness: the same rule as Daily operations · Infrastructure readiness, workshops only.
+  const rRows = await workshopReadiness({ itis: [iti], itiIds: [iti.id], batchWhere: { itiId: iti.id } }, today).catch(() => [])
+  const workshops = rRows.filter(r => r.kind === 'workshop'), ready = workshops.filter(r => r.status === 'ready').length
+  const notReady = workshops.filter(r => r.status !== 'ready')
+  // Upcoming events in the next 7 days.
+  const to = new Date(today.getTime() + 7 * 86400000)
+  const [ev1, ev2, ev3] = await Promise.all([
+    prisma.assessmentPlan.findMany({ where: { batch: { itiId: iti.id }, date: { gte: today, lt: to }, state: 'planned' }, select: { date: true }, distinct: ['date'] }).then(r => r.length),
+    prisma.milestone.count({ where: { clusterId: iti.clusterId, dueAt: { gte: today, lt: to }, state: { in: ['pending', 'submitted'] } } }),
+    prisma.employer.count({ where: { clusterId: iti.clusterId, nextEngagementAt: { gte: today, lt: to } } }),
+  ])
+  const events = ev1 + ev2 + ev3
+  // Placed / joined this scheme year: distinct students with an active spell.
+  const spells = await prisma.employmentSpell.findMany({ where: { trainee: { itiId: iti.id }, evidenceLevel: { not: 'disputed' } }, select: { traineeId: true } })
+  const joined = new Set(spells.map(s => s.traineeId)).size
+  const dateIso = date.toISOString().slice(0, 10), aIso = aDate.toISOString().slice(0, 10)
   return { title: `${iti.name} · ${num(trainees)} students`, items: [
-    item({ key: 'cov', label: 'Coverage (15 days)', value: cov == null ? '—' : `${cov}%`, pct: cov, target: 'aim 90%+', hint: `${rep} of ${sched} sessions reported`, tone: cov >= 90 ? 'emerald' : 'amber', canvas: 'institute_today' }),
-    item({ key: 'att', label: 'Attendance', value: att == null ? '—' : `${att}%`, pct: att, target: 'reported sessions only', hint: `${num(present)} present · ${num(absent)} absent`, tone: att >= 85 ? 'emerald' : 'amber', canvas: 'attendance_bot' }),
-    item({ key: 'women', label: 'Women enrolled', value: `${pct(women, trainees) ?? '—'}%`, pct: pct(women, trainees), target: 'cluster target 15%', hint: `${num(women)} of ${num(trainees)} active students`, tone: 'fuchsia', canvas: 'batches' }),
-    item({ key: 'review', label: 'Waiting for you', value: num(needsReview + marksReview), hint: `${needsReview} attendance · ${marksReview} mark sheets`, tone: needsReview + marksReview ? 'violet' : 'emerald', canvas: 'assessments' }),
-    item({ key: 'support', label: 'Support queue', value: num(supportOpen), hint: `${overdue} Year-1 tasks overdue`, tone: supportOpen ? 'rose' : 'emerald', canvas: 'support_queue' }),
+    item({ key: 'attendance', label: 'Attendance today', value: attT.pct == null ? '—' : `${attT.pct}%`, pct: attT.pct, target: fallback ? `latest reported day · ${dateLabel}` : `today · ${dateLabel}`, hint: delta == null ? `${attT.n} of ${sched} registers reported` : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs previous day · ${attT.n} of ${sched} registers`, tone: attT.pct == null ? 'amber' : attT.pct >= 85 ? 'emerald' : 'amber', canvas: 'daily_operations', open: { canvas: 'daily_operations', tab: 'attendance', filters: { date: dateIso } } }),
+    item({ key: 'women', label: 'Female enrolment', value: num(women), pct: pct(women, trainees), target: `${pct(women, trainees) ?? '—'}% of ${num(trainees)} active students`, hint: 'academic year 2026–27', tone: 'fuchsia', canvas: 'cluster_registry', open: { canvas: 'cluster_registry', tab: 'students', filters: { gender: 'F', status: 'active', year: 'current' } } }),
+    item({ key: 'assessments', label: 'Assessments today', value: num(aSched), target: aDate.getTime() === today.getTime() ? 'scheduled today' : `next · ${aDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`, hint: aSched ? `${aDone} conducted · ${aSched - aDone} to run` : 'none scheduled', tone: 'violet', canvas: 'daily_operations', open: { canvas: 'daily_operations', tab: 'assessment', filters: { date: aIso } } }),
+    item({ key: 'readiness', label: 'Workshop readiness', value: workshops.length ? `${ready} / ${workshops.length}` : '—', pct: pct(ready, workshops.length), target: 'workshops ready', hint: notReady.length ? notReady.map(r => `${r.name} ${r.status}`).join(' · ') : 'all checks met', tone: ready === workshops.length ? 'emerald' : 'amber', canvas: 'daily_operations', open: { canvas: 'daily_operations', tab: 'infrastructure', filters: { kind: 'workshop' } } }),
+    item({ key: 'events', label: 'Upcoming events', value: num(events), target: 'next 7 days', hint: `${ev1} assessment days · ${ev2} IMA milestones · ${ev3} employer`, tone: 'sky', canvas: 'daily_operations', open: { canvas: 'daily_operations', tab: 'events', filters: { from: today.toISOString().slice(0, 10), days: 7 } } }),
+    item({ key: 'placed', label: 'Placed / joined', value: num(joined), target: 'this scheme year', hint: 'distinct students with a reported join', tone: 'emerald', canvas: 'placement_pipeline', open: { canvas: 'placement_pipeline', filters: { stage: 'joined' } } }),
   ] }
 }
 

@@ -216,7 +216,8 @@ r.get('/budget', async (req, res, next) => {
   try {
     const c = await clusterFor(req.user)
     const year = Number(req.query.year || c.currentYear)
-    const itiId = req.query.itiId && req.query.itiId !== 'all' ? String(req.query.itiId) : null
+    let itiId = req.query.itiId && req.query.itiId !== 'all' ? String(req.query.itiId) : null
+    if (req.user.role === 'iti_principal' || req.user.role === 'trainer') { const own = await itiFor(req.user); itiId = own?.id || '__none__' }
     const category = req.query.category && req.query.category !== 'all' ? String(req.query.category) : null
     const asOf = req.query.asOf ? new Date(String(req.query.asOf) + 'T23:59:59Z') : new Date()
     const [itis, aops, releasesAll] = await Promise.all([
@@ -231,7 +232,8 @@ r.get('/budget', async (req, res, next) => {
     const allocation = sum(aopsIn, 'budgetCr'), released = sum(relIn, 'amountCr')
     const totals = { allocationCr: allocation, releasedCr: released, balanceCr: +(allocation - released).toFixed(3), releasedPct: pct(released, allocation), spentCr: sum(aopsIn, 'spentCr') }
     // By ITI (always all ITIs, category filter applied) so the bar chart can switch the selection.
-    const byIti = itis.map(i => { const a = aops.filter(x => x.package.itiId === i.id && (!category || x.package.category === category)), r = releasesAll.filter(x => x.itiId === i.id && (!category || x.package.category === category)); const al = sum(a, 'budgetCr'), re = sum(r, 'amountCr'); return { id: i.id, code: i.code, name: i.name, kind: i.kind, allocationCr: al, releasedCr: re, balanceCr: +(al - re).toFixed(3), releasedPct: pct(re, al), spentCr: sum(a, 'spentCr'), selected: itiId === i.id } })
+    const ownOnly = req.user.role === 'iti_principal' || req.user.role === 'trainer'
+    const byIti = itis.filter(i => !ownOnly || i.id === itiId).map(i => { const a = aops.filter(x => x.package.itiId === i.id && (!category || x.package.category === category)), r = releasesAll.filter(x => x.itiId === i.id && (!category || x.package.category === category)); const al = sum(a, 'budgetCr'), re = sum(r, 'amountCr'); return { id: i.id, code: i.code, name: i.name, kind: i.kind, allocationCr: al, releasedCr: re, balanceCr: +(al - re).toFixed(3), releasedPct: pct(re, al), spentCr: sum(a, 'spentCr'), selected: itiId === i.id } })
     // By work package (category) within the ITI scope; the category filter only highlights.
     const cats = {}
     for (const a of aops.filter(x => !itiId || x.package.itiId === itiId)) { const k = cats[a.package.category] ||= { category: a.package.category, allocationCr: 0, releasedCr: 0, spentCr: 0, packages: 0 }; k.allocationCr += a.budgetCr; k.spentCr += a.spentCr; k.packages++ }

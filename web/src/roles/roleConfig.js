@@ -72,26 +72,27 @@ export const ROLE_BOTS = {
     { id: 'updates',     name: 'Notifications and alerts', desc: 'IMA queries · status requests · deadlines',                      icon: '🔔', tone: 'indigo',  canvas: 'notifications',                             section: 'support' },
   ],
   iti_principal: [
-    { id: 'today',       name: 'Institute Today',    desc: 'Coverage · classes without reports · trainers on leave · reviews', icon: '🌅', tone: 'indigo',  canvas: 'institute_today',   section: 'today' },
-    { id: 'attendance',  name: 'Attendance Review',  desc: 'Sessions submitted · confirm · roster issues',                     icon: '🗓️', tone: 'amber',   canvas: 'attendance_bot',    section: 'today' },
-    { id: 'assess',      name: 'Assessments',        desc: 'Calendar · marks awaiting review · OCR low-confidence',           icon: '📝', tone: 'violet',  canvas: 'assessments',       section: 'today' },
-    { id: 'support',     name: 'Support Queue',      desc: 'Repeated absence · low results · rechecks · referrals',           icon: '🫶', tone: 'rose',    canvas: 'support_queue',     section: 'today' },
-    { id: 'visit',       name: 'Field Visit',        desc: 'Workshop checklist · findings with owners',                        icon: '🧰', tone: 'teal',    canvas: 'field_visit',       section: 'today' },
-    { id: 'ops',         name: 'Daily Ops',          desc: 'Equipment, space, consumables, safety, timetable issues',          icon: '🛠️', tone: 'orange',  canvas: 'daily_ops',         section: 'today' },
-    { id: 'batches',     name: 'Batches & Rosters',  desc: 'Running batches · at-risk students · leads',                       icon: '📚', tone: 'emerald', canvas: 'batches',           section: 'today' },
-    { id: 'profile',     name: 'Institute Profile',  desc: 'Overview · trades · staffing · infra · budget · targets · gates', icon: '🏫', tone: 'violet',  canvas: 'institute_profile', section: 'plan' },
-    { id: 'annual',      name: 'Annual Plan',        desc: 'My Year-1 tasks · evidence · calendar',                            icon: '🗓️', tone: 'sky',     canvas: 'annual_plan',       section: 'plan' },
-    { id: 'board',       name: 'Milestone Board',    desc: 'What is overdue or blocked at my ITI · propose a change',          icon: '🧭', tone: 'rose',    canvas: 'milestone_board',   section: 'plan' },
-    { id: 'targets',     name: 'Five-Year Targets',  desc: 'Places, enrolments and launches for my ITI',                       icon: '📈', tone: 'indigo',  canvas: 'five_year_targets', section: 'plan' },
-    { id: 'milestones',  name: 'Milestones',         desc: 'Evidence for IMA on works at my ITI',                              icon: '✅', tone: 'lime',    canvas: 'milestones',        section: 'plan' },
-    { id: 'voice',       name: 'Student Voice',      desc: 'Themes from companion conversations at my ITI',                    icon: '🗣️', tone: 'pink',    canvas: 'student_voice',     section: 'students' },
-    { id: 'kb',          name: 'Companion KB',       desc: 'Courses, roles, topics and support contacts the companion uses',   icon: '📖', tone: 'lime',    canvas: 'companion_kb',      section: 'students' },
-    { id: 'pipeline',    name: 'Placement Pipeline', desc: 'My students: stages, evidence, next actions',                      icon: '🤝', tone: 'emerald', canvas: 'placement_pipeline',section: 'students' },
-    { id: 'employers',   name: 'Employer Register',  desc: 'Opportunities approved for my ITI · employer feedback',            icon: '🏭', tone: 'teal',    canvas: 'employer_register', section: 'students' },
-    { id: 'machines',    name: 'Machines & Labs',    desc: 'Asset register · functional / awaiting commissioning',             icon: '⚙️', tone: 'teal',    canvas: 'machines_infra',    section: 'students' },
-    { id: 'civil',       name: 'Civil Works',        desc: 'Works at my ITI · progress · inspection',                          icon: '🏢', tone: 'orange',  canvas: 'civil_works',       section: 'students' },
-    { id: 'grievances',  name: 'Grievances',         desc: 'Open issues at my ITI',                                            icon: '🆘', tone: 'rose',    canvas: 'grievances_admin',  section: 'students' },
-    { id: 'updates',     name: 'Updates & Alerts',   desc: 'SPV circulars · deadlines',                                        icon: '🔔', tone: 'fuchsia', canvas: 'notifications',     section: 'students' },
+    // 1 · Budget analytics
+    { id: 'budget',      name: 'Budget analytics',           desc: 'AOP allocation, releases and utilisation for my ITI',          icon: '🧾', tone: 'amber',   canvas: 'budget_analytics',   tab: 'overview',       section: 'budget' },
+    // 2 · My institute
+    { id: 'profile',     name: 'Institute profile',          desc: 'Students, trainers, rooms, budget, tasks',                     icon: '🏫', tone: 'violet',  canvas: 'institute_profile',  tab: 'overview',       section: 'institute' },
+    { id: 'campus',      name: 'Campus facilities',          desc: 'Rooms, machines, civil packages',                              icon: '🏢', tone: 'orange',  canvas: 'institute_profile',  tab: 'infrastructure', section: 'institute' },
+    { id: 'trades',      name: 'Trade offerings and capacity', desc: 'Courses, places and planned enrolments by year',             icon: '📚', tone: 'indigo',  canvas: 'institute_profile',  tab: 'trades',         section: 'institute' },
+    { id: 'students',    name: 'Student registry',           desc: 'Active students by trade, gender, year',                       icon: '🎓', tone: 'fuchsia', canvas: 'cluster_registry',   tab: 'students',       section: 'institute' },
+    { id: 'trainers',    name: 'Trainer registry',           desc: 'Faculty by programme · assignments · availability',            icon: '👩‍🏫', tone: 'emerald', canvas: 'cluster_registry',   tab: 'trainers',       section: 'institute' },
+    { id: 'batches',     name: 'Trades and batches',         desc: 'Running batches · rosters · at-risk students',                 icon: '🗂️', tone: 'lime',    canvas: 'batches',                                   section: 'institute' },
+    // 3 · Daily operations
+    { id: 'ops_att',     name: 'Attendance',                 desc: 'Coverage and attendance by batch for a day',                   icon: '🗓️', tone: 'indigo',  canvas: 'daily_operations',   tab: 'attendance',     section: 'ops' },
+    { id: 'ops_assess',  name: 'Assessment',                 desc: 'Plans, marks awaiting review, results by trade',               icon: '📝', tone: 'violet',  canvas: 'daily_operations',   tab: 'assessment',     section: 'ops' },
+    { id: 'ops_infra',   name: 'Infrastructure readiness',   desc: 'Workshops and labs ready for today',                           icon: '⚙️', tone: 'teal',    canvas: 'daily_operations',   tab: 'infrastructure', section: 'ops' },
+    { id: 'ops_events',  name: 'Upcoming events',            desc: 'Assessments, IMA milestones, employer dates',                  icon: '📅', tone: 'sky',     canvas: 'daily_operations',   tab: 'events',         section: 'ops' },
+    // 4 · Placement analytics
+    { id: 'pipeline',    name: 'Placement Pipeline',         desc: 'My students: stages, evidence, retention',                     icon: '🤝', tone: 'emerald', canvas: 'placement_pipeline',                        section: 'placement' },
+    { id: 'employers',   name: 'Employer Directory',         desc: 'Employers, MoUs, live opportunities',                          icon: '🏭', tone: 'teal',    canvas: 'employer_register',                         section: 'placement' },
+    // 5 · Support and alerts
+    { id: 'voice',       name: 'Student voice',              desc: 'Themes students raise at my ITI',                              icon: '🗣️', tone: 'pink',    canvas: 'student_voice',                             section: 'support' },
+    { id: 'grievances',  name: 'Grievances',                 desc: 'Open issues at my ITI · resolution',                           icon: '🆘', tone: 'rose',    canvas: 'grievances_admin',                          section: 'support' },
+    { id: 'updates',     name: 'Notifications and alerts',   desc: 'SPV circulars · deadlines · reminders',                        icon: '🔔', tone: 'indigo',  canvas: 'notifications',                             section: 'support' },
   ],
   trainer: [
     { id: 'myday',       name: 'My Day',             desc: "Today's sessions · pending attendance · marks to enter",       icon: '🌅', tone: 'indigo',  canvas: 'trainer_my_day' },
@@ -171,11 +172,13 @@ export const ROLE_SECTIONS = {
     },
   },
   iti_principal: {
-    order: ['today', 'plan', 'students'],
+    order: ['budget', 'institute', 'ops', 'placement', 'support'],
     meta: {
-      today:    { title: 'Today at the institute', subtitle: 'Coverage, reviews, visits, issues, support', accent: 'from-indigo-50 to-white', ring: 'ring-indigo-200', dot: 'bg-indigo-500' },
-      plan:     { title: 'My plan and profile', subtitle: 'Profile tabs, Year-1 tasks, targets, evidence', accent: 'from-violet-50 to-white', ring: 'ring-violet-200', dot: 'bg-violet-500' },
-      students: { title: 'Students, industry, infrastructure', subtitle: 'Voice, placements, employers, machines, civil', accent: 'from-emerald-50 to-white', ring: 'ring-emerald-200', dot: 'bg-emerald-500' },
+      budget:    { title: 'Budget Analytics',    subtitle: 'Allocation, releases and utilisation for my ITI',                 accent: 'from-amber-50 to-white',   ring: 'ring-amber-200',   dot: 'bg-amber-500' },
+      institute: { title: 'My Institute',        subtitle: 'Profile, campus, trade offerings, students, trainers, batches',  accent: 'from-violet-50 to-white',  ring: 'ring-violet-200',  dot: 'bg-violet-500' },
+      ops:       { title: 'Daily Operations',    subtitle: 'Attendance, assessment, infrastructure, upcoming events',        accent: 'from-indigo-50 to-white',  ring: 'ring-indigo-200',  dot: 'bg-indigo-500' },
+      placement: { title: 'Placement Analytics', subtitle: 'Pipeline and employers for my students',                         accent: 'from-emerald-50 to-white', ring: 'ring-emerald-200', dot: 'bg-emerald-500' },
+      support:   { title: 'Support and Alerts',  subtitle: 'What students raise, grievances, notifications',                 accent: 'from-rose-50 to-white',    ring: 'ring-rose-200',    dot: 'bg-rose-500' },
     },
   },
   trainee: {
@@ -190,7 +193,7 @@ export const ROLE_SECTIONS = {
 
 export const ROLE_SUGGESTIONS = {
   spv_ceo: ['What is overdue on the milestone board?', 'Which ITIs are reporting operations data?', 'Are we on track for the Year-2 first tranche?', 'What are students raising most this month?', 'How many joined records are employer-confirmed?'],
-  iti_principal: ['Which classes have not reported attendance?', 'What needs my review today?', 'Which profile tabs are still draft?', 'Who is at risk in my ITI?', 'Which students raised travel cost?'],
+  iti_principal: ['What is attendance today?', 'Which workshops are not ready?', 'How many students joined a job this year?', 'Which courses do we offer?', 'What are students raising most this month?'],
   trainer: ['What do I have today?', 'Mark attendance for my 09:30 class', 'Enter marks for practical check 1', 'Who needs a recheck?', 'Which students want help?'],
   trainee: ['Open my plan', 'Teen-phase circuit samajh nahi aaya', 'Apprenticeship ke liye kya documents chahiye?', 'Meri attendance kaisi hai?', 'Mere trainer se baat karni hai'],
   ima_officer: ['What is waiting for verification?', 'Which KPI values have a source?', 'Sample three joined placement records', 'Review the Q2 quarterly report'],

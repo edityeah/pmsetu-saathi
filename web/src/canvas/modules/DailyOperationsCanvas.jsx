@@ -232,7 +232,7 @@ function AssessmentsTab(b) {
 
 // ── Infrastructure readiness ───────────────────────────────────────────────
 function ReadinessTab(b) {
-  const [kind, setKind] = useState('all'), [status, setStatus] = useState('all')
+  const [kind, setKind] = useState(b.f0.kind || 'all'), [status, setStatus] = useState(b.f0.status || 'all')
   const [compIti, setCompIti] = useState(null), [compLab, setCompLab] = useState(null)
   const { data: d } = useLoad(() => api.dailyReadiness({ ...b.common, kind, status }), [b.date, b.scope, b.trade, kind, status])
   useSaathiContext(d ? `Infrastructure readiness on ${fmtDate(d.date)}: ${d.totals.ready} of ${d.totals.inScope} workshops ready, ${d.totals.restricted} restricted, ${d.totals.unavailable} unavailable; components ${d.components.map(c => `${c.key} ${c.ok}/${c.total}`).join(', ')}; not ready: ${d.rows.filter(r => r.status !== 'ready').map(r => `${r.name} (${r.itiCode}, ${r.status}: ${r.reasons.join('; ')})`).join('; ') || 'none'}.` : '', ['Which facility is unavailable today?', 'What is restricting the Pusa electrical workshop?'])

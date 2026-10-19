@@ -5,7 +5,7 @@
 // CEO on the six-section home instead of the older operations screens.
 import { ACTIONS } from '../llm/catalog.js'
 
-const ANALYST = ['spv_ceo', 'ima_officer', 'state_pmu']
+const ANALYST = ['spv_ceo', 'iti_principal', 'ima_officer', 'state_pmu']
 const ANALYST_P = ['spv_ceo', 'iti_principal', 'ima_officer', 'state_pmu']
 
 // Section targets (the CEO's six sections; the principal shares most of them).
@@ -20,6 +20,7 @@ const SECTION_TARGETS = [
   { id: 'institute_facilities', canvas: 'institute_profile', tab: 'infrastructure', label: 'Institute profile · Facilities and labs', roles: ANALYST_P, params: ['iti'], say: ['facilities and labs at Pusa', 'asset register', 'machines installed at Rohini', 'civil packages at the ITI', 'rooms and labs'] },
   { id: 'institute_staffing', canvas: 'institute_profile', tab: 'staffing', label: 'Institute profile · Staffing', roles: ['iti_principal', 'ima_officer'], params: ['iti'], say: ['staffing tab', 'trainer plan'] },
   { id: 'institute_launch_gates', canvas: 'institute_profile', tab: 'launch_gates', label: 'Institute profile · Launch gates', roles: ['iti_principal', 'ima_officer'], params: ['iti'], say: ['launch gates', 'is the welding course ready to launch'] },
+  { id: 'institute_batches', canvas: 'batches', tab: null, label: 'My institute · Trades and batches', roles: ['iti_principal'], params: ['trade'], say: ['batches', 'running batches', 'batch roster', 'at-risk students', 'trades and batches'] },
   // 3 · Cluster registry
   { id: 'registry_students', canvas: 'cluster_registry', tab: 'students', label: 'Cluster registry · Student registry', roles: ANALYST_P, params: ['iti', 'trade', 'gender'], say: ['student registry', 'how many students in Narela', 'female students', 'list electrician students', 'enrolment by trade'] },
   { id: 'registry_trainers', canvas: 'cluster_registry', tab: 'trainers', label: 'Cluster registry · Trainer registry', roles: ANALYST_P, params: ['iti', 'trade'], say: ['trainer registry', 'how many trainers at Okhla', 'faculty by programme', 'who teaches welding', 'who teaches the electrician course in Shahdara', 'which instructors take fitter batches'] },
@@ -55,8 +56,8 @@ const SECTION_IDS = new Set(SECTION_TARGETS.map(t => t.id))
 const LEGACY_TARGETS = Object.entries(ACTIONS).filter(([id, a]) => id !== 'ANSWER_QUESTION' && a.module && !SECTION_IDS.has(a.module)).map(([id, a]) => {
   let roles = a.roles
   if (SECTION_CANVASES.has(a.module)) roles = roles.filter(r => r !== 'spv_ceo' && r !== 'iti_principal' && r !== 'ima_officer' && r !== 'state_pmu')
-  // The CEO navigates only within the six sections.
-  roles = roles.filter(r => r !== 'spv_ceo')
+  // The CEO and the principal navigate only within their sections.
+  roles = roles.filter(r => r !== 'spv_ceo' && r !== 'iti_principal')
   return { id: a.module, canvas: a.module, tab: null, label: a.description.split(':')[0], roles, params: ['iti'], say: LEGACY_SAY[a.module] || [], legacy: true, actionId: id }
 }).filter(t => t.roles.length)
 

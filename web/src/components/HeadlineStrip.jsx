@@ -38,7 +38,7 @@ export default function HeadlineStrip() {
   return (
     <div className="mt-7">
       <div className="mb-2.5 px-0.5 text-[11px] font-bold uppercase tracking-[2px] text-txt-tertiary">Headline</div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+      <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 ${data.items.length >= 6 ? 'xl:grid-cols-3 2xl:grid-cols-6' : 'xl:grid-cols-5'}`}>
         {data.items.map(it => {
           const t = TONE[it.tone] || TONE.indigo
           return (

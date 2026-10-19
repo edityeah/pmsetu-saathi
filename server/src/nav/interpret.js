@@ -3,7 +3,7 @@
 // the shared resolver behind the chat and voice tools.
 import { chatJSON, chatText, hasOpenAI } from '../llm/openai.js'
 import { prisma } from '../db.js'
-import { clusterFor } from '../lib/scope.js'
+import { clusterFor, itiFor } from '../lib/scope.js'
 import { targetsForRole, targetAllowed, TARGET_BY_ID, resolveIti, buildContext, catalogBriefing, tradeFromText, categoryFromText } from './catalog.js'
 import { summaryFor } from './snapshot.js'
 
@@ -101,7 +101,7 @@ export async function resolveNavigation(req, { target, iti, trade, gender, date,
   const c = await clusterFor(req.user)
   const itis = await prisma.iti.findMany({ where: { clusterId: c.id }, select: { id: true, code: true, name: true } })
   let itiRow = iti ? resolveIti(iti, itis) : null
-  if (!itiRow && (role === 'iti_principal' || role === 'trainer')) itiRow = null // the canvas scopes to their own ITI
+  if (role === 'iti_principal' || role === 'trainer') { const own = await itiFor(req.user); itiRow = own ? { id: own.id, code: own.code, name: own.name } : null } // always their own ITI
   const ent = { trade: trade || null, gender: gender || null, date: date || null, year: year || null, category: category || null }
   const canvas = buildContext(t, ent, itiRow)
   const filters = { itiId: itiRow?.id, itiCode: itiRow?.code, trade: ent.trade, gender: canvas.filters?.gender, date: ent.date, year: ent.year, category: ent.category }

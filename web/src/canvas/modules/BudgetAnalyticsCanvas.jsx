@@ -26,13 +26,15 @@ const head = 'px-4 py-2.5 bg-gradient-to-r from-surface-page/50 to-white border-
 const tip = { background: 'white', border: '1px solid #CFD8E6', borderRadius: 8, fontSize: 11 }
 
 export default function BudgetAnalyticsCanvas({ context }) {
-  const { openCanvas } = useApp()
+  const { openCanvas, role, meExtra } = useApp()
+  const canSwitch = role !== 'iti_principal' && role !== 'trainer'
+  const ownIti = !canSwitch ? meExtra?.iti : null
   const f0 = context?.filters || {}
   const [tab, setTabRaw] = useState(['utilisation', 'history'].includes(context?.tab) ? context.tab : 'overview')
   const scrollRef = useRef(null)
   const setTab = t => { setTabRaw(t); scrollRef.current?.scrollTo({ top: 0 }) }
   const [year, setYear] = useState(String(f0.year || 1))
-  const [itiId, setItiId] = useState(f0.itiId || 'all')
+  const [itiId, setItiId] = useState(ownIti?.id || f0.itiId || 'all')
   const [category, setCategory] = useState(f0.category || 'all')
   const [asOf, setAsOf] = useState(f0.asOf || todayIso())
   const [release, setRelease] = useState(null)
@@ -63,7 +65,7 @@ export default function BudgetAnalyticsCanvas({ context }) {
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
 
       {tab === 'overview' && (<>
-        <FilterBar items={[{ label: 'Year', value: year, options: [{ id: '1', label: 'Year 1' }], onChange: setYear }, { label: 'ITI', value: itiId, options: itiOpts, onChange: setItiId }, { label: 'Work package', value: category, options: catOpts, onChange: setCategory }, { label: 'Releases as of', type: 'date', value: asOf, onChange: setAsOf }]} note={data ? `${data.releases.length} releases` : ''} />
+        <FilterBar items={[{ label: 'Year', value: year, options: [{ id: '1', label: 'Year 1' }], onChange: setYear }, ...(canSwitch ? [{ label: 'ITI', value: itiId, options: itiOpts, onChange: setItiId }] : []), { label: 'Work package', value: category, options: catOpts, onChange: setCategory }, { label: 'Releases as of', type: 'date', value: asOf, onChange: setAsOf }]} note={data ? `${data.releases.length} releases` : ''} />
         {!data ? <Loading /> : (
           <div className="p-4 space-y-4">
             <StatGrid>
@@ -100,7 +102,7 @@ export default function BudgetAnalyticsCanvas({ context }) {
       </>)}
 
       {tab === 'history' && (<>
-        <FilterBar items={[{ label: 'Year', value: year, options: [{ id: '1', label: 'Year 1' }], onChange: setYear }, { label: 'ITI', value: itiId, options: itiOpts, onChange: setItiId }, { label: 'Work package', value: category, options: catOpts, onChange: setCategory }, { label: 'Releases as of', type: 'date', value: asOf, onChange: setAsOf }]} note={data ? `${data.releases.length} releases · ${fmtCr(data.totals.releasedCr)}` : ''} />
+        <FilterBar items={[{ label: 'Year', value: year, options: [{ id: '1', label: 'Year 1' }], onChange: setYear }, ...(canSwitch ? [{ label: 'ITI', value: itiId, options: itiOpts, onChange: setItiId }] : []), { label: 'Work package', value: category, options: catOpts, onChange: setCategory }, { label: 'Releases as of', type: 'date', value: asOf, onChange: setAsOf }]} note={data ? `${data.releases.length} releases · ${fmtCr(data.totals.releasedCr)}` : ''} />
         {!data ? <Loading /> : (
           <div className="p-4 space-y-4">
             <StatGrid>
@@ -117,7 +119,7 @@ export default function BudgetAnalyticsCanvas({ context }) {
       </>)}
 
       {tab === 'utilisation' && (<>
-        <FilterBar items={[{ label: 'AOP year', value: year, options: [{ id: '1', label: 'Year 1' }], onChange: setYear }, { label: 'Scope', value: 'Cluster' }]} />
+        <FilterBar items={[{ label: 'AOP year', value: year, options: [{ id: '1', label: 'Year 1' }], onChange: setYear }, { label: 'Scope', value: ownIti ? ownIti.name : 'Cluster' }]} />
         {!util ? <Loading /> : (
           <div className="p-4 space-y-4">
             <StatGrid>
