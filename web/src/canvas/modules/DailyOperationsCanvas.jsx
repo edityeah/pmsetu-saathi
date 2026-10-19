@@ -258,6 +258,7 @@ function ReadinessTab(b) {
         <Stat label="Restricted use" value={t.restricted} sub="one check failing" tone="amber" />
         <Stat label="Unavailable" value={t.unavailable} sub="no usable equipment or a high safety issue" tone="rose" />
       </StatGrid>
+      {d.byIti.length === 1 ? <ReadinessForPrincipal rows={rows} openCanvas={b.openCanvas} /> : (
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
         <div className="lg:col-span-3"><Card title="Readiness by ITI" sub="ready · restricted · unavailable">
           <div style={{ height: Math.max(180, d.byIti.length * 44) }}><ResponsiveContainer><BarChart data={d.byIti} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}><XAxis type="number" fontSize={10} stroke="#7383A5" allowDecimals={false} /><YAxis type="category" dataKey="name" width={64} fontSize={10} stroke="#7383A5" /><Tooltip contentStyle={tip} /><Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} /><RBar dataKey="ready" name="Ready" stackId="a" fill={C.emerald}><LabelList dataKey="ready" position="center" fontSize={10} fill="white" formatter={v => v || ''} /></RBar><RBar dataKey="restricted" name="Restricted" stackId="a" fill={C.amber}><LabelList dataKey="restricted" position="center" fontSize={10} fill="white" formatter={v => v || ''} /></RBar><RBar dataKey="unavailable" name="Unavailable" stackId="a" fill={C.rose} radius={[0, 4, 4, 0]}><LabelList dataKey="total" position="right" fontSize={10} fill="#1A1F36" /></RBar></BarChart></ResponsiveContainer></div>
@@ -267,7 +268,7 @@ function ReadinessTab(b) {
           {selLab && selLab.reasons.length > 0 && <div className="mt-3 text-[11px] text-rose-700">{selLab.reasons.join(' · ')}</div>}
           <div className="mt-3 text-[10px] text-txt-tertiary">A facility is ready only when all five checks for its scheduled use are met.</div>
         </Card></div>
-      </div>
+      </div>)}
       <Section title="Facility readiness records" hint="Recorded readiness is operational evidence, not formal safety certification.">
         <TopFive label="facilities" columns={[
           { key: 'name', label: 'Facility', render: x => <button className="text-left hover:text-primary" onClick={() => { setCompIti(x.itiId); setCompLab(x.id) }}><div className="font-semibold">{x.name}</div><div className="text-[10px] text-txt-tertiary">{titleCase(x.kind)}</div></button> },
@@ -377,6 +378,41 @@ function AssessmentByTypeAndTrade({ d }) {
       </Card></div>
       <div className="lg:col-span-3"><Card title="Status by trade" sub={`scheduled · conducted · marks uploaded on ${fmtDate(d.date)}`}>
         <div style={{ height: h }}><ResponsiveContainer><BarChart data={d.byTrade} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }} barGap={2} barCategoryGap={8}><XAxis type="number" fontSize={10} stroke="#7383A5" allowDecimals={false} /><YAxis type="category" dataKey="name" width={150} fontSize={10} stroke="#7383A5" interval={0} /><Tooltip contentStyle={tip} /><Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} /><RBar dataKey="scheduled" name="Scheduled" fill={C.primary} radius={[0, 3, 3, 0]} /><RBar dataKey="conducted" name="Conducted" fill={C.emerald} radius={[0, 3, 3, 0]} /><RBar dataKey="marksUploaded" name="Marks uploaded" fill={C.violet} radius={[0, 3, 3, 0]} /></BarChart></ResponsiveContainer></div>
+      </Card></div>
+    </div>
+  )
+}
+
+// One institute: a check matrix per workshop (what passes and what fails
+// today) beside a fix-first list ranked by what blocks the most sessions.
+const CHECKS = [['space', 'Space'], ['electricity', 'Electricity'], ['safety', 'Safety'], ['equipment', 'Equipment'], ['consumables', 'Consumables']]
+function ReadinessForPrincipal({ rows, openCanvas }) {
+  const order = { unavailable: 0, restricted: 1, ready: 2 }
+  const sorted = [...rows].sort((p, q) => order[p.status] - order[q.status] || p.name.localeCompare(q.name))
+  const failing = CHECKS.map(([k, label]) => ({ key: k, label, facilities: rows.filter(r => !r.checks[k]) })).filter(x => x.facilities.length).sort((p, q) => q.facilities.length - p.facilities.length)
+  const withSession = rows.filter(r => r.status !== 'ready' && r.scheduledUse && r.scheduledUse !== 'No session scheduled')
+  const h = Math.max(220, sorted.length * 36 + 48)
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
+      <div className="lg:col-span-3"><Card title="Readiness checks by workshop" sub="the five checks for today's scheduled use · green met, red not met">
+        <div style={{ minHeight: h }} className="overflow-x-auto">
+          <table className="w-full text-[11px]">
+            <thead><tr className="text-[10px] uppercase tracking-wider text-txt-tertiary"><th className="text-left font-bold pb-2 pr-2">Workshop</th>{CHECKS.map(([k, l]) => <th key={k} className="font-bold pb-2 px-1 text-center">{l}</th>)}<th className="text-right font-bold pb-2 pl-2">Status</th></tr></thead>
+            <tbody>{sorted.map(r => <tr key={r.id} className="border-t border-bdr-light/60"><td className="py-2 pr-2"><div className="font-semibold text-txt-primary whitespace-nowrap">{r.name}</div><div className="text-[10px] text-txt-tertiary whitespace-nowrap">{r.tradeName} · {r.scheduledUse || 'no session today'}</div></td>{CHECKS.map(([k]) => <td key={k} className="px-1 text-center"><span title={r.checks[k] ? 'Met' : 'Not met'} className={`inline-block w-7 h-5 rounded-md ${r.checks[k] ? 'bg-emerald-400' : 'bg-rose-400'}`} /></td>)}<td className="pl-2 text-right"><Pill kind={r.status === 'ready' ? 'ok' : r.status === 'restricted' ? 'warn' : 'bad'}>{titleCase(r.status)}</Pill></td></tr>)}</tbody>
+          </table>
+        </div>
+      </Card></div>
+      <div className="lg:col-span-2"><Card title="Fix first" sub="failing checks ranked by how many workshops they hold back">
+        <div style={{ minHeight: h }} className="flex flex-col gap-3">
+          {failing.length === 0 ? <div className="text-[12px] text-emerald-700 rounded-xl bg-emerald-50 px-3 py-2">Every workshop passes all five checks today.</div> : failing.map(f => (
+            <div key={f.key} className="rounded-xl bg-surface-page px-3 py-2.5">
+              <div className="flex items-center gap-2"><span className="text-[12px] font-bold text-txt-primary">{f.label}</span><span className="text-[10px] text-txt-tertiary">not met in {f.facilities.length} workshop{f.facilities.length > 1 ? 's' : ''}</span></div>
+              <ul className="mt-1.5 space-y-1 text-[11px]">{f.facilities.map(r => <li key={r.id} className="flex items-start gap-2"><span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.status === 'unavailable' ? 'bg-rose-500' : 'bg-amber-500'}`} /><span className="flex-1 text-txt-secondary"><b className="text-txt-primary">{r.name}</b>{(() => { const m = r.reasons.filter(x => x.toLowerCase().includes(f.key === 'equipment' ? 'machine' : f.key === 'electricity' ? 'electric' : f.key)); const txt = m.length ? m : f.key === 'equipment' ? [`${r.machines?.functional ?? 0} of ${r.machines?.total ?? 0} machines functional`] : r.reasons.slice(0, 1); return txt.map(x => ` · ${x}`).join('') })()}</span></li>)}</ul>
+            </div>
+          ))}
+          {withSession.length > 0 && <div className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] text-amber-900"><b>{withSession.length}</b> workshop{withSession.length > 1 ? 's' : ''} with a session scheduled today {withSession.length > 1 ? 'are' : 'is'} not ready: {withSession.map(r => `${r.name} (${r.scheduledUse})`).join(', ')}.</div>}
+          <div className="mt-auto flex gap-2 flex-wrap pt-1"><button onClick={() => openCanvas({ type: 'daily_ops' })} className="px-3 py-1.5 rounded-pill bg-primary text-white text-[11px] font-bold">Raise an issue</button><button onClick={() => openCanvas({ type: 'my_institute', tab: 'facilities' })} className="px-3 py-1.5 rounded-pill bg-white border border-bdr text-[11px] font-bold">Open campus facilities</button></div>
+        </div>
       </Card></div>
     </div>
   )
