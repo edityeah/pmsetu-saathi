@@ -286,10 +286,10 @@ r.get('/analytics', async (req, res, next) => {
     const asOf = req.query.asOf ? new Date(String(req.query.asOf) + 'T23:59:59Z') : new Date()
     const appWhere = { trainee: { itiId: { in: itiIds }, ...(trade ? { batch: { tradeId: trade } } : {}) }, lastEventAt: { lte: asOf }, ...(type || employerId ? { opportunity: { ...(type ? { type } : {}), ...(employerId ? { employerId } : {}) } } : {}) }
     const [apps, spells, opps, pool, trades, employers] = await Promise.all([
-      prisma.application.findMany({ where: appWhere, select: { id: true, traineeId: true, stage: true, evidenceLevel: true, joinedAt: true, offerWage: true, opportunity: { select: { type: true, employerId: true } }, trainee: { select: { itiId: true, gender: true } } } }),
+      prisma.application.findMany({ where: appWhere, select: { id: true, traineeId: true, stage: true, evidenceLevel: true, joinedAt: true, offerWage: true, opportunity: { select: { type: true, employerId: true } }, trainee: { select: { itiId: true, gender: true, batch: { select: { tradeId: true } } } } } }),
       prisma.employmentSpell.findMany({ where: { trainee: { itiId: { in: itiIds } }, ...(type ? { type } : {}), ...(employerId ? { employerId } : {}), startAt: { lte: asOf } }, include: { followUps: true } }),
       prisma.opportunity.findMany({ where: { clusterId: c.id, status: 'live', ...(type ? { type } : {}), ...(employerId ? { employerId } : {}) }, select: { openings: true, filled: true } }),
-      prisma.trainee.findMany({ where: { itiId: { in: itiIds }, ...(trade ? { batch: { tradeId: trade } } : {}), OR: [{ status: 'completed' }, { applications: { some: {} } }, { spells: { some: {} } }] }, select: { id: true, itiId: true } }),
+      prisma.trainee.findMany({ where: { itiId: { in: itiIds }, ...(trade ? { batch: { tradeId: trade } } : {}), OR: [{ status: 'completed' }, { applications: { some: {} } }, { spells: { some: {} } }] }, select: { id: true, itiId: true, batch: { select: { tradeId: true } } } }),
       prisma.trade.findMany({ where: { batches: { some: { itiId: { in: itiIds } } } }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
       prisma.employer.findMany({ where: { clusterId: c.id }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
     ])
@@ -311,10 +311,13 @@ r.get('/analytics', async (req, res, next) => {
     const buckets = [{ label: 'D30', lo: 0, hi: 60 }, { label: 'D90', lo: 60, hi: 135 }, { label: 'D180', lo: 135, hi: 400 }]
     const retention = buckets.map(b => { const fus = activeSpells.flatMap(x => x.followUps.filter(f => { const d = (f.dueAt - x.startAt) / 86400000; return d >= b.lo && d < b.hi && f.dueAt <= asOf })); const responded = fus.filter(f => f.respondedAt); const working = responded.filter(f => f.status === 'working'); return { label: b.label, due: fus.length, responded: responded.length, coveragePct: fus.length ? Math.round(100 * responded.length / fus.length) : null, retentionPct: responded.length ? Math.round(100 * working.length / responded.length) : null } })
     const byIti = itis.filter(i => itiIds.includes(i.id)).map(i => { const ids = new Set(pool.filter(t => t.itiId === i.id).map(t => t.id)); const my = apps.filter(a => a.trainee.itiId === i.id); const b = {}; for (const a of my) { const r = stageRank(a.stage); if (r > (b[a.traineeId] || 0)) b[a.traineeId] = r }; const at = k => Object.values(b).filter(r => r >= k).length; return { id: i.id, code: i.code, name: i.name.replace('Government ITI ', ''), pool: ids.size, applied: at(3), interviewed: at(5), offered: at(6), joined: at(7), women: new Set(my.filter(a => ['joined', 'follow_up'].includes(a.stage) && a.trainee.gender === 'F').map(a => a.traineeId)).size } })
+    // By trade (the principal's comparison): same distinct-people rule per trade.
+    const tradeIds = [...new Set([...pool.map(t => t.batch?.tradeId), ...apps.map(a => a.trainee.batch?.tradeId)].filter(Boolean))]
+    const byTrade = tradeIds.map(tid => { const ids = new Set(pool.filter(t => t.batch?.tradeId === tid).map(t => t.id)); const my = apps.filter(a => a.trainee.batch?.tradeId === tid); const b = {}; for (const a of my) { const r = stageRank(a.stage); if (r > (b[a.traineeId] || 0)) b[a.traineeId] = r }; const at = k => Object.values(b).filter(r => r >= k).length; return { id: tid, name: trades.find(t => t.id === tid)?.name || tid, pool: ids.size, applied: at(3), interviewed: at(5), offered: at(6), joined: at(7), women: new Set(my.filter(a => ['joined', 'follow_up'].includes(a.stage) && a.trainee.gender === 'F').map(a => a.traineeId)).size } }).sort((p, q) => q.joined - p.joined || q.pool - p.pool)
     const wages = joinedApps.map(a => a.offerWage).filter(Boolean).sort((a, b) => a - b)
     res.json({ filters: { itiId: itiIds.length === itis.length ? 'all' : itiIds[0], trade: trade || 'all', type: type || 'all', employerId: employerId || 'all', asOf: asOf.toISOString().slice(0, 10) }, options: { trades, employers },
       totals: { liveSeats: opps.reduce((s, o) => s + Math.max(0, o.openings - o.filled), 0), applications: apps.length, reportedJoins: joinedPeople.size, verifiedJoins: ladder.independentlyVerified, employerConfirmed: ladder.employerConfirmed, pool: pool.length, medianWage: wages.length ? wages[Math.floor(wages.length / 2)] : null },
-      funnel: f2, outcomes, ladder, retention, byIti })
+      funnel: f2, outcomes, ladder, retention, byIti, byTrade })
   } catch (e) { next(e) }
 })
 

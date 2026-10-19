@@ -69,14 +69,21 @@ export default function PlacementPipelineCanvas({ context }) {
               )}
               <div className="text-[11px] text-txt-tertiary mt-2">{d.retention.map(r => `${r.label}: ${r.due ? `${r.responded} of ${r.due} responded` : 'not due yet'}`).join(' · ')}</div>
             </Card></div>
-            <div className="xl:col-span-2"><Card title="ITI comparison" sub="Distinct people per stage.">
+            <div className="xl:col-span-2">{d.byIti.length === 1 ? <Card title="Trade comparison" sub="Distinct people per stage, by course.">
+              <Table columns={[
+                { key: 'name', label: 'Trade', render: i => <button className={`font-semibold hover:text-primary text-left ${trade === i.id ? 'text-primary' : ''}`} onClick={() => setTrade(trade === i.id ? 'all' : i.id)}>{i.name}</button> },
+                { key: 'pool', label: 'Pool', align: 'right' }, { key: 'applied', label: 'Applied', align: 'right' }, { key: 'offered', label: 'Offered', align: 'right' },
+                { key: 'joined', label: 'Joined', align: 'right', render: i => <b>{i.joined}</b> },
+              ]} rows={d.byTrade || []} empty="No placement activity by trade yet." />
+              <div className="text-[11px] text-txt-tertiary mt-2">Tap a trade to scope the page to its funnel; tap again for all trades.{d.totals.medianWage ? ` Median reported wage ${fmtInr(d.totals.medianWage)} per month.` : ''}</div>
+            </Card> : <Card title="ITI comparison" sub="Distinct people per stage.">
               <Table columns={[
                 { key: 'name', label: 'ITI', render: i => <button className="font-semibold hover:text-primary text-left" onClick={() => setItiId(i.id)}>{i.name}</button> },
                 { key: 'pool', label: 'Pool', align: 'right' }, { key: 'applied', label: 'Applied', align: 'right' }, { key: 'offered', label: 'Offered', align: 'right' },
                 { key: 'joined', label: 'Joined', align: 'right', render: i => <b>{i.joined}</b> },
               ]} rows={d.byIti} />
               <div className="text-[11px] text-txt-tertiary mt-2">Tap an ITI to scope the page to its funnel.{d.totals.medianWage ? ` Median reported wage ${fmtInr(d.totals.medianWage)} per month.` : ''}</div>
-            </Card></div>
+            </Card>}            </div>
           </div>
         </div>
       )}

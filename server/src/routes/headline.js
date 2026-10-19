@@ -39,6 +39,12 @@ async function ceo(user) {
   const present = rep.reduce((s, x) => s + (x.presentCount || 0) + (x.lateCount || 0), 0), absent = rep.reduce((s, x) => s + (x.absentCount || 0), 0)
   const att = pct(present, present + absent), attCov = pct(rep.length, sched)
   const dateLabel = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+  // Previous reported day for the day-on-day change.
+  const prevRep = await prisma.session.findMany({ where: { batch: { iti: { clusterId: c.id } }, date: new Date(date.getTime() - 86400000), delivery: { not: 'cancelled' }, attendanceState: { not: 'not_reported' } }, select: { presentCount: true, absentCount: true, lateCount: true } })
+  const pp = prevRep.reduce((s, x) => s + (x.presentCount || 0) + (x.lateCount || 0), 0), pa = prevRep.reduce((s, x) => s + (x.absentCount || 0), 0)
+  const attPrev = pp + pa ? Math.round(1000 * pp / (pp + pa)) / 10 : null
+  const attNow = present + absent ? Math.round(1000 * present / (present + absent)) / 10 : null
+  const attDelta = attNow != null && attPrev != null ? Math.round(10 * (attNow - attPrev)) / 10 : null
   // Seats and enrolment (registry-connected ITIs only).
   const seatsOn = on.reduce((s, i) => s + i.seatCapacity, 0), enrolled = on.reduce((s, i) => s + i._count.trainees, 0)
   // Funds utilised against the Year-1 AOP allocation.
@@ -55,7 +61,7 @@ async function ceo(user) {
   const events = ev1 + ev2 + ev3 + ev4 + ev5
   const dateIso = date.toISOString().slice(0, 10)
   return { title: `${c.name} · ${c.planYearLabel}`, items: [
-    item({ key: 'attendance', label: 'Attendance today', value: att == null ? '—' : `${att}%`, pct: att, target: fallback ? `latest reported day · ${dateLabel}` : `today · ${dateLabel}`, hint: sched ? `${rep.length} of ${sched} sessions reported · ${cov}` : 'no sessions scheduled', tone: att == null ? 'amber' : att >= 85 ? 'emerald' : 'amber', canvas: 'daily_operations', open: { canvas: 'daily_operations', tab: 'attendance', filters: { date: dateIso, scope: 'all' } } }),
+    item({ key: 'attendance', label: 'Attendance today', value: att == null ? '—' : `${att}%`, pct: att, target: fallback ? `latest reported day · ${dateLabel}` : `today · ${dateLabel}`, hint: sched ? `${rep.length} of ${sched} sessions reported · ${cov}` : 'no sessions scheduled', delta: attDelta == null ? null : { value: attDelta, text: `${attDelta >= 0 ? '▲' : '▼'} ${Math.abs(attDelta)}% vs previous day` }, tone: att == null ? 'amber' : att >= 85 ? 'emerald' : 'amber', canvas: 'daily_operations', open: { canvas: 'daily_operations', tab: 'attendance', filters: { date: dateIso, scope: 'all' } } }),
     item({ key: 'women', label: 'Female enrolment', value: num(womenAll), pct: pct(womenAll, activeAll), target: `${pct(womenAll, activeAll) ?? '—'}% of ${num(activeAll)} active students`, hint: cov, tone: 'fuchsia', canvas: 'cluster_registry', open: { canvas: 'cluster_registry', tab: 'students', filters: { gender: 'F', status: 'active', year: 'current' } } }),
     item({ key: 'funds', label: 'Funds utilised', value: `₹${u.utilisedCr} Cr`, pct: u.utilisedPct, target: `${u.utilisedPct}% of ₹${u.budgetCr} Cr approved AOP`, hint: `${u.committedPct}% committed · tranche gate 75%`, tone: 'amber', canvas: 'budget_analytics', open: { canvas: 'budget_analytics', tab: 'utilisation', filters: { year: 1, scope: 'cluster' } } }),
     item({ key: 'events', label: 'Upcoming events', value: num(events), target: 'next 30 days', hint: `${ev1} assessments · ${ev2} IMA milestones · ${ev3} reports · ${ev4 + ev5} employer`, tone: 'sky', canvas: 'daily_operations', open: { canvas: 'daily_operations', tab: 'events', filters: { from: today.toISOString().slice(0, 10), days: 30, status: 'scheduled' } } }),
