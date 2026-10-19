@@ -39,7 +39,7 @@ const KEYWORDS = {
   ops_overview: ['daily operations', 'today', 'operations', 'how is the day'],
   budget_utilisation: ['utilised', 'utilisation', 'utilization', 'spent', 'spend', 'tranche gate', 'uc', 'certificate'],
   budget_release_history: ['release history', 'releases', 'released', 'last release'],
-  budget_overview: ['budget', 'allocation', 'allocated', 'fund', 'funds', 'money', 'aop', 'provided to', 'given to', 'remaining', 'balance', 'allocated fund', 'fund remaining', 'बजट', 'फंड'],
+  budget_overview: ['budget', 'allocation', 'allocated', 'fund', 'funds', 'money', 'aop', 'provided to', 'given to', 'remaining', 'balance', 'allocated fund', 'fund remaining', 'work package', 'work packages', 'same figures', 'बजट', 'फंड'],
   placement_analytics: ['placement', 'placements', 'placed', 'joined', 'joins', 'offer', 'offers', 'funnel', 'retention', 'प्लेसमेंट'],
   employer_directory: ['employer', 'employers', 'company', 'companies', 'mou', 'hiring', 'opportunity', 'opportunities', 'industry partner'],
   student_voice: ['student voice', 'students saying', 'barrier', 'barriers', 'complain', 'travel cost', 'themes'],
