@@ -47,7 +47,7 @@ export default function HeadlineStrip() {
                 <div className={`text-[10px] font-bold uppercase tracking-wider ${t.fg} leading-tight line-clamp-2`}>{it.label}</div>
                 <div className="text-[22px] leading-tight font-bold text-txt-primary mt-1 tabular-nums break-words">{it.value}</div>
                 {it.target && <div className="text-[10px] text-txt-secondary truncate mt-0.5">{it.target}</div>}
-                {it.hint && <div className="text-[10px] text-txt-tertiary truncate">{it.hint}</div>}
+                {(it.hint || it.delta) && <div className="text-[10px] text-txt-tertiary truncate">{it.delta && <span className={`font-bold ${it.delta.value < 0 ? 'text-rose-600' : it.delta.value > 0 ? 'text-emerald-600' : 'text-txt-secondary'}`}>{it.delta.text}</span>}{it.delta && it.hint ? ' · ' : ''}{it.hint}</div>}
               </div>
               {it.pct != null && <Ring pct={it.pct} color={t.ring} size={40} />}
             </button>
