@@ -565,6 +565,11 @@ async function main() {
       const lowConf = ocr && conf < 0.75
       entryRows.push({ assessmentId: a2, traineeId: t.id, marks, status: absent ? 'absent' : 'scored', source: ocr ? 'ocr' : 'manual', ocrConfidence: conf, ocrExtracted: ocr && marks != null ? (lowConf ? Math.max(0, marks + pick([-3, 3, -1])) : marks) : null, reviewState: lowConf ? 'needs_review' : ocr ? 'submitted' : 'confirmed' })
     }
+    // 2b. viva voce 1 — conducted 14 Oct, marks confirmed (out of 20); a second viva planned for November
+    const a3 = `AP-${++apN}`
+    planRows.push({ id: a3, batchId: b.id, subjectId: thSubj(b) || null, title: 'Viva voce 1', type: 'viva', topic: 'Oral check on safety and tools', maxMarks: 20, date: d('2026-10-14'), evaluatorName: lead, paperVersion: null, state: 'confirmed' })
+    for (const t of roster) { const absent = chance(0.05); entryRows.push({ assessmentId: a3, traineeId: t.id, marks: absent ? null : rand(8, 20), status: absent ? 'absent' : 'scored', source: 'manual', reviewState: 'confirmed' }) }
+    planRows.push({ id: `AP-${++apN}`, batchId: b.id, subjectId: prSubj(b) || null, title: 'Viva voce 2', type: 'viva', topic: 'Oral check on the current module', maxMarks: 20, date: d('2026-11-06'), evaluatorName: lead, paperVersion: null, state: 'planned' })
     // 3. unit test 2 — planned
     planRows.push({ id: `AP-${++apN}`, batchId: b.id, subjectId: thSubj(b) || null, title: 'Unit test 2 · theory', type: 'theory', topic: 'Measurement and drawing', maxMarks: 50, date: d('2026-10-24'), evaluatorName: lead, paperVersion: null, state: 'planned' })
   }

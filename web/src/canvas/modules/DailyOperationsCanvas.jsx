@@ -201,6 +201,7 @@ function AssessmentsTab(b) {
         <Stat label="Marks uploaded" value={t.marksUploaded} sub={`${t.review} awaiting principal review`} tone="violet" />
         <Stat label="Results pending" value={t.pending} sub="conducted, marks not entered" tone={t.pending ? 'amber' : 'emerald'} />
       </StatGrid>
+      {d.byIti.length === 1 ? <AssessmentByTypeAndTrade d={d} /> : (
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
         <div className="lg:col-span-3"><Card title="Assessment flow" sub="scheduled → conducted → marks uploaded">
           <div className="grid grid-cols-3 gap-2 items-stretch">
@@ -217,7 +218,7 @@ function AssessmentsTab(b) {
         <div className="lg:col-span-2"><Card title="Status by ITI" sub="scheduled · conducted · marks uploaded">
           <div style={{ height: Math.max(180, d.byIti.length * 44) }}><ResponsiveContainer><BarChart data={d.byIti} layout="vertical" margin={{ top: 4, right: 20, left: 4, bottom: 0 }} barGap={2}><XAxis type="number" fontSize={10} stroke="#7383A5" /><YAxis type="category" dataKey="name" width={64} fontSize={10} stroke="#7383A5" /><Tooltip contentStyle={tip} /><Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} /><RBar dataKey="scheduled" name="Scheduled" fill={C.primary} radius={[0, 3, 3, 0]} /><RBar dataKey="conducted" name="Conducted" fill={C.emerald} radius={[0, 3, 3, 0]} /><RBar dataKey="marksUploaded" name="Marks uploaded" fill={C.violet} radius={[0, 3, 3, 0]} /></BarChart></ResponsiveContainer></div>
         </Card></div>
-      </div>
+      </div>)}
       <Section title="Assessment records" hint="Scheduled, conducted and marks uploaded are separate states; blank marks are not zero.">
         <TopFive label="assessments" columns={[
           { key: 'title', label: 'Assessment', render: x => <div><div className="font-semibold">{x.title}</div><div className="text-[10px] text-txt-tertiary">{titleCase(x.type)} · {x.maxMarks} marks</div></div> },
@@ -357,4 +358,26 @@ function EarlyWarning({ ew, openCanvas }) {
       {ew.students.length > 5 && <div className="flex items-center justify-between pt-2 text-[11px] text-txt-tertiary"><span>Showing {shown.length} of {ew.students.length}</span><button className="text-primary font-bold" onClick={() => setAll(x => !x)}>{all ? 'Show five' : `View more (${ew.students.length - 5})`} →</button></div>}
     </Section>
   </>)
+}
+
+// One institute: assessments by type this term (pie) beside status by trade
+// for the day (bars). Both cards share one height so neither looks bigger.
+const TYPE_COLORS = { theory: C.primary, practical: C.emerald, viva: C.amber }
+function AssessmentByTypeAndTrade({ d }) {
+  const term = d.termByType.filter(x => x.total > 0)
+  const total = term.reduce((s, x) => s + x.total, 0)
+  const h = Math.max(240, d.byTrade.length * 34 + 40)
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
+      <div className="lg:col-span-2"><Card title="Assessments by type" sub="this term · conducted and planned">
+        <div className="flex flex-col items-center justify-center gap-3" style={{ height: h }}>
+          <div style={{ width: 170, height: 170 }} className="relative flex-shrink-0"><ResponsiveContainer><PieChart><Pie data={term.map(x => ({ name: titleCase(x.type), value: x.total, type: x.type }))} dataKey="value" nameKey="name" innerRadius={50} outerRadius={78} paddingAngle={2} stroke="white">{term.map(x => <Cell key={x.type} fill={TYPE_COLORS[x.type]} />)}</Pie><Tooltip contentStyle={tip} /></PieChart></ResponsiveContainer><div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"><div className="text-[22px] font-bold leading-none">{total}</div><div className="text-[10px] text-txt-tertiary">assessments</div></div></div>
+          <ul className="text-[12px] space-y-1.5 w-full max-w-[320px]">{term.map(x => <li key={x.type} className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: TYPE_COLORS[x.type] }} /><span className="flex-1 text-txt-secondary">{x.type === 'viva' ? 'Vivas' : x.type === 'theory' ? 'Theory exams' : 'Practicals'}</span><b className="w-8 text-right">{x.total}</b><span className="text-[10px] text-txt-tertiary w-40 text-right whitespace-nowrap">{x.conducted} conducted · {x.planned} planned</span></li>)}</ul>
+        </div>
+      </Card></div>
+      <div className="lg:col-span-3"><Card title="Status by trade" sub={`scheduled · conducted · marks uploaded on ${fmtDate(d.date)}`}>
+        <div style={{ height: h }}><ResponsiveContainer><BarChart data={d.byTrade} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }} barGap={2} barCategoryGap={8}><XAxis type="number" fontSize={10} stroke="#7383A5" allowDecimals={false} /><YAxis type="category" dataKey="name" width={150} fontSize={10} stroke="#7383A5" interval={0} /><Tooltip contentStyle={tip} /><Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} /><RBar dataKey="scheduled" name="Scheduled" fill={C.primary} radius={[0, 3, 3, 0]} /><RBar dataKey="conducted" name="Conducted" fill={C.emerald} radius={[0, 3, 3, 0]} /><RBar dataKey="marksUploaded" name="Marks uploaded" fill={C.violet} radius={[0, 3, 3, 0]} /></BarChart></ResponsiveContainer></div>
+      </Card></div>
+    </div>
+  )
 }

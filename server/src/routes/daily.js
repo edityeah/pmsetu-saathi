@@ -110,13 +110,20 @@ r.get('/assessments', async (req, res, next) => {
     const a = await assessmentDay(sc, requested, req.query.type, req.query.status)
     const t = { scheduled: a.rows.length, conducted: a.rows.filter(x => x.conducted).length, marksUploaded: a.rows.filter(x => x.marksUploaded).length, pending: a.rows.filter(x => x.marksStatus === 'pending').length, review: a.rows.filter(x => x.marksStatus === 'review').length, notConducted: a.rows.filter(x => !x.conducted).length }
     const byIti = sc.itis.filter(i => sc.itiIds.includes(i.id)).map(i => { const rs = a.rows.filter(x => x.itiId === i.id); return { code: i.code, name: short(i.name), scheduled: rs.length, conducted: rs.filter(x => x.conducted).length, marksUploaded: rs.filter(x => x.marksUploaded).length } })
-    const byType = ['theory', 'practical'].map(k => ({ type: k, scheduled: a.rows.filter(x => x.type === k).length, conducted: a.rows.filter(x => x.type === k && x.conducted).length }))
+    const byType = ['theory', 'practical', 'viva'].map(k => ({ type: k, scheduled: a.rows.filter(x => x.type === k).length, conducted: a.rows.filter(x => x.type === k && x.conducted).length }))
+    // Status by trade for the day (one bar group per trade with assessments).
+    const tradeMap = {}
+    for (const x of a.rows) { const k = tradeMap[x.tradeId] ||= { id: x.tradeId, name: x.trade, scheduled: 0, conducted: 0, marksUploaded: 0 }; k.scheduled++; if (x.conducted) k.conducted++; if (x.marksUploaded) k.marksUploaded++ }
+    const byTrade = Object.values(tradeMap).sort((p, q) => q.scheduled - p.scheduled)
+    // Term view by type: every assessment planned for the scope this term, conducted vs still planned.
+    const termPlans = await prisma.assessmentPlan.groupBy({ by: ['type', 'state'], where: { batch: sc.batchWhere }, _count: true })
+    const termByType = ['theory', 'practical', 'viva'].map(k => { const rs = termPlans.filter(x => x.type === k); const total = rs.reduce((s, x) => s + x._count, 0), planned = rs.filter(x => x.state === 'planned').reduce((s, x) => s + x._count, 0); return { type: k, total, conducted: total - planned, planned } })
     const [trades, batches, upcoming] = await Promise.all([
       prisma.trade.findMany({ where: { batches: { some: { itiId: { in: sc.itiIds }, state: 'running' } } }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
       prisma.batch.findMany({ where: { itiId: { in: sc.itiIds }, state: 'running', ...(sc.trade ? { tradeId: sc.trade } : {}) }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
       prisma.assessmentPlan.groupBy({ by: ['date'], where: { batch: sc.batchWhere, date: { gt: a.date } }, _count: true, orderBy: { date: 'asc' }, take: 3 }),
     ])
-    res.json({ requestedDate: requested, date: a.date, fallback: a.fallback, totals: t, byIti, byType, rows: a.rows, options: { trades, batches }, upcoming: upcoming.map(u => ({ date: u.date, n: u._count })) })
+    res.json({ requestedDate: requested, date: a.date, fallback: a.fallback, totals: t, byIti, byType, byTrade, termByType, rows: a.rows, options: { trades, batches }, upcoming: upcoming.map(u => ({ date: u.date, n: u._count })) })
   } catch (e) { next(e) }
 })
 
