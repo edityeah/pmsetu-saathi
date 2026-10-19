@@ -1091,13 +1091,26 @@ model BoardItem {
 
 model Grievance {
   id             String    @id @default(cuid())
+  code           String?   // ITI-PUS-026 — human case id
   raisedByUserId String
   raisedBy       User      @relation("raisedBy", fields: [raisedByUserId], references: [id])
   itiId          String?
   iti            Iti?      @relation(fields: [itiId], references: [id])
-  category       String
+  category       String    // course_access | facility_issue | trainer_support | financial_barrier | placement_concern | safety_concern | equipment | transport
+  title          String?
   note           String
-  status         String    @default("open")
+  status         String    @default("new") // new | in_review | awaiting_response | escalated | resolved
+  priority       String    @default("medium") // high | medium | low
+  source         String    @default("app") // app | offline
+  restricted     Boolean   @default(false) // submitter details visible to authorised staff only
+  ownerRole      String?   // Principal | Institute Admin | Academic Coord. | TPO | SPV
+  nextAction     String?
+  dueAt          DateTime?
+  acknowledgedAt DateTime?
+  assignedAt     DateTime?
+  escalatedAt    DateTime?
+  escalatedTo    String?
+  responses      String    @default("[]") // JSON [{at, by, text}]
   resolvedAt     DateTime?
   resolutionNote String?
   createdAt      DateTime  @default(now())

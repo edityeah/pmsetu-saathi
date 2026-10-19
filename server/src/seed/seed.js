@@ -913,12 +913,56 @@ async function main() {
   // GRIEVANCES + NOTIFICATIONS
   // ══════════════════════════════════════════════════════════════════════
   console.log('[seed] grievances + notifications…')
-  for (const [uid, iti, category, note, status, ago] of [
-    [`U-STU-${DEMO_STU}`, 'PUS', 'equipment', 'Only six wiring boards work; we practise in groups of three.', 'investigating', 5],
-    [`U-STU-${connectedStudents[40].id}`, 'PUS', 'facilities', 'Washroom near the electrician workshop stays locked.', 'open', 3],
-    [`U-STU-${connectedStudents.find(t => t.itiId === 'SHA').id}`, 'SHA', 'trainer_absent', 'Welding theory cancelled three times this fortnight.', 'open', 2],
-    [`U-STU-${passouts[3].id}`, 'PUS', 'placement', 'Was told I joined the Okhla site but joining was deferred; please correct the record.', 'open', 6],
-  ]) await prisma.grievance.create({ data: { raisedByUserId: uid, itiId: iti, category, note, status, createdAt: daysAgo(ago) } })
+  // Support & grievance cases: a queue per ITI with owners, priorities, SLA
+  // due dates, a timeline and a response log. Pusa carries the demo load.
+  const CASE_KINDS = {
+    course_access:     { title: 'Course access', notes: ['Cannot see the Year-1 module list in the app.', 'Enrolled in Fitter but timetable shows Electrician.', 'Need a bonafide letter for the DTC student pass.', 'Module quiz locked after one attempt.'], owner: 'Academic Coord.', priority: 'medium', next: 'Check enrolment', by: 'student' },
+    facility_issue:    { title: 'Facility issue', notes: ['Workshop equipment unavailable for scheduled practical.', 'Washroom near the workshop stays locked.', 'Drinking water point in the fitter shop not working.', 'Classroom fan broken since last week.'], owner: 'Institute Admin', priority: 'high', next: 'Confirm repair timeline', by: 'both' },
+    trainer_support:   { title: 'Trainer support', notes: ['Need consumables budget for the welding batch this month.', 'Request cover for theory periods during leave.', 'Marks sheet OCR keeps rejecting my upload.', 'Batch of 30 has only 20 bench vices.'], owner: 'Principal', priority: 'medium', next: 'Review support plan', by: 'trainer' },
+    financial_barrier: { title: 'Financial barrier', notes: ['Cannot afford the exam fee this term.', 'Stipend for OJT not credited for two months.', 'Travel cost to the Okhla site is more than the stipend.'], owner: 'Institute Admin', priority: 'high', next: 'Follow up with SPV', by: 'student' },
+    placement_concern: { title: 'Placement concern', notes: ['Was told I joined the Okhla site but joining was deferred; please correct the record.', 'Interview date clashed with the practical check.', 'Employer has not confirmed my offer letter.'], owner: 'TPO', priority: 'medium', next: 'Assign to TPO', by: 'student' },
+    safety_concern:    { title: 'Safety concern', notes: ['Fume extraction fan off during welding practice.', 'No fire extinguisher in the machine shop.', 'Exposed wiring near the computer lab door.'], owner: 'Principal', priority: 'high', next: 'Assess and take action', by: 'both' },
+    equipment:         { title: 'Equipment', notes: ['Only six wiring boards work; we practise in groups of three.', 'Lathe 3 trips the breaker under load.', 'Projector in theory room 2 not working.'], owner: 'Institute Admin', priority: 'medium', next: 'Raise a daily-ops issue', by: 'both' },
+    transport:         { title: 'Transport', notes: ['Last bus leaves before the evening practical ends.', 'Cycle stand has no shade or lock points.'], owner: 'Institute Admin', priority: 'low', next: 'Check DTC timings', by: 'student' },
+  }
+  const SLA_DAYS = { high: 3, medium: 7, low: 14 }
+  const facByIti = code => facUsers.filter(u => JSON.parse(u.profile).itiCode === code)
+  const stuByIti = code => connectedStudents.filter(t => t.itiId === code)
+  const caseRows = []
+  const caseCounter = {}
+  const mkCase = (code, kind, status, ago, extra = {}) => {
+    const k = CASE_KINDS[kind]
+    const n = (caseCounter[code] = (caseCounter[code] || 0) + 1)
+    const byTrainer = k.by === 'trainer' || (k.by === 'both' && chance(0.4))
+    const fac = facByIti(code), stu = stuByIti(code)
+    const uid = byTrainer && fac.length ? pick(fac).id : `U-STU-${pick(stu).id}`
+    const createdAt = addDays(daysAgo(ago), -rand(0, 1))
+    const priority = extra.priority || (chance(0.25) ? pick(['high', 'medium', 'low']) : k.priority)
+    const ack = status === 'new' ? null : addDays(createdAt, 0.2)
+    const assigned = ['in_review', 'awaiting_response', 'escalated', 'resolved'].includes(status) ? addDays(createdAt, 1) : null
+    const dueAt = addDays(createdAt, SLA_DAYS[priority])
+    const responses = []
+    if (assigned) responses.push({ at: assigned, by: k.owner, text: `Assigned to ${k.owner}. Next action: ${k.next.toLowerCase()}.` })
+    if (status === 'awaiting_response') responses.push({ at: addDays(assigned, 1), by: k.owner, text: 'Asked the submitter for the room and time so the team can verify.' })
+    if (status === 'escalated') responses.push({ at: addDays(assigned, 2), by: 'Principal', text: 'Escalated to the SPV CEO: needs a decision outside the institute.' })
+    let resolvedAt = null, resolutionNote = null
+    if (status === 'resolved') { resolvedAt = addDays(createdAt, chance(0.75) ? rand(1, SLA_DAYS[priority]) : SLA_DAYS[priority] + rand(1, 6)); resolutionNote = pick(['Resolved with the submitter; confirmed by phone.', 'Fixed by the institute admin; verified on site.', 'Record corrected and the student informed.', 'Support arranged through the SPV.']); responses.push({ at: resolvedAt, by: k.owner, text: resolutionNote }) }
+    caseRows.push({ code: `ITI-${code}-${String(n).padStart(3, '0')}`, raisedByUserId: uid, itiId: code, category: kind, title: k.title, note: extra.note || pick(k.notes), status, priority, source: chance(0.15) ? 'offline' : 'app', restricted: kind === 'safety_concern' || chance(0.05), ownerRole: assigned ? k.owner : null, nextAction: status === 'resolved' ? null : k.next, dueAt, acknowledgedAt: ack, assignedAt: assigned, escalatedAt: status === 'escalated' ? addDays(assigned, 2) : null, escalatedTo: status === 'escalated' ? 'spv_ceo' : null, responses: J(responses), resolvedAt, resolutionNote, createdAt })
+  }
+  const KINDS = Object.keys(CASE_KINDS)
+  for (const code of ['PUS', 'SHA', 'NAR', 'ROH', 'OKH']) {
+    const hub = code === 'PUS'
+    for (let i = 0; i < (hub ? 42 : rand(10, 18)); i++) mkCase(code, pick(KINDS), 'resolved', rand(1, 30))
+    for (let i = 0; i < (hub ? 12 : rand(4, 8)); i++) mkCase(code, pick(KINDS), 'resolved', rand(31, 75))
+    const openPlan = hub ? ['new', 'new', 'new', 'in_review', 'in_review', 'in_review', 'in_review', 'in_review', 'in_review', 'awaiting_response', 'awaiting_response', 'escalated', 'escalated', 'escalated'] : ['new', 'in_review', 'in_review', 'awaiting_response', ...(chance(0.6) ? ['escalated'] : []), ...(chance(0.5) ? ['in_review'] : [])]
+    for (const st of openPlan) mkCase(code, pick(KINDS), st, rand(0, 9))
+  }
+  // The four narrative cases keep their exact wording.
+  mkCase('PUS', 'equipment', 'in_review', 5, { note: 'Only six wiring boards work; we practise in groups of three.' })
+  mkCase('PUS', 'facility_issue', 'new', 3, { note: 'Washroom near the electrician workshop stays locked.' })
+  mkCase('SHA', 'trainer_support', 'new', 2, { note: 'Welding theory cancelled three times this fortnight.' })
+  mkCase('PUS', 'placement_concern', 'awaiting_response', 6, { note: 'Was told I joined the Okhla site but joining was deferred; please correct the record.' })
+  await createMany('grievance', caseRows)
 
   const note = data => prisma.notification.create({ data })
   await note({ type: 'reminder', title: 'Year-2 first tranche: 3 conditions tracked', category: 'tranche', priority: 'high', targetUserId: ceo.id, message: 'Utilisation 20% of the ₹21.3 Cr advance (needs 75%), cost-weighted KPI score below the 80% gate, FY27-28 AOP not yet drafted. 9 months to go.', action: J({ label: 'Open tranche readiness', type: 'OPEN_TRANCHE_READINESS' }) })

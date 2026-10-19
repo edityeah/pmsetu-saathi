@@ -75,12 +75,12 @@ export const ROLE_BOTS = {
     // 1 · Budget analytics
     { id: 'budget',      name: 'Budget analytics',           desc: 'AOP allocation, releases and utilisation for my ITI',          icon: '🧾', tone: 'amber',   canvas: 'budget_analytics',   tab: 'overview',       section: 'budget' },
     // 2 · My institute
-    { id: 'profile',     name: 'Institute profile',          desc: 'Students, trainers, rooms, budget, tasks',                     icon: '🏫', tone: 'violet',  canvas: 'institute_profile',  tab: 'overview',       section: 'institute' },
-    { id: 'campus',      name: 'Campus facilities',          desc: 'Rooms, machines, civil packages',                              icon: '🏢', tone: 'orange',  canvas: 'institute_profile',  tab: 'infrastructure', section: 'institute' },
-    { id: 'trades',      name: 'Trade offerings and capacity', desc: 'Courses, places and planned enrolments by year',             icon: '📚', tone: 'indigo',  canvas: 'institute_profile',  tab: 'trades',         section: 'institute' },
-    { id: 'students',    name: 'Student registry',           desc: 'Active students by trade, gender, year',                       icon: '🎓', tone: 'fuchsia', canvas: 'cluster_registry',   tab: 'students',       section: 'institute' },
-    { id: 'trainers',    name: 'Trainer registry',           desc: 'Faculty by programme · assignments · availability',            icon: '👩‍🏫', tone: 'emerald', canvas: 'cluster_registry',   tab: 'trainers',       section: 'institute' },
-    { id: 'batches',     name: 'Trades and batches',         desc: 'Running batches · rosters · at-risk students',                 icon: '🗂️', tone: 'lime',    canvas: 'batches',                                   section: 'institute' },
+    { id: 'profile',     name: 'Institute profile',          desc: 'Students, trainers, rooms, budget, tasks',                     icon: '🏫', tone: 'violet',  canvas: 'my_institute',       tab: 'profile',        section: 'institute' },
+    { id: 'campus',      name: 'Campus facilities',          desc: 'Rooms, machines, civil packages',                              icon: '🏢', tone: 'orange',  canvas: 'my_institute',       tab: 'facilities',     section: 'institute' },
+    { id: 'trades',      name: 'Trade offerings and capacity', desc: 'Courses, places and planned enrolments by year',             icon: '📚', tone: 'indigo',  canvas: 'my_institute',       tab: 'trades',         section: 'institute' },
+    { id: 'students',    name: 'Student registry',           desc: 'Active students by trade, gender, year',                       icon: '🎓', tone: 'fuchsia', canvas: 'my_institute',       tab: 'students',       section: 'institute' },
+    { id: 'trainers',    name: 'Trainer registry',           desc: 'Faculty by programme · assignments · availability',            icon: '👩‍🏫', tone: 'emerald', canvas: 'my_institute',       tab: 'trainers',       section: 'institute' },
+    { id: 'batches',     name: 'Trades and batches',         desc: 'Running batches · rosters · at-risk students',                 icon: '🗂️', tone: 'lime',    canvas: 'my_institute',       tab: 'batches',        section: 'institute' },
     // 3 · Daily operations
     { id: 'ops_att',     name: 'Attendance',                 desc: 'Coverage and attendance by batch for a day',                   icon: '🗓️', tone: 'indigo',  canvas: 'daily_operations',   tab: 'attendance',     section: 'ops' },
     { id: 'ops_assess',  name: 'Assessment',                 desc: 'Plans, marks awaiting review, results by trade',               icon: '📝', tone: 'violet',  canvas: 'daily_operations',   tab: 'assessment',     section: 'ops' },
@@ -91,7 +91,7 @@ export const ROLE_BOTS = {
     { id: 'employers',   name: 'Employer Directory',         desc: 'Employers, MoUs, live opportunities',                          icon: '🏭', tone: 'teal',    canvas: 'employer_register',                         section: 'placement' },
     // 5 · Support and alerts
     { id: 'voice',       name: 'Student voice',              desc: 'Themes students raise at my ITI',                              icon: '🗣️', tone: 'pink',    canvas: 'student_voice',                             section: 'support' },
-    { id: 'grievances',  name: 'Grievances',                 desc: 'Open issues at my ITI · resolution',                           icon: '🆘', tone: 'rose',    canvas: 'grievances_admin',                          section: 'support' },
+    { id: 'grievances',  name: 'Support and grievance',      desc: 'Case queue · escalations · resolution',                        icon: '🆘', tone: 'rose',    canvas: 'grievances_admin',                          section: 'support' },
     { id: 'updates',     name: 'Notifications and alerts',   desc: 'SPV circulars · deadlines · reminders',                        icon: '🔔', tone: 'indigo',  canvas: 'notifications',                             section: 'support' },
   ],
   trainer: [

@@ -87,7 +87,7 @@ function RegistryCard({ icon, title, desc, a, b, line, rows, max, color, cta, on
 }
 
 // ── Student registry ──────────────────────────────────────────────────────
-function Students({ scope, setScope, scopeOpts, canSwitch, f0, onOpen }) {
+export function Students({ scope, setScope, scopeOpts, canSwitch, f0, onOpen }) {
   const [trade, setTrade] = useState(f0.trade || 'all'), [batch, setBatch] = useState('all'), [gender, setGender] = useState(f0.gender || 'all'), [status, setStatus] = useState(f0.status || 'active'), [q, setQ] = useState(''), [page, setPage] = useState(1)
   const params = { itiId: scope === 'all' ? undefined : scope, trade, batchId: batch, gender, status, q: q || undefined, page }
   const { data: d } = useLoad(() => api.registryStudents(params), [scope, trade, batch, gender, status, q, page])
@@ -122,7 +122,7 @@ function Students({ scope, setScope, scopeOpts, canSwitch, f0, onOpen }) {
 }
 
 // ── Trainer registry ──────────────────────────────────────────────────────
-function Trainers({ scope, setScope, scopeOpts, canSwitch, f0 = {}, onOpen }) {
+export function Trainers({ scope, setScope, scopeOpts, canSwitch, f0 = {}, onOpen }) {
   const [trade, setTrade] = useState(f0.trade || 'all'), [load, setLoad] = useState('all'), [q, setQ] = useState(''), [page, setPage] = useState(1)
   const params = { itiId: scope === 'all' ? undefined : scope, trade, load, q: q || undefined, page }
   const { data: d } = useLoad(() => api.registryTrainers(params), [scope, trade, load, q, page])
@@ -191,7 +191,7 @@ function Enrolment({ scope, setScope, scopeOpts, canSwitch, openCanvas }) {
 }
 
 // ── Record pages ──────────────────────────────────────────────────────────
-function StudentRecord({ id, onBack, openCanvas }) {
+export function StudentRecord({ id, onBack, openCanvas }) {
   const { data: d } = useLoad(() => api.registryStudent(id), [id])
   useSaathiContext(d ? `Student record: ${d.student.name} (${d.student.id}), ${d.iti.name}, ${d.batch?.trade?.name || '—'} ${d.batch?.name || ''}, year ${d.student.studyYear}, status ${d.student.status}; attendance ${d.attendance.pct ?? '—'}% over 15 days; ${d.applications.length} applications; support open ${d.support.length}.` : '', ['Summarise this student for the principal.'])
   if (!d) return <Loading />
@@ -221,7 +221,7 @@ function StudentRecord({ id, onBack, openCanvas }) {
   )
 }
 
-function TrainerRecord({ id, onBack, openCanvas }) {
+export function TrainerRecord({ id, onBack, openCanvas }) {
   const { data: d } = useLoad(() => api.registryTrainer(id), [id])
   useSaathiContext(d ? `Trainer record: ${d.trainer.name} (${d.trainer.facultyCode}), ${d.iti?.name}, ${d.trainer.designation}; ${d.batches.length} batches, subjects ${d.subjects.join(', ')}; last 15 days ${d.sessions15.reported} of ${d.sessions15.scheduled} sessions reported; marks pending ${d.marksPending}; today ${d.trainer.today}.` : '', ['Which batches does this trainer hold?'])
   if (!d) return <Loading />

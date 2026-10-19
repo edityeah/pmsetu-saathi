@@ -402,30 +402,101 @@ r.get('/students/:id', async (req, res, next) => {
   } catch (e) { next(e) }
 })
 
-// ── Grievances (kept from the compliance layer) ───────────────────────────
+// ── Support & grievance cases ───────────────────────────────────────────────
+// A case queue per ITI (the CEO sees the cluster). Status: new → in_review →
+// awaiting_response → resolved, with escalated as a side state that routes
+// the case to the SPV CEO. SLA by priority: high 3 days, medium 7, low 14.
+const SLA_DAYS = { high: 3, medium: 7, low: 14 }
+const OPEN_STATES = ['new', 'in_review', 'awaiting_response', 'escalated']
+const caseView = (g, me) => {
+  const restrictedHidden = g.restricted && !['iti_principal', 'spv_ceo'].includes(me.role)
+  return { ...g, responses: J(g.responses, []), raisedBy: restrictedHidden ? { name: 'Restricted', role: g.raisedBy?.role } : g.raisedBy, overdue: g.dueAt && g.status !== 'resolved' && g.dueAt < new Date(), withinSla: g.resolvedAt && g.dueAt ? g.resolvedAt <= g.dueAt : null }
+}
+async function caseScope(req) {
+  if (req.user.role === 'trainee' || req.user.role === 'trainer') return { raisedByUserId: req.user.id }
+  if (req.user.role === 'iti_principal') { const iti = await itiFor(req.user); return { itiId: iti?.id || '__none__' } }
+  const c = await clusterFor(req.user)
+  return req.query.itiId && req.query.itiId !== 'all' ? { itiId: String(req.query.itiId) } : { iti: { clusterId: c.id } }
+}
+
 r.get('/grievances', async (req, res, next) => {
   try {
-    let where = {}
-    if (req.user.role === 'trainee') where = { raisedByUserId: req.user.id }
-    else if (req.user.role === 'iti_principal') { const iti = await itiFor(req.user); where = { itiId: iti?.id } }
-    res.json({ grievances: await prisma.grievance.findMany({ where, include: { raisedBy: { select: { name: true, role: true } }, iti: { select: { name: true, code: true } } }, orderBy: { createdAt: 'desc' } }) })
+    const where = await caseScope(req)
+    const all = (await prisma.grievance.findMany({ where, include: { raisedBy: { select: { name: true, role: true } }, iti: { select: { name: true, code: true } } }, orderBy: { createdAt: 'desc' } })).map(g => caseView(g, req.user))
+    const q = req.query
+    const from = q.from ? new Date(String(q.from)) : null, to = q.to ? new Date(String(q.to) + 'T23:59:59Z') : null
+    const list = all.filter(g => (!q.status || q.status === 'all' || (q.status === 'open' ? OPEN_STATES.includes(g.status) : g.status === q.status))
+      && (!q.category || q.category === 'all' || g.category === q.category) && (!q.priority || q.priority === 'all' || g.priority === q.priority) && (!q.source || q.source === 'all' || g.source === q.source)
+      && (!from || new Date(g.createdAt) >= from) && (!to || new Date(g.createdAt) <= to) && (!q.q || `${g.code} ${g.title} ${g.note}`.toLowerCase().includes(String(q.q).toLowerCase())))
+    const now = new Date(), soon = new Date(now.getTime() + 3 * 86400000), m0 = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    const open = all.filter(g => OPEN_STATES.includes(g.status))
+    const totals = { open: open.length, dueSoon: open.filter(g => g.dueAt && new Date(g.dueAt) <= soon).length, overdue: open.filter(g => g.overdue).length, escalated: all.filter(g => g.status === 'escalated').length, resolvedThisMonth: all.filter(g => g.resolvedAt && new Date(g.resolvedAt) >= m0).length, resolved: all.filter(g => g.status === 'resolved').length }
+    const byCategory = Object.entries(open.reduce((m, g) => { m[g.category] = (m[g.category] || 0) + 1; return m }, {})).map(([category, n]) => ({ category, n })).sort((a, b) => b.n - a.n)
+    // Resolution timeliness by week over the last 5 weeks: resolved within the SLA vs after it.
+    const weeks = []
+    for (let i = 4; i >= 0; i--) { const w0 = new Date(now.getTime() - (i * 7 + 6) * 86400000), w1 = new Date(now.getTime() - (i * 7 - 1) * 86400000); const r = all.filter(g => g.resolvedAt && new Date(g.resolvedAt) >= w0 && new Date(g.resolvedAt) < w1); weeks.push({ label: `${w0.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – ${new Date(w1.getTime() - 86400000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`, withinSla: r.filter(g => g.withinSla).length, overdue: r.filter(g => g.withinSla === false).length }) }
+    res.json({ grievances: list, totals, byCategory, weeks, categories: [...new Set(all.map(g => g.category))].sort() })
   } catch (e) { next(e) }
 })
 
+r.get('/grievances/:id', async (req, res, next) => {
+  try {
+    const g = await prisma.grievance.findFirst({ where: { OR: [{ id: req.params.id }, { code: req.params.id }], ...(await caseScope(req)) }, include: { raisedBy: { select: { name: true, role: true } }, iti: { select: { name: true, code: true } } } })
+    if (!g) return res.status(404).json({ error: 'not_found' })
+    res.json({ grievance: caseView(g, req.user) })
+  } catch (e) { next(e) }
+})
+
+// Create: a student or trainer files from the app; the principal logs an
+// issue raised offline (walk-in, phone, register) on someone's behalf.
 r.post('/grievances', async (req, res, next) => {
   try {
-    const body = z.object({ category: z.string(), note: z.string(), itiId: z.string().optional() }).parse(req.body)
+    const body = z.object({ category: z.string(), note: z.string().min(1), title: z.string().optional(), priority: z.enum(['high', 'medium', 'low']).optional(), source: z.enum(['app', 'offline']).optional(), restricted: z.boolean().optional(), itiId: z.string().optional(), raisedByUserId: z.string().optional(), ownerRole: z.string().optional(), nextAction: z.string().optional() }).parse(req.body)
     const iti = body.itiId ? null : await itiFor(req.user)
-    const g = await prisma.grievance.create({ data: { raisedByUserId: req.user.id, itiId: body.itiId || iti?.id || null, category: body.category, note: body.note } })
-    await prisma.notification.create({ data: { type: 'system', title: 'New grievance', category: 'grievance', priority: 'normal', targetRoles: JSON.stringify(['iti_principal', 'spv_ceo']), message: `${req.user.name}: ${body.note.slice(0, 120)}`, action: JSON.stringify({ label: 'Open grievances', type: 'OPEN_GRIEVANCES_ADMIN' }) } })
+    const itiId = body.itiId || iti?.id || null
+    const staff = ['iti_principal', 'spv_ceo'].includes(req.user.role)
+    const priority = body.priority || (body.category === 'safety_concern' || body.category === 'financial_barrier' || body.category === 'facility_issue' ? 'high' : 'medium')
+    const n = await prisma.grievance.count({ where: { itiId } })
+    const code = `ITI-${(itiId || 'CL').slice(0, 3)}-${String(n + 1).padStart(3, '0')}`
+    const now = new Date()
+    const g = await prisma.grievance.create({ data: { code, raisedByUserId: body.raisedByUserId || req.user.id, itiId, category: body.category, title: body.title || body.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), note: body.note, priority, source: body.source || (staff ? 'offline' : 'app'), restricted: body.restricted || body.category === 'safety_concern', status: staff ? 'in_review' : 'new', ownerRole: staff ? (body.ownerRole || 'Principal') : null, nextAction: body.nextAction || null, dueAt: new Date(now.getTime() + SLA_DAYS[priority] * 86400000), acknowledgedAt: staff ? now : null, assignedAt: staff ? now : null, responses: staff ? JSON.stringify([{ at: now, by: req.user.name, text: `Logged ${body.source === 'offline' || staff ? 'from an offline report' : 'in the app'}; assigned to ${body.ownerRole || 'Principal'}.` }]) : '[]' } })
+    if (!staff) await prisma.notification.create({ data: { type: 'system', title: `New case ${code}`, category: 'grievance', priority: priority === 'high' ? 'high' : 'normal', targetRoles: JSON.stringify(['iti_principal', 'spv_ceo']), message: `${req.user.name}: ${body.note.slice(0, 120)}`, action: JSON.stringify({ label: 'Open grievances', type: 'OPEN_GRIEVANCES_ADMIN' }) } })
     res.json({ grievance: g })
+  } catch (e) { next(e) }
+})
+
+const pushResponse = (g, by, text) => JSON.stringify([...J(g.responses, []), { at: new Date(), by, text }])
+
+r.post('/grievances/:id/respond', requireRole('iti_principal', 'spv_ceo'), async (req, res, next) => {
+  try {
+    const body = z.object({ text: z.string().min(1), nextAction: z.string().optional(), ownerRole: z.string().optional(), dueAt: z.string().optional(), status: z.enum(['in_review', 'awaiting_response']).optional() }).parse(req.body)
+    const g = await prisma.grievance.findUnique({ where: { id: req.params.id } })
+    if (!g) return res.status(404).json({ error: 'not_found' })
+    const now = new Date()
+    res.json({ grievance: await prisma.grievance.update({ where: { id: g.id }, data: { responses: pushResponse(g, req.user.name, body.text), status: body.status || (g.status === 'new' ? 'in_review' : g.status), acknowledgedAt: g.acknowledgedAt || now, assignedAt: g.assignedAt || now, ownerRole: body.ownerRole || g.ownerRole || 'Principal', nextAction: body.nextAction ?? g.nextAction, dueAt: body.dueAt ? new Date(body.dueAt) : g.dueAt } }) })
+  } catch (e) { next(e) }
+})
+
+r.post('/grievances/:id/escalate', requireRole('iti_principal'), async (req, res, next) => {
+  try {
+    const body = z.object({ note: z.string().optional() }).parse(req.body || {})
+    const g = await prisma.grievance.findUnique({ where: { id: req.params.id }, include: { iti: { select: { name: true } } } })
+    if (!g) return res.status(404).json({ error: 'not_found' })
+    const now = new Date()
+    const out = await prisma.grievance.update({ where: { id: g.id }, data: { status: 'escalated', escalatedAt: now, escalatedTo: 'spv_ceo', responses: pushResponse(g, req.user.name, `Escalated to the SPV CEO${body.note ? ': ' + body.note : '.'}`) } })
+    await prisma.notification.create({ data: { type: 'system', title: `Case ${g.code || g.id} escalated by ${g.iti?.name || 'an ITI'}`, category: 'grievance', priority: 'high', targetRoles: JSON.stringify(['spv_ceo']), message: `${g.title || g.category}: ${g.note.slice(0, 140)}${body.note ? ' — ' + body.note : ''}`, action: JSON.stringify({ label: 'Open grievances', type: 'OPEN_GRIEVANCES_ADMIN' }) } })
+    res.json({ grievance: out })
   } catch (e) { next(e) }
 })
 
 r.post('/grievances/:id/status', requireRole('iti_principal', 'spv_ceo'), async (req, res, next) => {
   try {
-    const body = z.object({ status: z.enum(['open', 'investigating', 'resolved']), resolutionNote: z.string().optional() }).parse(req.body)
-    res.json({ grievance: await prisma.grievance.update({ where: { id: req.params.id }, data: { status: body.status, resolutionNote: body.resolutionNote, resolvedAt: body.status === 'resolved' ? new Date() : null } }) })
+    const body = z.object({ status: z.enum(['new', 'in_review', 'awaiting_response', 'escalated', 'resolved', 'open', 'investigating']), resolutionNote: z.string().optional() }).parse(req.body)
+    const status = body.status === 'open' ? 'new' : body.status === 'investigating' ? 'in_review' : body.status
+    const g = await prisma.grievance.findUnique({ where: { id: req.params.id } })
+    if (!g) return res.status(404).json({ error: 'not_found' })
+    const now = new Date()
+    res.json({ grievance: await prisma.grievance.update({ where: { id: g.id }, data: { status, resolutionNote: body.resolutionNote ?? g.resolutionNote, resolvedAt: status === 'resolved' ? now : null, nextAction: status === 'resolved' ? null : g.nextAction, responses: status === 'resolved' ? pushResponse(g, req.user.name, `Marked resolved${body.resolutionNote ? ': ' + body.resolutionNote : '.'}`) : g.responses } }) })
   } catch (e) { next(e) }
 })
 

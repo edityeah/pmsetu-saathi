@@ -29,6 +29,7 @@ const KEYWORDS = {
   institute_facilities: ['facilities', 'facility', 'rooms', 'asset', 'assets', 'installed', 'civil package'],
   institute_overview: ['profile', 'overview', 'about iti', 'tell me about', 'campus'],
   registry_students: ['student', 'students', 'enrolment', 'enrollment', 'female', 'women', 'girls', 'registry', 'छात्र', 'विद्यार्थी'],
+  my_institute_batches: ['batch', 'batches', 'roster', 'at-risk', 'at risk'],
   registry_trainers: ['trainer', 'trainers', 'faculty', 'instructor', 'instructors', 'teacher', 'teachers', 'teach', 'teaches', 'who teaches', 'taught by', 'who takes', 'प्रशिक्षक', 'पढ़ाता', 'पढ़ाते'],
   ops_attendance: ['attendance', 'register', 'registers', 'present', 'absent', 'उपस्थिति', 'हाज़िरी', 'हाजिरी'],
   ops_assessment: ['assessment', 'assessments', 'marks', 'exam', 'test', 'results', 'practical check'],
@@ -48,7 +49,9 @@ const HI_ITI = { 'पूसा': 'Pusa', 'शाहदरा': 'Shahdara', 'न�
 export function heuristicNavigation({ text, role }) {
   const t = String(text || '').toLowerCase()
   let best = null, bestScore = 0
-  for (const [id, words] of Object.entries(KEYWORDS)) {
+  const P_MAP = role === 'iti_principal' ? { institute_overview: 'my_institute_profile', institute_trades: 'my_institute_trades', institute_facilities: 'my_institute_facilities', registry_students: 'my_institute_students', registry_trainers: 'my_institute_trainers' } : {}
+  for (let [id, words] of Object.entries(KEYWORDS)) {
+    id = P_MAP[id] || id
     if (!targetAllowed(id, role)) continue
     let score = 0
     for (const w of words) if (t.includes(w)) score += w.includes(' ') ? 3 : (w.length > 5 ? 2 : 1)
@@ -117,11 +120,11 @@ export function templateAnswer(target, data, itiName) {
   try {
     switch (target) {
       case 'ops_infrastructure': { const t = data.totals; const bad = (data.workshops || []).filter(w => w.status !== 'ready'); return `${where}${t.ready} of ${t.inScope} workshops are ready on ${data.date}, ${t.restricted} restricted and ${t.unavailable} unavailable${bad.length ? ` (${bad.map(w => `${w.name} ${w.status}`).join(', ')})` : ''}.` }
-      case 'institute_trades': return `${data.iti} offers ${data.coursesOffered} courses: ${(data.courses || []).map(c => `${c.name} (${c.enrolledNow ?? '—'} enrolled, ${c.runningBatches} batches)`).join(', ')}.`
-      case 'institute_facilities': return `${data.iti}: ${data.rooms.working} of ${data.rooms.baseline} rooms working; ${data.machines.functional} of ${data.machines.total} machines functional, ${data.machines.awaitingCommissioning} awaiting commissioning, ${data.machines.ordered} ordered.`
-      case 'institute_overview': return `${data.iti.name} (${data.iti.kind}): ${data.students.active} active students (${data.students.women} women), ${data.staffing.registryTrainers} trainers, ${data.rooms.working} of ${data.rooms.baseline} rooms working, ${data.tasks.completed} of ${data.tasks.total} Year-1 tasks completed.`
-      case 'registry_students': return data.filters?.gender ? `${where}${data.total} active ${data.filters.gender === 'F' ? 'female' : 'male'} students${data.byTrade?.length ? `, most in ${data.byTrade[0].name} (${data.byTrade[0].n})` : ''}.` : `${where}${data.total} active students (${data.gender?.female ?? '—'} female, ${data.gender?.male ?? '—'} male). ${data.coverage}.`
-      case 'registry_trainers': return data.trade ? `${where}${data.total} ${data.trade} trainers: ${(data.trainers || []).map(x => x.name).join(', ')}${data.total > (data.trainers || []).length ? ' and more' : ''}.` : `${where}${data.total} trainers in the registry${data.byIti?.length > 1 ? ` (${data.byIti.map(i => `${i.code} ${i.n}`).join(', ')})` : ''}.`
+      case 'my_institute_trades': case 'institute_trades': return `${data.iti} offers ${data.coursesOffered} courses: ${(data.courses || []).map(c => `${c.name} (${c.enrolledNow ?? '—'} enrolled, ${c.runningBatches} batches)`).join(', ')}.`
+      case 'my_institute_facilities': case 'institute_facilities': return `${data.iti}: ${data.rooms.working} of ${data.rooms.baseline} rooms working; ${data.machines.functional} of ${data.machines.total} machines functional, ${data.machines.awaitingCommissioning} awaiting commissioning, ${data.machines.ordered} ordered.`
+      case 'my_institute_profile': case 'institute_overview': return `${data.iti.name} (${data.iti.kind}): ${data.students.active} active students (${data.students.women} women), ${data.staffing.registryTrainers} trainers, ${data.rooms.working} of ${data.rooms.baseline} rooms working, ${data.tasks.completed} of ${data.tasks.total} Year-1 tasks completed.`
+      case 'my_institute_students': case 'registry_students': return data.filters?.gender ? `${where}${data.total} active ${data.filters.gender === 'F' ? 'female' : 'male'} students${data.byTrade?.length ? `, most in ${data.byTrade[0].name} (${data.byTrade[0].n})` : ''}.` : `${where}${data.total} active students (${data.gender?.female ?? '—'} female, ${data.gender?.male ?? '—'} male). ${data.coverage}.`
+      case 'my_institute_trainers': case 'registry_trainers': return data.trade ? `${where}${data.total} ${data.trade} trainers: ${(data.trainers || []).map(x => x.name).join(', ')}${data.total > (data.trainers || []).length ? ' and more' : ''}.` : `${where}${data.total} trainers in the registry${data.byIti?.length > 1 ? ` (${data.byIti.map(i => `${i.code} ${i.n}`).join(', ')})` : ''}.`
       case 'ops_attendance': return `${where}attendance ${data.totals.attendancePct}% with ${data.totals.reported} of ${data.totals.scheduled} registers reported on ${data.date}${data.fallbackToLatestReportedDay ? ' (latest reported day)' : ''}.`
       case 'ops_assessment': return `${where}${data.totals.conducted} of ${data.totals.scheduled} assessments conducted on ${data.date}, ${data.totals.marksUploaded} with marks uploaded, ${data.totals.review} awaiting review.`
       case 'ops_overview': return `${where}attendance ${data.attendance.attendancePct}% (${data.attendance.coveragePct}% coverage) on ${data.date}; ${data.readiness.ready} of ${data.readiness.inScope} workshops ready; ${data.upcomingEvents} events in the next 30 days.`
@@ -132,7 +135,7 @@ export function templateAnswer(target, data, itiName) {
       case 'placement_analytics': return `${where}${data.totals.reportedJoins} reported joins from a pool of ${data.totals.pool}, ${data.totals.employerConfirmed} employer-confirmed and ${data.totals.verifiedJoins} independently verified; ${data.totals.liveSeats} live opening seats.`
       case 'employer_directory': return `${data.employers} employers in the directory, ${data.activePartners} active partners, ${data.withMou} with an MoU, ${data.liveOpportunities} live opportunities.`
       case 'student_voice': return `${data.totals.events} companion events from ${data.totals.students} students in ${data.days} days; top themes ${(data.themes || []).slice(0, 3).map(t => `${t.theme} (${t.students})`).join(', ')}.`
-      case 'grievances': return `${data.open} open grievances of ${data.total} recorded${itiName ? ` at ${itiName}` : ''}.`
+      case 'grievances': return `${where}${data.totals.open} open cases, ${data.totals.overdue} overdue, ${data.totals.escalated} escalated, ${data.totals.resolvedThisMonth} resolved this month${data.openByCategory?.length ? `; most are ${data.openByCategory[0].category.replace(/_/g, ' ')} (${data.openByCategory[0].n})` : ''}.`
       case 'notifications': return `${data.total} notifications, ${data.unread} unread.`
       default: return null
     }

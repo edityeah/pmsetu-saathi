@@ -20,7 +20,13 @@ const SECTION_TARGETS = [
   { id: 'institute_facilities', canvas: 'institute_profile', tab: 'infrastructure', label: 'Institute profile · Facilities and labs', roles: ANALYST_P, params: ['iti'], say: ['facilities and labs at Pusa', 'asset register', 'machines installed at Rohini', 'civil packages at the ITI', 'rooms and labs'] },
   { id: 'institute_staffing', canvas: 'institute_profile', tab: 'staffing', label: 'Institute profile · Staffing', roles: ['iti_principal', 'ima_officer'], params: ['iti'], say: ['staffing tab', 'trainer plan'] },
   { id: 'institute_launch_gates', canvas: 'institute_profile', tab: 'launch_gates', label: 'Institute profile · Launch gates', roles: ['iti_principal', 'ima_officer'], params: ['iti'], say: ['launch gates', 'is the welding course ready to launch'] },
-  { id: 'institute_batches', canvas: 'batches', tab: null, label: 'My institute · Trades and batches', roles: ['iti_principal'], params: ['trade'], say: ['batches', 'running batches', 'batch roster', 'at-risk students', 'trades and batches'] },
+  // 2b · My Institute (principal)
+  { id: 'my_institute_profile', canvas: 'my_institute', tab: 'profile', label: 'My institute · Institute profile', roles: ['iti_principal'], params: [], say: ['institute profile', 'my institute', 'institute snapshot', 'how many students and trainers do we have'] },
+  { id: 'my_institute_facilities', canvas: 'my_institute', tab: 'facilities', label: 'My institute · Campus facilities', roles: ['iti_principal'], params: [], say: ['campus facilities', 'rooms and labs', 'which facilities are being set up', 'asset register'] },
+  { id: 'my_institute_trades', canvas: 'my_institute', tab: 'trades', label: 'My institute · Trade offerings', roles: ['iti_principal'], params: [], say: ['which courses do we offer', 'trade offerings', 'places by course', 'how many courses'] },
+  { id: 'my_institute_students', canvas: 'my_institute', tab: 'students', label: 'My institute · Students', roles: ['iti_principal'], params: ['trade', 'gender'], say: ['student registry', 'how many female students', 'list electrician students', 'students by trade'] },
+  { id: 'my_institute_trainers', canvas: 'my_institute', tab: 'trainers', label: 'My institute · Trainers', roles: ['iti_principal'], params: ['trade'], say: ['trainer registry', 'who teaches electrician', 'trainers by programme', 'which instructors take fitter batches'] },
+  { id: 'my_institute_batches', canvas: 'my_institute', tab: 'batches', label: 'My institute · Trades and batches', roles: ['iti_principal'], params: ['trade'], say: ['batches', 'running batches', 'batch roster', 'at-risk students'] },
   // 3 · Cluster registry
   { id: 'registry_students', canvas: 'cluster_registry', tab: 'students', label: 'Cluster registry · Student registry', roles: ANALYST_P, params: ['iti', 'trade', 'gender'], say: ['student registry', 'how many students in Narela', 'female students', 'list electrician students', 'enrolment by trade'] },
   { id: 'registry_trainers', canvas: 'cluster_registry', tab: 'trainers', label: 'Cluster registry · Trainer registry', roles: ANALYST_P, params: ['iti', 'trade'], say: ['trainer registry', 'how many trainers at Okhla', 'faculty by programme', 'who teaches welding', 'who teaches the electrician course in Shahdara', 'which instructors take fitter batches'] },
@@ -35,7 +41,7 @@ const SECTION_TARGETS = [
   { id: 'employer_directory', canvas: 'employer_register', tab: null, label: 'Employer directory', roles: ['spv_ceo', 'iti_principal', 'employer'], params: [], say: ['employer directory', 'which employers are active', 'MoU status', 'live opportunities', 'who is hiring welders'] },
   // 6 · Support and alerts
   { id: 'student_voice', canvas: 'student_voice', tab: null, label: 'Student voice', roles: ['spv_ceo', 'iti_principal', 'ima_officer'], params: ['iti'], say: ['student voice', 'what are students saying', 'barriers students face', 'travel cost complaints'] },
-  { id: 'grievances', canvas: 'grievances_admin', tab: null, label: 'Grievances', roles: ['spv_ceo', 'iti_principal'], params: ['iti'], say: ['grievances', 'open complaints', 'grievance register'] },
+  { id: 'grievances', canvas: 'grievances_admin', tab: null, label: 'Grievances', roles: ['spv_ceo', 'iti_principal'], params: ['iti'], say: ['grievances', 'open complaints', 'grievance register', 'support cases', 'which cases are overdue', 'escalated cases'] },
   { id: 'notifications', canvas: 'notifications', tab: null, label: 'Notifications and alerts', roles: ['*'], params: [], say: ['notifications', 'alerts', 'any reminders', 'IMA queries'] },
 ]
 
@@ -61,7 +67,8 @@ const LEGACY_TARGETS = Object.entries(ACTIONS).filter(([id, a]) => id !== 'ANSWE
   return { id: a.module, canvas: a.module, tab: null, label: a.description.split(':')[0], roles, params: ['iti'], say: LEGACY_SAY[a.module] || [], legacy: true, actionId: id }
 }).filter(t => t.roles.length)
 
-export const NAV_TARGETS = [...SECTION_TARGETS, ...LEGACY_TARGETS]
+const P_REPLACED = new Set(['institute_overview', 'institute_trades', 'institute_facilities', 'institute_staffing', 'institute_launch_gates', 'registry_students', 'registry_trainers'])
+export const NAV_TARGETS = [...SECTION_TARGETS.map(t => P_REPLACED.has(t.id) ? { ...t, roles: t.roles.filter(r => r !== 'iti_principal') } : t), ...LEGACY_TARGETS]
 export const TARGET_BY_ID = Object.fromEntries(NAV_TARGETS.map(t => [t.id, t]))
 
 export function targetsForRole(role) {

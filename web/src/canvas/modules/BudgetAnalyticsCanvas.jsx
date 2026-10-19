@@ -12,6 +12,7 @@ import { Download, X } from 'lucide-react'
 import { BarChart, Bar as RBar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 import BarChartCard from '../../components/cards/BarChartCard.jsx'
 import FilterBar from './_FilterBar.jsx'
+import PrincipalBudgetCanvas from './PrincipalBudgetCanvas.jsx'
 import { api } from '../../api/client.js'
 import { useApp } from '../../context/AppContext.jsx'
 import { useLoad, Loading, Hero, Stat, StatGrid, Bar, Section, Table, Tabs, Pill, Btn, fmtCr, fmtDate, fmtPct } from './_ui.jsx'
@@ -26,6 +27,12 @@ const head = 'px-4 py-2.5 bg-gradient-to-r from-surface-page/50 to-white border-
 const tip = { background: 'white', border: '1px solid #CFD8E6', borderRadius: 8, fontSize: 11 }
 
 export default function BudgetAnalyticsCanvas({ context }) {
+  const { role } = useApp()
+  if (role === 'iti_principal') return <PrincipalBudgetCanvas context={context} />
+  return <ClusterBudget context={context} />
+}
+
+function ClusterBudget({ context }) {
   const { openCanvas, role, meExtra } = useApp()
   const canSwitch = role !== 'iti_principal' && role !== 'trainer'
   const ownIti = !canSwitch ? meExtra?.iti : null
@@ -151,7 +158,7 @@ export default function BudgetAnalyticsCanvas({ context }) {
   )
 }
 
-function ReleaseTable({ rows, onPick }) {
+export function ReleaseTable({ rows, onPick }) {
   return (
     <Table columns={[
       { key: 'releasedAt', label: 'Date', render: r => <b>{fmtDate(r.releasedAt)}</b> },

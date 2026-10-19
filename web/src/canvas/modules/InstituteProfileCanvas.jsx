@@ -152,7 +152,7 @@ export default function InstituteProfileCanvas({ context }) {
 const KIND_LABEL = { existing_core: 'Long-term trade', new_specialist: 'New specialist programme', short_term: 'Short-term programme', aggregate: 'Portfolio' }
 const offered = t => /Existing/i.test(t.launch || '')
 
-function TradeOfferings({ trades, otherTrades, kb, facilities, iti, periods, facilityPick, onClearPick, onOpen }) {
+export function TradeOfferings({ trades, otherTrades, kb, facilities, iti, periods, facilityPick, onClearPick, onOpen }) {
   const [q, setQ] = useState('')
   const [kind, setKind] = useState('all')
   const [status, setStatus] = useState('all')
@@ -191,7 +191,7 @@ function TradeOfferings({ trades, otherTrades, kb, facilities, iti, periods, fac
   )
 }
 
-function CourseDetail({ t, kb, facility, iti, periods, onBack, onBatches, onWorkshop }) {
+export function CourseDetail({ t, kb, facility, iti, periods, onBack, onBatches, onWorkshop }) {
   const tr = t.trade
   const dur = tr.durationUnit === 'hours' ? `${tr.durationValue} hours` : `${tr.durationValue} ${tr.durationUnit}`
   const isOffered = offered(t)
@@ -212,7 +212,7 @@ function CourseDetail({ t, kb, facility, iti, periods, onBack, onBatches, onWork
   )
 }
 
-function FacilitiesDirectory({ facilities, iti, infrastructure, onOpen, openCanvas }) {
+export function FacilitiesDirectory({ facilities, iti, infrastructure, onOpen, openCanvas }) {
   const [q, setQ] = useState('')
   const [kind, setKind] = useState('all')
   const [sharing, setSharing] = useState('all')
@@ -244,7 +244,7 @@ function FacilitiesDirectory({ facilities, iti, infrastructure, onOpen, openCanv
   )
 }
 
-function FacilityDetail({ f, trades, iti, onBack, onCourses, onMachines }) {
+export function FacilityDetail({ f, trades, iti, onBack, onCourses, onMachines }) {
   const st = STATUS[f.status] || { kind: 'neutral', label: f.status }
   const courseNames = f.linkedTrades.map(c => trades.find(t => t.trade.code === c)?.trade.name || c)
   return (

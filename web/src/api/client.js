@@ -94,6 +94,12 @@ export const api = {
   grievances:      () => req('GET', '/api/ops/grievances'),
   raiseGrievance:  (body) => req('POST', '/api/ops/grievances', body),
   grievanceStatus: (id, body) => req('POST', `/api/ops/grievances/${id}/status`, body),
+  cases:           (o) => req('GET', `/api/ops/grievances${q(o)}`),
+  caseOne:         (id) => req('GET', `/api/ops/grievances/${id}`),
+  caseRespond:     (id, body) => req('POST', `/api/ops/grievances/${id}/respond`, body),
+  caseEscalate:    (id, body) => req('POST', `/api/ops/grievances/${id}/escalate`, body),
+  workPackages:    (o) => req('GET', `/api/analytics/work-packages${q(o)}`),
+  workPackage:     (id, o) => req('GET', `/api/analytics/work-packages/${id}${q(o)}`),
 
   // Module C — companion
   companionMe:     () => req('GET', '/api/companion/me'),

@@ -355,4 +355,86 @@ r.get('/registry/trainers/:id', async (req, res, next) => {
   } catch (e) { next(e) }
 })
 
+// ── Work packages for one ITI (principal budget analytics) ─────────────────
+// Each package carries its Year-N AOP record (allocation, spent, progress,
+// state), the releases against it and its Year-1 tasks. Status rule:
+// delayed = a task past due with no forecast or the AOP record returned;
+// at risk = any overdue or blocked task; otherwise on track.
+async function workPackageRows(req) {
+  const c = await clusterFor(req.user)
+  const year = Number(req.query.year || c.currentYear)
+  let itiId = req.query.itiId && req.query.itiId !== 'all' ? String(req.query.itiId) : null
+  if (req.user.role === 'iti_principal' || req.user.role === 'trainer') { const own = await itiFor(req.user); itiId = own?.id || '__none__' }
+  const category = req.query.category && req.query.category !== 'all' ? String(req.query.category) : null
+  const today = new Date()
+  const [packages, releases, tasks] = await Promise.all([
+    prisma.package.findMany({ where: { clusterId: c.id, ...(itiId ? { itiId } : {}), ...(category ? { category } : {}) }, include: { aops: { where: { year } }, iti: { select: { code: true, name: true } } }, orderBy: [{ category: 'asc' }, { id: 'asc' }] }),
+    prisma.fundRelease.findMany({ where: { clusterId: c.id, year, ...(itiId ? { itiId } : {}) }, orderBy: { releasedAt: 'desc' } }),
+    prisma.planTask.findMany({ where: { clusterId: c.id, ...(itiId ? { itiId } : {}) }, orderBy: { dueAt: 'asc' } }),
+  ])
+  const rows = packages.map(p => {
+    const aop = p.aops[0] || null
+    const rel = releases.filter(r => r.packageId === p.id)
+    const ts = tasks.filter(t => aop && t.aopId === aop.id)
+    const overdue = ts.filter(t => t.dueAt < today && !['completed', 'reviewed'].includes(t.state))
+    const blocked = ts.filter(t => t.state === 'blocked')
+    const allocationCr = +(aop?.budgetCr || 0).toFixed(3), releasedCr = +rel.reduce((s, r) => s + r.amountCr, 0).toFixed(3), spentCr = +(aop?.spentCr || 0).toFixed(3)
+    const status = (aop?.state === 'returned' || overdue.some(t => !t.forecastAt)) ? 'delayed' : (overdue.length || blocked.length) ? 'at_risk' : 'on_track'
+    const nextDue = ts.find(t => !['completed', 'reviewed'].includes(t.state))
+    return { id: p.id, title: p.title, category: p.category, itiCode: p.iti.code, expenditureType: p.expenditureType, deliverable: aop?.deliverable || p.deliverable || '', allocationCr, releasedCr, spentCr, unspentReleaseCr: +Math.max(0, releasedCr - spentCr).toFixed(3), awaitingReleaseCr: +Math.max(0, allocationCr - releasedCr).toFixed(3), progressPct: aop?.progressPct ?? 0, aopState: aop?.state || 'planned', status, tasks: { total: ts.length, done: ts.filter(t => ['completed', 'reviewed'].includes(t.state)).length, overdue: overdue.length, blocked: blocked.length }, nextDue: nextDue ? { title: nextDue.title, dueAt: nextDue.dueAt, state: nextDue.state } : null, releases: rel.length, lastUpdateAt: ts.map(t => t.lastUpdateAt).filter(Boolean).sort((a, b) => b - a)[0] || rel[0]?.releasedAt || null }
+  })
+  return { c, year, itiId, packages, releases, tasks, rows }
+}
+
+r.get('/work-packages', async (req, res, next) => {
+  try {
+    const { c, year, itiId, releases, tasks, rows: all } = await workPackageRows(req)
+    const status = req.query.status && req.query.status !== 'all' ? String(req.query.status) : null
+    const q = req.query.q ? String(req.query.q).toLowerCase() : null
+    const rows = all.filter(r => (!status || r.status === status) && (!q || `${r.id} ${r.title} ${r.category}`.toLowerCase().includes(q)))
+    const sum = k => +all.reduce((s, r) => s + (r[k] || 0), 0).toFixed(3)
+    const totals = { allocationCr: sum('allocationCr'), releasedCr: sum('releasedCr'), spentCr: sum('spentCr'), unspentReleaseCr: sum('unspentReleaseCr'), awaitingReleaseCr: sum('awaitingReleaseCr'), releasedPct: pct(sum('releasedCr'), sum('allocationCr')), utilisedPct: pct(sum('spentCr'), sum('releasedCr')) }
+    const cats = {}
+    for (const r of all) { const k = cats[r.category] ||= { category: r.category, allocationCr: 0, releasedCr: 0, spentCr: 0, packages: 0 }; k.allocationCr += r.allocationCr; k.releasedCr += r.releasedCr; k.spentCr += r.spentCr; k.packages++ }
+    const byCategory = Object.values(cats).map(k => ({ ...k, allocationCr: +k.allocationCr.toFixed(3), releasedCr: +k.releasedCr.toFixed(3), spentCr: +k.spentCr.toFixed(3) })).sort((a, b) => b.allocationCr - a.allocationCr)
+    // Cumulative releases by month; utilisation has no monthly source, so it is reported to date only.
+    const start = new Date(c.scenarioStart || c.licenseStartAt || '2026-08-01'), today = new Date()
+    const months = []
+    for (let i = 0; i < 12; i++) { const m0 = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i, 1)); if (m0 > today) break; months.push(m0) }
+    let cum = 0
+    const timeline = months.map(m0 => { const m1 = new Date(Date.UTC(m0.getUTCFullYear(), m0.getUTCMonth() + 1, 1)); const inM = releases.filter(r => r.releasedAt >= m0 && r.releasedAt < m1); cum += inM.reduce((s, r) => s + r.amountCr, 0); return { month: m0.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }), releasedCr: +inM.reduce((s, r) => s + r.amountCr, 0).toFixed(3), cumulativeCr: +cum.toFixed(3) } })
+    const m0 = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)), m1 = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1))
+    const dueThisMonth = tasks.filter(t => t.dueAt >= m0 && t.dueAt < m1 && !['completed', 'reviewed'].includes(t.state))
+    const upcoming = tasks.filter(t => t.dueAt >= today && !['completed', 'reviewed'].includes(t.state)).slice(0, 5)
+    const needsReview = { atRisk: all.filter(r => r.status !== 'on_track').length, dueThisMonth: dueThisMonth.length, dueList: (dueThisMonth.length ? dueThisMonth.slice(0, 5) : upcoming).map(t => ({ id: t.id, title: t.title, dueAt: t.dueAt, state: t.state, aopId: t.aopId })), listIsUpcoming: !dueThisMonth.length }
+    // Evidence: task evidence packs and release references, newest first.
+    const pkgOfAop = Object.fromEntries(all.map(r => [r.id, r]))
+    const evidence = [
+      ...tasks.filter(t => t.evidenceUrl).map(t => ({ kind: 'task', id: t.id, title: `${t.title} — evidence pack`, packageId: t.aopId?.replace(/^AOP-/, '').replace(/-Y\d+$/, '') || null, at: t.lastUpdateAt || t.dueAt, by: t.updatedByRole || t.responsibleRole, state: t.state, url: t.evidenceUrl, note: t.evidenceNote })),
+      ...releases.filter(r => r.reference).map(r => ({ kind: 'release', id: r.id, title: `${r.project} — sanction ${r.reference}`, packageId: r.packageId, at: r.releasedAt, by: 'SPV finance', state: r.projectState, url: null, note: r.note })),
+    ].sort((a, b) => new Date(b.at) - new Date(a.at))
+    res.json({ filters: { year, itiId: itiId || 'all', status: status || 'all' }, totals, byCategory, timeline, rows, needsReview, evidence, releases: releases.map(r => ({ id: r.id, releasedAt: r.releasedAt, packageId: r.packageId, packageTitle: pkgOfAop[r.packageId]?.title || r.packageId, category: pkgOfAop[r.packageId]?.category || '', project: r.project, amountCr: r.amountCr, reference: r.reference, projectState: r.projectState, note: r.note })), categories: [...new Set(all.map(r => r.category))].sort() })
+  } catch (e) { next(e) }
+})
+
+r.get('/work-packages/:id', async (req, res, next) => {
+  try {
+    const { releases, tasks, rows } = await workPackageRows(req)
+    const row = rows.find(r => r.id === req.params.id)
+    if (!row) return res.status(404).json({ error: 'not_found' })
+    const p = await prisma.package.findUnique({ where: { id: row.id }, include: { aops: true } })
+    const aop = p.aops.find(a => a.year === Number(req.query.year || 1)) || p.aops[0] || null
+    const ts = tasks.filter(t => aop && t.aopId === aop.id)
+    const rel = releases.filter(r => r.packageId === p.id)
+    const milestones = ts.map(t => ({ id: t.id, title: t.title, state: t.state, dueAt: t.dueAt, forecastAt: t.forecastAt, lastUpdateAt: t.lastUpdateAt, responsibleRole: t.responsibleRole, blockedReason: t.blockedReason, reviewNote: t.reviewNote, acceptance: t.acceptance }))
+    const evidence = [
+      ...ts.filter(t => t.evidenceUrl).map(t => ({ kind: 'task', title: `${t.title} — ${t.evidence || 'evidence pack'}`, at: t.lastUpdateAt || t.dueAt, by: t.updatedByRole || t.responsibleRole, url: t.evidenceUrl, note: t.evidenceNote })),
+      ...rel.filter(r => r.reference).map(r => ({ kind: 'release', title: `Sanction ${r.reference}`, at: r.releasedAt, by: 'SPV finance', url: null, note: r.note })),
+    ].sort((a, b) => new Date(b.at) - new Date(a.at))
+    const latest = ts.filter(t => t.lastUpdateAt).sort((a, b) => b.lastUpdateAt - a.lastUpdateAt)[0]
+    const latestUpdate = latest ? { at: latest.lastUpdateAt, by: latest.updatedByRole, text: latest.state === 'blocked' ? `${latest.title}: blocked — ${latest.blockedReason}` : latest.state === 'returned' ? `${latest.title}: ${latest.reviewNote}` : `${latest.title}: ${latest.state.replace(/_/g, ' ')}${latest.evidenceNote ? ' · ' + latest.evidenceNote : ''}` } : null
+    res.json({ package: { id: p.id, title: p.title, category: p.category, expenditureType: p.expenditureType, courseScope: p.courseScope, totalCr: p.totalCr, yearly: JSON.parse(p.yearly || '{}'), deliverable: p.deliverable, sourceStatus: p.sourceStatus }, aop: aop ? { id: aop.id, year: aop.year, budgetCr: aop.budgetCr, spentCr: aop.spentCr, state: aop.state, progressPct: aop.progressPct, deliverable: aop.deliverable, evidenceRule: aop.evidenceRule, accountableRole: aop.accountableRole, start: aop.start, finish: aop.finish } : null, row, releases: rel, milestones, evidence, latestUpdate })
+  } catch (e) { next(e) }
+})
+
 export default r

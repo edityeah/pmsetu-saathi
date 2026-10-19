@@ -36,14 +36,15 @@ const R = {
   async placement_analytics(req, f) { const d = await fetchJson(req, `/api/placement/analytics${q({ itiId: f.itiId, trade: f.trade })}`); return { totals: d.totals, funnel: d.funnel, outcomes: d.outcomes, verification: d.ladder, retention: d.retention, byIti: d.byIti?.map(i => ({ code: i.code, pool: i.pool, applied: i.applied, offered: i.offered, joined: i.joined, women: i.women })) } },
   async employer_directory(req) { const d = await fetchJson(req, '/api/placement/employers'); const e = d.employers || []; return { employers: e.length, activePartners: e.filter(x => x.relationshipStatus === 'active').length, interested: e.filter(x => x.relationshipStatus === 'lead').length, withMou: e.filter(x => x.mouSignedAt).length, liveOpportunities: e.reduce((s, x) => s + (x.live || 0), 0), list: e.slice(0, 25).map(x => ({ name: x.name, sector: x.sector, city: x.city, status: x.relationshipStatus, itis: x.participatingItis, live: x.live, joined: x.joined })) } },
   async student_voice(req, f) { const d = await fetchJson(req, `/api/companion/voice${q({ itiId: f.itiId })}`); return { days: d.days, totals: d.totals, themes: d.themes?.slice(0, 8).map(t => ({ theme: t.theme, students: t.students, direct: t.direct, inferred: t.inferred, recommendation: t.recommendation })), perIti: d.perIti?.map(i => ({ code: i.code, events: i.events, students: i.students })) } },
-  async grievances(req, f) { const d = await fetchJson(req, '/api/ops/grievances'); let g = d.grievances || []; if (f.itiId) g = g.filter(x => x.itiId === f.itiId); return { total: g.length, open: g.filter(x => x.status === 'open').length, resolved: g.filter(x => x.status === 'resolved').length, list: g.slice(0, 8).map(x => ({ iti: x.itiId, category: x.category, status: x.status, note: x.note, raised: day(x.createdAt) })) } },
+  async grievances(req, f) { const d = await fetchJson(req, `/api/ops/grievances${q({ itiId: f.itiId })}`); const g = d.grievances || []; return { totals: d.totals, openByCategory: d.byCategory, overdue: g.filter(x => x.overdue).map(x => ({ code: x.code, category: x.category, priority: x.priority, owner: x.ownerRole, due: day(x.dueAt) })).slice(0, 8), escalated: g.filter(x => x.status === 'escalated').map(x => ({ code: x.code, category: x.category, note: x.note })).slice(0, 6), queue: g.filter(x => x.status !== 'resolved').slice(0, 10).map(x => ({ code: x.code, iti: x.itiId, category: x.category, status: x.status, priority: x.priority, owner: x.ownerRole, next: x.nextAction, due: day(x.dueAt), note: String(x.note).slice(0, 100) })) } },
   async notifications(req) { const d = await fetchJson(req, '/api/notifications'); const n = d.notifications || []; return { total: n.length, unread: n.filter(x => !x.readAt).length, list: n.slice(0, 8).map(x => ({ title: x.title, category: x.category, priority: x.priority, message: String(x.message || '').slice(0, 140) })) } },
 }
 
+const ALIAS = { my_institute_profile: 'institute_overview', my_institute_facilities: 'institute_facilities', my_institute_trades: 'institute_trades', my_institute_students: 'registry_students', my_institute_trainers: 'registry_trainers' }
 export async function summaryFor(req, targetId, filters = {}) {
   const t = TARGET_BY_ID[targetId]
   if (!t) return null
-  const fn = R[targetId]
+  const fn = R[ALIAS[targetId] || targetId]
   if (!fn) return null
   try { return await fn(req, filters) } catch (e) { console.warn('[nav/snapshot]', targetId, e?.message || e); return { error: 'data unavailable' } }
 }
@@ -69,7 +70,7 @@ export async function livePack(req) {
     await safe('PLACEMENT', async () => { const d = await R.placement_analytics(req, {}); return { totals: d.totals, funnel: d.funnel, verification: d.verification, byIti: d.byIti } })
     await safe('EMPLOYERS', async () => { const d = await R.employer_directory(req); return { employers: d.employers, activePartners: d.activePartners, liveOpportunities: d.liveOpportunities } })
     await safe('STUDENT VOICE (30 days)', async () => { const d = await R.student_voice(req, {}); return { totals: d.totals, topThemes: d.themes?.slice(0, 5) } })
-    await safe('GRIEVANCES', async () => { const d = await R.grievances(req, {}); return { total: d.total, open: d.open } })
+    await safe('SUPPORT CASES', async () => { const d = await R.grievances(req, {}); return { totals: d.totals, escalated: d.escalated } })
   }
   const text = parts.length ? `LIVE CLUSTER DATA (read from the platform now, ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC). These numbers are what the dashboards show; quote them exactly and never substitute remembered figures. For anything not here, use lookup_data / open_canvas (voice) or say it is not on this snapshot.\n` + parts.join('\n') : ''
   packCache.set(key, { at: Date.now(), text })

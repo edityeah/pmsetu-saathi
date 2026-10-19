@@ -19,9 +19,9 @@ export default function BatchesCanvas({ context }) {
   const risk = { high: roster.filter(t => t.risk === 'high').length, medium: roster.filter(t => t.risk === 'medium').length, dropped: roster.filter(t => t.risk === 'dropped').length }
   const withAtt = roster.filter(t => t.attendancePct != null)
   return (
-    <div className="h-full overflow-y-auto">
-      <Hero tone="emerald" eyebrow={role === 'trainer' ? 'My batches' : 'Batches'} title={b ? b.name : 'Select a batch'} subtitle={b ? `${b.trade.name} · ${b.iti.name} · lead ${b.lead?.name || '—'} · ${b.assignments.length} subject assignments · ${fmtDate(b.startDate)} → ${fmtDate(b.endDate)}${b.cohortLabel ? ' · ' + b.cohortLabel : ''}` : ''}
-        right={<select value={active || ''} onChange={e => setBatchId(e.target.value)} className="text-[12px] rounded-lg border border-bdr px-2 py-1.5 bg-white max-w-[260px]">{list.batches.map(x => <option key={x.id} value={x.id}>{x.name} ({x._count.trainees})</option>)}</select>} />
+    <div className={context?.embedded ? '' : "h-full overflow-y-auto"}>
+      {context?.embedded ? <div className="px-4 py-3 border-b border-bdr-light bg-white flex items-center gap-3 flex-wrap"><span className="text-[11px] font-bold text-txt-secondary">Batch</span><select value={active || ''} onChange={e => setBatchId(e.target.value)} className="text-[12px] rounded-lg border border-bdr px-2 py-1.5 bg-white max-w-[320px]">{list.batches.map(x => <option key={x.id} value={x.id}>{x.name} ({x._count.trainees})</option>)}</select>{b && <span className="text-[11px] text-txt-tertiary">{b.trade.name} · lead {b.lead?.name || '—'} · {fmtDate(b.startDate)} → {fmtDate(b.endDate)}</span>}</div> : <Hero tone="emerald" eyebrow={role === 'trainer' ? 'My batches' : 'Batches'} title={b ? b.name : 'Select a batch'} subtitle={b ? `${b.trade.name} · ${b.iti.name} · lead ${b.lead?.name || '—'} · ${b.assignments.length} subject assignments · ${fmtDate(b.startDate)} → ${fmtDate(b.endDate)}${b.cohortLabel ? ' · ' + b.cohortLabel : ''}` : ''}
+        right={<select value={active || ''} onChange={e => setBatchId(e.target.value)} className="text-[12px] rounded-lg border border-bdr px-2 py-1.5 bg-white max-w-[260px]">{list.batches.map(x => <option key={x.id} value={x.id}>{x.name} ({x._count.trainees})</option>)}</select>} />}
       {!data ? <Loading /> : (
         <div className="p-4 space-y-4">
           <StatGrid>

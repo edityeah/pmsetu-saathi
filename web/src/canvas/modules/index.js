@@ -3,6 +3,7 @@ import GenericCanvas from './GenericCanvas.jsx'
 import DailyOperationsCanvas from './DailyOperationsCanvas.jsx'
 import ClusterRegistryCanvas from './ClusterRegistryCanvas.jsx'
 import BudgetAnalyticsCanvas from './BudgetAnalyticsCanvas.jsx'
+import MyInstituteCanvas from './MyInstituteCanvas.jsx'
 import NotificationsCanvas from './NotificationsCanvas.jsx'
 import SaathiAssistantCanvas from './SaathiAssistantCanvas.jsx'
 import GrievanceCanvas from './GrievanceCanvas.jsx'
@@ -81,12 +82,13 @@ export const CANVAS_MODULES = {
   placement_pipeline: PlacementPipelineCanvas, employer_register: EmployerRegisterCanvas, for_my_batches: ForMyBatchesCanvas, placements_cluster: PlacementsCanvas, ojt_tracker: OjtTrackerCanvas, confirm_hire: ConfirmHireCanvas, post_opening: PostOpeningCanvas,
   course_builder: CourseBuilderCanvas, ncvet_pipeline: NcvetPipelineCanvas, verification_queue: VerificationQueueCanvas, kpi_audit: KpiAuditCanvas, report_review: ReportReviewCanvas, state_scorecard: StateScorecardCanvas,
   notifications: NotificationsCanvas, saathi_assistant: SaathiAssistantCanvas,
-  daily_operations: DailyOperationsCanvas, cluster_registry: ClusterRegistryCanvas, budget_analytics: BudgetAnalyticsCanvas,
+  daily_operations: DailyOperationsCanvas, cluster_registry: ClusterRegistryCanvas, budget_analytics: BudgetAnalyticsCanvas, my_institute: MyInstituteCanvas,
   __default__: GenericCanvas,
 }
 
 const META = {
   daily_operations: { title: 'Daily Operations', subtitle: 'Attendance · assessment · infrastructure readiness · upcoming events', icon: '🗓️' },
+  my_institute: { title: 'My Institute', subtitle: 'Profile · campus facilities · trade offerings · students · trainers · batches', icon: '🏫' },
   cluster_registry: { title: 'Cluster Registry', subtitle: 'Student registry · enrolment analytics · trainer registry', icon: '🗂️' },
   budget_analytics: { title: 'Budget Analytics', subtitle: 'AOP utilisation against the approved allocation', icon: '🧾' },
   cluster_home: { title: 'Cluster Home', subtitle: 'SIP funding · Year-1 by category and ITI · this month · headline KPIs · risks', icon: '🏠' },
@@ -120,7 +122,7 @@ const META = {
   machines_infra: { title: 'Machines & Labs', subtitle: 'Asset register · functional status', icon: '⚙️' },
   batches: { title: 'Batches & Rosters', subtitle: 'Attendance · marks · practicals · risk', icon: '📚' },
   module_plan: { title: 'Module Plan', subtitle: 'Current 240-hour module · lessons', icon: '📖' },
-  grievances_admin: { title: 'Grievances', subtitle: 'Register · investigate · resolve', icon: '🆘' },
+  grievances_admin: { title: 'Support and grievance', subtitle: 'Case queue · escalations · resolution · knowledge and help', icon: '🆘' },
   what_i_know: { title: 'What I Know', subtitle: 'Your record, your signals, what was shared', icon: '🪪' },
   my_plan: { title: 'My Plan', subtitle: 'Today · upcoming tests · career steps', icon: '🗺️' },
   applications: { title: 'My Applications', subtitle: 'Interested → prepared → referred → applied → interviewed → offered → joined', icon: '📨' },
