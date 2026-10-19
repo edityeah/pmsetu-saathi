@@ -70,7 +70,23 @@ r.get('/attendance', async (req, res, next) => {
       prisma.batch.findMany({ where: { itiId: { in: sc.itiIds }, state: 'running', ...(sc.trade ? { tradeId: sc.trade } : {}) }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
     ])
     const pending = a.sessions.filter(s => s.attendanceState === 'not_reported').map(s => ({ id: s.id, batch: s.batch.name, startTime: s.startTime, itiCode: sc.itis.find(i => i.id === s.batch.itiId)?.code }))
-    res.json({ requestedDate: requested, date: a.date, fallback: a.fallback, totals: a.totals, byIti, trend, trendBy: singleIti ? 'trade' : 'iti', trendKeys, itiCodes: sc.itis.filter(i => sc.itiIds.includes(i.id)).map(i => i.code), options: { trades, batches, times: ['09:30', '11:30', '14:00'] }, pending: pending.slice(0, 50), pendingTotal: pending.length })
+    // Early warning (one ITI in scope): students whose attendance over the last
+    // 15 reported days is below 80% (watch) or 70% (high), same thresholds as
+    // the batch roster risk flag. Needs at least five marks to count.
+    let earlyWarning = null
+    if (singleIti) {
+      const since = addDays(a.date, -15)
+      const marks = await prisma.attendanceMark.findMany({ where: { session: { batch: sc.batchWhere, date: { gte: since, lte: a.date }, attendanceState: { not: 'not_reported' } }, status: { in: ['present', 'late', 'absent'] } }, select: { traineeId: true, status: true } })
+      const per = new Map()
+      for (const m of marks) { const t = per.get(m.traineeId) || { n: 0, p: 0, ab: 0 }; t.n++; if (m.status === 'absent') t.ab++; else t.p++; per.set(m.traineeId, t) }
+      const ids = [...per.keys()].filter(id => per.get(id).n >= 5)
+      const trainees = await prisma.trainee.findMany({ where: { id: { in: ids }, status: 'active' }, select: { id: true, name: true, gender: true, batch: { select: { id: true, name: true, tradeId: true, trade: { select: { name: true } } } } } })
+      const flagged = trainees.map(t => { const x = per.get(t.id); const p = Math.round(1000 * x.p / x.n) / 10; return { id: t.id, name: t.name, gender: t.gender, tradeId: t.batch?.tradeId, trade: t.batch?.trade?.name || t.batch?.tradeId, batch: t.batch?.name, attendancePct: p, absences: x.ab, marks: x.n, level: p < 70 ? 'high' : 'watch' } }).filter(t => t.attendancePct < 80).sort((p, q) => p.attendancePct - q.attendancePct)
+      const byTradeMap = {}
+      for (const t of flagged) { const k = byTradeMap[t.tradeId] ||= { id: t.tradeId, name: t.trade, total: 0, male: 0, female: 0, high: 0, watch: 0 }; k.total++; k[t.gender === 'F' ? 'female' : 'male']++; k[t.level]++ }
+      earlyWarning = { thresholdPct: 80, highPct: 70, windowDays: 15, studentsWithData: trainees.length, total: flagged.length, high: flagged.filter(t => t.level === 'high').length, watch: flagged.filter(t => t.level === 'watch').length, byGender: { male: flagged.filter(t => t.gender !== 'F').length, female: flagged.filter(t => t.gender === 'F').length }, byTrade: Object.values(byTradeMap).sort((p, q) => q.total - p.total), students: flagged.slice(0, 200) }
+    }
+    res.json({ requestedDate: requested, date: a.date, fallback: a.fallback, totals: a.totals, byIti, trend, trendBy: singleIti ? 'trade' : 'iti', trendKeys, earlyWarning, itiCodes: sc.itis.filter(i => sc.itiIds.includes(i.id)).map(i => i.code), options: { trades, batches, times: ['09:30', '11:30', '14:00'] }, pending: pending.slice(0, 50), pendingTotal: pending.length })
   } catch (e) { next(e) }
 })
 

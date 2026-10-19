@@ -165,6 +165,7 @@ function AttendanceTab(b) {
           <Donut data={[{ name: 'Present', value: t.present, color: C.primary }, { name: 'Late', value: t.late, color: C.teal }, { name: 'Absent', value: t.absent, color: C.amber }, { name: 'Excused', value: t.excused, color: C.slate }]} centre={fmtNum(t.expected)} centreSub="learner-sessions" size={150} />
         </Card></div>
       </div>
+      {d.earlyWarning ? <EarlyWarning ew={d.earlyWarning} openCanvas={b.openCanvas} /> : (
       <Section title="ITI comparison" hint="Rates are on submitted registers only; a missing register is a gap to chase, not an absence.">
         <Table columns={[
           { key: 'name', label: 'ITI', render: x => <b>{x.name}</b> },
@@ -173,7 +174,7 @@ function AttendanceTab(b) {
           { key: 'coveragePct', label: 'Reporting coverage', render: x => <div className="min-w-[110px]"><Bar pct={x.coveragePct || 0} label={fmtPct(x.coveragePct)} tone="auto" /></div> },
           { key: 'marks', label: 'Named marks', align: 'right', render: x => `${fmtNum(x.marks)} learner marks` },
         ]} rows={d.byIti} />
-      </Section>
+      </Section>)}
       <Section title="Registers pending" hint="Sessions scheduled on this day without a submitted register.">
         <TopFive label="pending registers" columns={[{ key: 'startTime', label: 'Session' }, { key: 'batch', label: 'Batch' }, { key: 'itiCode', label: 'ITI' }]} rows={d.pending} empty="Every scheduled session has a register." />
       </Section>
@@ -317,5 +318,43 @@ function EventsTab(b) {
         ]} rows={d.list} empty="Nothing scheduled in this period." />
       </Section>
     </div>
+  </>)
+}
+
+// Early warning: students below the attendance thresholds, by gender and by
+// course, for one institute. Thresholds match the batch roster risk flag.
+function EarlyWarning({ ew, openCanvas }) {
+  const [all, setAll] = useState(false)
+  const g = [{ name: 'Male', value: ew.byGender.male, color: C.primary }, { name: 'Female', value: ew.byGender.female, color: C.violet }]
+  const rows = ew.byTrade.map(t => ({ ...t, label: t.name }))
+  const shown = all ? ew.students : ew.students.slice(0, 5)
+  return (<>
+    <StatGrid>
+      <Stat label="Students under early warning" value={ew.total} sub={`below ${ew.thresholdPct}% attendance in ${ew.windowDays} days · ${ew.studentsWithData} students with data`} tone={ew.total ? 'rose' : 'emerald'} />
+      <Stat label="High" value={ew.high} sub={`below ${ew.highPct}%`} tone="rose" />
+      <Stat label="Watch" value={ew.watch} sub={`${ew.highPct}–${ew.thresholdPct - 1}%`} tone="amber" />
+      <Stat label="Women under warning" value={ew.byGender.female} sub={`${ew.total ? Math.round(100 * ew.byGender.female / ew.total) : 0}% of flagged · ${ew.byGender.male} men`} tone="violet" />
+    </StatGrid>
+    <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-stretch">
+      <div className="xl:col-span-2"><Card title="Early warning by gender" sub="students below the threshold">
+        <div className="flex items-center gap-4">
+          <div style={{ width: 150, height: 150 }} className="relative flex-shrink-0"><ResponsiveContainer><PieChart><Pie data={g} dataKey="value" nameKey="name" innerRadius={44} outerRadius={68} paddingAngle={2} stroke="white">{g.map(x => <Cell key={x.name} fill={x.color} />)}</Pie><Tooltip contentStyle={tip} /></PieChart></ResponsiveContainer><div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"><div className="text-[20px] font-bold leading-none">{ew.total}</div><div className="text-[10px] text-txt-tertiary">flagged</div></div></div>
+          <ul className="text-[12px] space-y-2 flex-1">{g.map(x => <li key={x.name} className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: x.color }} /><span className="flex-1 text-txt-secondary">{x.name}</span><b>{x.value}</b><span className="text-[10px] text-txt-tertiary w-10 text-right">{ew.total ? Math.round(100 * x.value / ew.total) : 0}%</span></li>)}</ul>
+        </div>
+      </Card></div>
+      <div className="xl:col-span-3"><Card title="Early warning by course" sub="students below the threshold, men and women">
+        <div style={{ height: Math.max(180, rows.length * 34 + 24) }}><ResponsiveContainer><BarChart data={rows} layout="vertical" margin={{ top: 4, right: 36, left: 8, bottom: 0 }} barCategoryGap={6}><XAxis type="number" hide allowDecimals={false} /><YAxis type="category" dataKey="label" width={150} fontSize={10} stroke="#7383A5" interval={0} /><Tooltip contentStyle={tip} /><Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} /><RBar dataKey="male" name="Men" stackId="g" fill={C.primary} /><RBar dataKey="female" name="Women" stackId="g" fill={C.violet} radius={[0, 6, 6, 0]}><LabelList dataKey="total" position="right" fontSize={10} fill="#1A1F36" /></RBar></BarChart></ResponsiveContainer></div>
+      </Card></div>
+    </div>
+    <Section title="Students under early warning" hint={`Lowest attendance first. Showing ${shown.length} of ${ew.students.length}. Tap a student for the record.`}>
+      <Table columns={[
+        { key: 'name', label: 'Student', render: t => <button className="text-left hover:text-primary" onClick={() => openCanvas({ type: 'student_profile', traineeId: t.id })}><div className="font-semibold">{t.name}</div><div className="text-[10px] text-txt-tertiary">{t.gender === 'F' ? 'F' : 'M'} · {t.batch}</div></button> },
+        { key: 'trade', label: 'Course' },
+        { key: 'attendancePct', label: 'Attendance (15d)', render: t => <div className="min-w-[120px]"><Bar pct={t.attendancePct} label={`${t.attendancePct}%`} tone="auto" /></div> },
+        { key: 'absences', label: 'Absences', align: 'right', render: t => `${t.absences} of ${t.marks}` },
+        { key: 'level', label: 'Level', render: t => <Pill kind={t.level === 'high' ? 'bad' : 'warn'}>{t.level === 'high' ? 'High' : 'Watch'}</Pill> },
+      ]} rows={shown} empty="No student is below the threshold." />
+      {ew.students.length > 5 && <div className="flex items-center justify-between pt-2 text-[11px] text-txt-tertiary"><span>Showing {shown.length} of {ew.students.length}</span><button className="text-primary font-bold" onClick={() => setAll(x => !x)}>{all ? 'Show five' : `View more (${ew.students.length - 5})`} →</button></div>}
+    </Section>
   </>)
 }
