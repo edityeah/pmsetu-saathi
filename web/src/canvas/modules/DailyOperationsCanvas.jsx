@@ -391,16 +391,20 @@ function ReadinessForPrincipal({ rows, openCanvas }) {
   const sorted = [...rows].sort((p, q) => order[p.status] - order[q.status] || p.name.localeCompare(q.name))
   const failing = CHECKS.map(([k, label]) => ({ key: k, label, facilities: rows.filter(r => !r.checks[k]) })).filter(x => x.facilities.length).sort((p, q) => q.facilities.length - p.facilities.length)
   const withSession = rows.filter(r => r.status !== 'ready' && r.scheduledUse && r.scheduledUse !== 'No session scheduled')
-  const h = Math.max(220, sorted.length * 36 + 48)
+  const h = Math.max(220, Math.ceil(sorted.length / 3) * 118)
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
-      <div className="lg:col-span-3"><Card title="Readiness checks by workshop" sub="the five checks for today's scheduled use · green met, red not met">
-        <div style={{ minHeight: h }} className="overflow-x-auto">
-          <table className="w-full text-[11px]">
-            <thead><tr className="text-[10px] uppercase tracking-wider text-txt-tertiary"><th className="text-left font-bold pb-2 pr-2">Workshop</th>{CHECKS.map(([k, l]) => <th key={k} className="font-bold pb-2 px-1 text-center">{l}</th>)}<th className="text-right font-bold pb-2 pl-2">Status</th></tr></thead>
-            <tbody>{sorted.map(r => <tr key={r.id} className="border-t border-bdr-light/60"><td className="py-2 pr-2"><div className="font-semibold text-txt-primary whitespace-nowrap">{r.name}</div><div className="text-[10px] text-txt-tertiary whitespace-nowrap">{r.tradeName} · {r.scheduledUse || 'no session today'}</div></td>{CHECKS.map(([k]) => <td key={k} className="px-1 text-center"><span title={r.checks[k] ? 'Met' : 'Not met'} className={`inline-block w-7 h-5 rounded-md ${r.checks[k] ? 'bg-emerald-400' : 'bg-rose-400'}`} /></td>)}<td className="pl-2 text-right"><Pill kind={r.status === 'ready' ? 'ok' : r.status === 'restricted' ? 'warn' : 'bad'}>{titleCase(r.status)}</Pill></td></tr>)}</tbody>
-          </table>
+      <div className="lg:col-span-3"><Card title="Workshops and labs today" sub="each facility coloured by its readiness for today's scheduled use" right={<div className="flex items-center gap-3 text-[10px] text-txt-secondary">{[['bg-emerald-500', 'Ready', rows.filter(r => r.status === 'ready').length], ['bg-amber-500', 'Restricted', rows.filter(r => r.status === 'restricted').length], ['bg-rose-500', 'Unavailable', rows.filter(r => r.status === 'unavailable').length]].map(([c, l, n]) => <span key={l} className="inline-flex items-center gap-1"><span className={`w-2.5 h-2.5 rounded-full ${c}`} />{l} <b>{n}</b></span>)}</div>}>
+        <div style={{ minHeight: h }} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 content-start">
+          {sorted.map(r => { const tone = r.status === 'ready' ? ['bg-emerald-50', 'border-emerald-300', 'text-emerald-800', 'bg-emerald-500'] : r.status === 'restricted' ? ['bg-amber-50', 'border-amber-300', 'text-amber-800', 'bg-amber-500'] : ['bg-rose-50', 'border-rose-300', 'text-rose-800', 'bg-rose-500']; return (
+            <div key={r.id} className={`rounded-2xl border ${tone[0]} ${tone[1]} p-3 flex flex-col gap-1.5`}>
+              <div className="flex items-start gap-2"><span className="text-[20px] leading-none" aria-hidden>{r.kind === 'lab' ? '💻' : '🔧'}</span><div className="flex-1 min-w-0"><div className="text-[12px] font-bold text-txt-primary leading-tight">{r.name}</div><div className="text-[10px] text-txt-tertiary truncate">{r.tradeName} · {r.kind === 'lab' ? 'Lab' : 'Workshop'}</div></div><span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1 ${tone[3]}`} /></div>
+              <div className={`text-[11px] font-bold ${tone[2]}`}>{titleCase(r.status)}{r.reasons.length ? <span className="font-normal"> · {r.reasons[0]}</span> : ''}</div>
+              <div className="flex items-center gap-1" title={CHECKS.map(([k, l]) => `${l}: ${r.checks[k] ? 'met' : 'not met'}`).join(' · ')}>{CHECKS.map(([k, l]) => <span key={k} className={`h-1.5 flex-1 rounded-full ${r.checks[k] ? 'bg-emerald-400' : 'bg-rose-400'}`} />)}</div>
+              <div className="text-[10px] text-txt-secondary">{r.scheduledUse && r.scheduledUse !== 'No session scheduled' ? `Today: ${r.scheduledUse}` : 'No session today'} · {r.machines?.functional ?? 0} of {r.machines?.total ?? 0} machines working</div>
+            </div>) })}
         </div>
+        <div className="text-[10px] text-txt-tertiary mt-2">The five bars under each facility are its checks in order: space, electricity, safety, equipment, consumables.</div>
       </Card></div>
       <div className="lg:col-span-2"><Card title="Fix first" sub="failing checks ranked by how many workshops they hold back">
         <div style={{ minHeight: h }} className="flex flex-col gap-3">
