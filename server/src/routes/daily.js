@@ -58,14 +58,19 @@ r.get('/attendance', async (req, res, next) => {
     const days = []
     for (let d = addDays(a.date, -10); d <= a.date && days.length < 20; d = addDays(d, 1)) { if (d.getUTCDay() !== 0) days.push(d) }
     const last7 = days.slice(-7)
-    const trendRows = await prisma.session.findMany({ where: { batch: sc.batchWhere, date: { gte: last7[0], lte: a.date }, attendanceState: { not: 'not_reported' } }, select: { date: true, presentCount: true, absentCount: true, lateCount: true, batch: { select: { itiId: true } } } })
-    const trend = last7.map(d => { const row = { date: d, label: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) }; for (const i of sc.itis.filter(x => sc.itiIds.includes(x.id))) { const rs = trendRows.filter(x => x.date.getTime() === d.getTime() && x.batch.itiId === i.id); const pr = rs.reduce((s, x) => s + (x.presentCount || 0) + (x.lateCount || 0), 0), ab = rs.reduce((s, x) => s + (x.absentCount || 0), 0); row[i.code] = pct(pr, pr + ab) } return row })
+    const trendRows = await prisma.session.findMany({ where: { batch: sc.batchWhere, date: { gte: last7[0], lte: a.date }, attendanceState: { not: 'not_reported' } }, select: { date: true, presentCount: true, absentCount: true, lateCount: true, batch: { select: { itiId: true, tradeId: true, trade: { select: { name: true } } } } } })
+    // One ITI in scope (a principal, or the CEO looking at one institute): one line per trade. Otherwise one line per ITI.
+    const singleIti = sc.itiIds.length === 1
+    const trendKeys = singleIti
+      ? [...new Map(trendRows.map(x => [x.batch.tradeId, { id: x.batch.tradeId, label: x.batch.trade?.name || x.batch.tradeId }])).values()].sort((p, q) => p.label.localeCompare(q.label))
+      : sc.itis.filter(x => sc.itiIds.includes(x.id)).map(i => ({ id: i.code, label: short(i.name), itiId: i.id }))
+    const trend = last7.map(d => { const row = { date: d, label: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) }; for (const k of trendKeys) { const rs = trendRows.filter(x => x.date.getTime() === d.getTime() && (singleIti ? x.batch.tradeId === k.id : x.batch.itiId === k.itiId)); const pr = rs.reduce((s, x) => s + (x.presentCount || 0) + (x.lateCount || 0), 0), ab = rs.reduce((s, x) => s + (x.absentCount || 0), 0); row[k.id] = pct(pr, pr + ab) } return row })
     const [trades, batches] = await Promise.all([
       prisma.trade.findMany({ where: { batches: { some: { itiId: { in: sc.itiIds }, state: 'running' } } }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
       prisma.batch.findMany({ where: { itiId: { in: sc.itiIds }, state: 'running', ...(sc.trade ? { tradeId: sc.trade } : {}) }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
     ])
     const pending = a.sessions.filter(s => s.attendanceState === 'not_reported').map(s => ({ id: s.id, batch: s.batch.name, startTime: s.startTime, itiCode: sc.itis.find(i => i.id === s.batch.itiId)?.code }))
-    res.json({ requestedDate: requested, date: a.date, fallback: a.fallback, totals: a.totals, byIti, trend, itiCodes: sc.itis.filter(i => sc.itiIds.includes(i.id)).map(i => i.code), options: { trades, batches, times: ['09:30', '11:30', '14:00'] }, pending: pending.slice(0, 50), pendingTotal: pending.length })
+    res.json({ requestedDate: requested, date: a.date, fallback: a.fallback, totals: a.totals, byIti, trend, trendBy: singleIti ? 'trade' : 'iti', trendKeys, itiCodes: sc.itis.filter(i => sc.itiIds.includes(i.id)).map(i => i.code), options: { trades, batches, times: ['09:30', '11:30', '14:00'] }, pending: pending.slice(0, 50), pendingTotal: pending.length })
   } catch (e) { next(e) }
 })
 
