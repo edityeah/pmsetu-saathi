@@ -25,6 +25,8 @@ import { targetsForRole } from '../nav/catalog.js'
 import { chatText } from '../llm/openai.js'
 import { livePack } from '../nav/snapshot.js'
 import { navToolDefs } from '../voice/tools.js'
+import { extractCareerDelta, CHAT_FIELDS } from '../llm/career.js'
+import { traineeFor } from '../lib/scope.js'
 
 const r = Router()
 r.use(requireAuth)
@@ -207,11 +209,29 @@ r.post('/stream', async (req, res, next) => {
     //   Saathi-style rich UI) → final `delta` events for the chat bubble.
     // Only ARISE persona sessions actually receive board fences, but
     // running the parser is cheap when the stream contains none.
+    // Marker filter: <<TAKE_ASSESSMENT>> and <<GENERATE_REPORT>> become card
+    // events and never reach the bubble. Text after a '<<' is held until the
+    // marker closes or proves not to be one.
+    let hold = ''
+    const MARKERS = { '<<TAKE_ASSESSMENT>>': 'take_assessment', '<<GENERATE_REPORT>>': 'generate_report' }
+    const emitText = (text) => { if (!text) return; fullText += text; res.write(`data: ${JSON.stringify({ delta: text })}\n\n`) }
+    const filterMarkers = (text) => {
+      let buf = hold + text; hold = ''
+      let out = ''
+      while (buf.length) {
+        const i = buf.indexOf('<<')
+        if (i < 0) { if (buf.endsWith('<')) { out += buf.slice(0, -1); hold = '<' } else out += buf; buf = ''; break }
+        out += buf.slice(0, i); buf = buf.slice(i)
+        const j = buf.indexOf('>>')
+        if (j < 0) { if (buf.length > 32) { out += buf.slice(0, 2); buf = buf.slice(2); continue } hold = buf; buf = ''; break }
+        const tok = buf.slice(0, j + 2); buf = buf.slice(j + 2)
+        if (MARKERS[tok]) res.write(`data: ${JSON.stringify({ card: { type: MARKERS[tok] } })}\n\n`)
+        else out += tok
+      }
+      emitText(out)
+    }
     const cardParser = new CardParser({
-      onText: (text) => {
-        fullText += text
-        res.write(`data: ${JSON.stringify({ delta: text })}\n\n`)
-      },
+      onText: (text) => filterMarkers(text),
       onCard: (card) => {
         res.write(`data: ${JSON.stringify({ card })}\n\n`)
       },
@@ -248,7 +268,25 @@ r.post('/stream', async (req, res, next) => {
         },
       })
       cardParser.flush()
+      if (hold) { const h = hold; hold = ''; emitText(h) }
       console.log(`[ai/stream] ok in ${Date.now() - t0}ms · ${fullText.length} chars · ${citations.length} citations`)
+      // Career counselling: read what the student just told Karuna into the
+      // progressive profile (fire-and-forget; never blocks the reply).
+      if (body.persona === 'career-counsellor' && req.user.role === 'trainee' && lastUser?.content) {
+        ;(async () => {
+          try {
+            const t = await traineeFor(req.user); if (!t) return
+            const ex = await prisma.companionArtifact.findFirst({ where: { traineeId: t.id, kind: 'career_profile' } })
+            const profile = ex ? JSON.parse(ex.content || '{}') : {}
+            const delta = await extractCareerDelta({ profile, userText: lastUser.content, assistantText: fullText })
+            if (!Object.keys(delta).length) return
+            const next = { ...profile, ...delta }
+            if (ex) await prisma.companionArtifact.update({ where: { id: ex.id }, data: { content: JSON.stringify(next) } })
+            else await prisma.companionArtifact.create({ data: { traineeId: t.id, kind: 'career_profile', title: 'Career profile', content: JSON.stringify(next) } })
+            if (!res.writableEnded) res.write(`data: ${JSON.stringify({ profileDelta: Object.keys(delta) })}\n\n`)
+          } catch (e) { console.warn('[career extractor]', e?.message || e) }
+        })()
+      }
     } catch (e) {
       console.error(`[ai/stream] FAILED after ${Date.now() - t0}ms:`, e?.message || e)
       res.write(`data: ${JSON.stringify({ error: e.message || String(e) })}\n\n`)

@@ -119,6 +119,12 @@ export const api = {
   marks:           () => req('GET', '/api/companion/marks'),
   placementJourney:() => req('GET', '/api/companion/placement-journey'),
   upskilling:      () => req('GET', '/api/companion/upskilling'),
+  career:          () => req('GET', '/api/companion/career'),
+  careerItems:     () => req('GET', '/api/companion/career/assessment'),
+  careerAssess:    (responses) => req('POST', '/api/companion/career/assessment', { responses }),
+  careerProfile:   (delta) => req('POST', '/api/companion/career/profile', { delta }),
+  careerReport:    (force) => req('POST', '/api/companion/career/report', { force: !!force }),
+  careerReportGet: () => req('GET', '/api/companion/career/report'),
 
   // Module D — placement
   employers:       () => req('GET', '/api/placement/employers'),

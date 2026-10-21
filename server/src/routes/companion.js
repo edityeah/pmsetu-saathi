@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { prisma } from '../db.js'
 import { requireAuth, requireRole } from '../auth/middleware.js'
 import { clusterFor, itiFor, traineeFor, resolveItiId } from '../lib/scope.js'
+import { RECORD_FIELDS, CHAT_FIELDS, INTEREST_ITEMS, PERSONALITY_ITEMS, completeness, nextProbes, scoreAssessment, readiness, synthCareerReport } from '../llm/career.js'
 
 const r = Router()
 r.use(requireAuth)
@@ -316,6 +317,112 @@ r.get('/upskilling', requireRole('trainee'), async (req, res, next) => {
     const nextRoles = roles.map(r => ({ id: r.id, roleName: r.roleName, sector: r.sector, progression: r.progression, skillsToBuild: r.skillsToBuild, entryPathway: r.entryPathway, workplace: r.typicalWorkplace }))
     res.json({ trainee: { name: t.name, trade: t.batch?.trade?.name }, current: spells[0] ? { role: spells[0].role, employer: spells[0].employer.name, type: spells[0].type, startAt: spells[0].startAt, evidenceLevel: spells[0].evidenceLevel } : null, programmes, nextRoles, questions: ['What experience do I need before this qualification?', 'What does it cost and is there a scholarship?', 'Can I study while working?', 'Which employers value this most?'] })
   } catch (e) { next(e) }
+})
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// Career counselling (Disha-style, ITI-grounded): progressive profile,
+// assessment, report. State lives in CompanionArtifact kinds career_profile,
+// career_assessment and career_report.
+// ══════════════════════════════════════════════════════════════════════════
+async function careerRecord(t) {
+  const today = todayUTC(), since = new Date(today.getTime() - 15 * 86400000)
+  const [marks, entries, obs, progress] = await Promise.all([
+    prisma.attendanceMark.findMany({ where: { traineeId: t.id, session: { date: { gte: since, lte: today }, attendanceState: { not: 'not_reported' } } }, select: { status: true } }),
+    prisma.markEntry.findMany({ where: { traineeId: t.id, marks: { not: null } }, include: { assessment: { select: { maxMarks: true } } } }),
+    prisma.practicalObservation.count({ where: { traineeId: t.id, result: 'demonstrated' } }),
+    prisma.moduleProgress.findMany({ where: { traineeId: t.id }, select: { pctComplete: true } }),
+  ])
+  const present = marks.filter(m => m.status === 'present' || m.status === 'late').length, counted = marks.filter(m => ['present', 'late', 'absent'].includes(m.status)).length
+  const avg = entries.length ? Math.round(100 * entries.reduce((s, e) => s + e.marks / e.assessment.maxMarks, 0) / entries.length) : null
+  const stage = t.status === 'placed' ? 'Placed' : t.status === 'completed' ? 'Pass-out' : `Year ${t.studyYear} trainee`
+  return { current_stage: stage, trade: t.batch?.trade?.name || null, tradeCode: t.batch?.tradeId || null, batch: t.batch?.name || null, iti: t.iti?.name || null, attendance: counted ? Math.round(100 * present / counted) : null, marks: avg, practicals: obs, modulesDone: progress.filter(p => p.pctComplete >= 100).length, education: t.education }
+}
+async function careerArtifacts(t) {
+  const rows = await prisma.companionArtifact.findMany({ where: { traineeId: t.id, kind: { in: ['career_profile', 'career_assessment', 'career_report', 'resume'] } } })
+  const get = k => { const r = rows.find(x => x.kind === k); return r ? J(r.content, {}) : null }
+  return { profile: get('career_profile') || {}, assessment: get('career_assessment'), report: get('career_report'), resume: get('resume') }
+}
+async function saveArtifact(t, kind, title, content) {
+  const ex = await prisma.companionArtifact.findFirst({ where: { traineeId: t.id, kind } })
+  if (ex) return prisma.companionArtifact.update({ where: { id: ex.id }, data: { title, content: JSON.stringify(content) } })
+  return prisma.companionArtifact.create({ data: { traineeId: t.id, kind, title, content: JSON.stringify(content) } })
+}
+async function careerContext(t, record) {
+  const code = record.tradeCode
+  const [roles, opps, courses, apps, docs, events] = await Promise.all([
+    code ? prisma.kbRole.findMany({ where: { programCode: code }, orderBy: { id: 'asc' } }) : [],
+    prisma.opportunity.findMany({ where: { clusterId: t.iti?.clusterId || undefined, status: 'live' }, include: { employer: { select: { name: true } } }, orderBy: { closingAt: 'asc' } }),
+    prisma.trade.findMany({ where: { kind: { in: ['short_term', 'new_specialist'] } }, select: { id: true, name: true, kind: true, status: true, roleDirection: true } }),
+    prisma.application.count({ where: { traineeId: t.id, stage: { notIn: ['declined', 'withdrawn', 'not_selected'] } } }),
+    prisma.traineeDocument.count({ where: { traineeId: t.id, state: 'verified' } }),
+    prisma.companionEvent.count({ where: { traineeId: t.id, stage: 'career' } }),
+  ])
+  const forTrade = opps.filter(o => { try { const tc = JSON.parse(o.tradeCodes || '[]'); return !code || tc.length === 0 || tc.includes(code) } catch { return true } }).map(o => ({ id: o.id, title: o.title, employer: o.employer.name, type: o.type, location: o.location, pay: o.wageMin ? `₹${o.wageMin.toLocaleString('en-IN')}–${(o.wageMax || o.wageMin).toLocaleString('en-IN')} / month` : o.stipend ? `₹${o.stipend.toLocaleString('en-IN')} stipend` : null, openings: o.openings - o.filled }))
+  return { roles: roles.map(r => ({ id: r.id, roleName: r.roleName, summary: r.summary, progression: r.progression, entryPathway: r.entryPathway, skillsToBuild: r.skillsToBuild, workplace: r.typicalWorkplace })), opportunities: forTrade, programmes: courses.map(c => ({ id: c.id, title: `${c.name} — ${c.kind === 'short_term' ? 'short programme' : 'new programme'}`, verified: c.status === 'approved', why: c.roleDirection })), activity: { applications: apps, docsVerified: docs, careerEvents: events, opportunitiesViewed: apps > 0 } }
+}
+
+r.get('/career', requireRole('trainee'), async (req, res, next) => {
+  try {
+    const t = await me(req)
+    const [record, art, ctx] = await Promise.all([careerRecord(t), careerArtifacts(t), null])
+    const c = await careerContext(t, record)
+    const profile = { ...art.profile, psychometric_profile: art.assessment || null }
+    const comp = completeness(profile, record)
+    const known = [
+      ...RECORD_FIELDS.map(f => ({ key: f.key, label: f.label, value: f.key === 'trade' ? [record.trade, record.batch].filter(Boolean).join(' · ') : f.key === 'attendance' ? (record.attendance != null ? `${record.attendance}% in 15 days` : null) : f.key === 'marks' ? (record.marks != null ? `${record.marks}% average` : null) : f.key === 'practicals' ? `${record.practicals} demonstrated · ${record.modulesDone} modules done` : record[f.key], source: 'record' })),
+      ...(art.assessment ? [{ key: 'assessment', label: 'Assessment', value: `Holland ${art.assessment.holland_code} · ${art.assessment.top.join(', ')}`, source: 'assessment' }] : []),
+      ...CHAT_FIELDS.map(f => ({ key: f.key, label: f.label, value: Array.isArray(art.profile[f.key]) ? art.profile[f.key].join(', ') : art.profile[f.key] || null, source: 'stated' })),
+    ]
+    res.json({ trainee: { name: t.name, trade: record.trade, tradeCode: record.tradeCode, batch: record.batch, iti: record.iti }, record, completeness: comp, known, probes: nextProbes(art.profile), assessment: art.assessment ? { holland_code: art.assessment.holland_code, top: art.assessment.top, completed_at: art.assessment.completed_at, items: art.assessment.items } : null, report: art.report ? { generatedAt: art.report.generatedAt, source: art.report.source } : null, roles: c.roles, opportunities: c.opportunities.slice(0, 5), readiness: readiness({ record, profile, activity: c.activity }) })
+  } catch (e) { next(e) }
+})
+
+r.get('/career/assessment', requireRole('trainee'), async (req, res) => {
+  res.json({ interest: INTEREST_ITEMS.map(i => ({ id: i.id, icon: i.icon, text: i.text })), personality: PERSONALITY_ITEMS.map(p => ({ id: p.id, left: p.left, right: p.right })), interestOptions: ['Not interested', 'Slightly', 'Moderately', 'Very', 'Extremely'], personalityOptions: ['Exactly like me', 'Somewhat like me', 'Not sure', 'Somewhat like me', 'Exactly like me'], minutes: 10 })
+})
+
+r.post('/career/assessment', requireRole('trainee'), async (req, res, next) => {
+  try {
+    const t = await me(req)
+    const body = z.object({ responses: z.array(z.object({ itemId: z.string(), value: z.number().int().min(1).max(5) })).min(10) }).parse(req.body)
+    const scored = scoreAssessment(body.responses)
+    await saveArtifact(t, 'career_assessment', 'Career assessment', scored)
+    await prisma.companionEvent.create({ data: { traineeId: t.id, itiId: t.itiId, stage: 'career', topic: `Assessment completed · Holland ${scored.holland_code}`, theme: 'aspiration', source: 'direct', signalCode: 'SIG-ASSESSMENT-DONE' } }).catch(() => null)
+    res.json({ assessment: scored })
+  } catch (e) { next(e) }
+})
+
+r.post('/career/profile', requireRole('trainee'), async (req, res, next) => {
+  try {
+    const t = await me(req)
+    const art = await careerArtifacts(t)
+    const body = z.object({ delta: z.record(z.any()) }).parse(req.body)
+    const merged = { ...art.profile }
+    for (const f of CHAT_FIELDS) if (f.key in body.delta) merged[f.key] = body.delta[f.key]
+    await saveArtifact(t, 'career_profile', 'Career profile', merged)
+    res.json({ profile: merged })
+  } catch (e) { next(e) }
+})
+
+r.post('/career/report', requireRole('trainee'), async (req, res, next) => {
+  try {
+    const t = await me(req)
+    const [record, art] = await Promise.all([careerRecord(t), careerArtifacts(t)])
+    const c = await careerContext(t, record)
+    const profile = { ...art.profile, psychometric_profile: art.assessment || null }
+    const comp = completeness(profile, record)
+    if (!comp.reportUnlocked && !req.body?.force) return res.status(409).json({ error: 'locked', completeness: comp })
+    const dims = readiness({ record, profile, activity: c.activity })
+    const report = await synthCareerReport({ record, profile, psych: art.assessment, roles: c.roles, opportunities: c.opportunities, programmes: c.programmes, readinessDims: dims, name: t.name })
+    await saveArtifact(t, 'career_report', report.title, report)
+    await prisma.companionEvent.create({ data: { traineeId: t.id, itiId: t.itiId, stage: 'career', topic: 'Career report generated', theme: 'aspiration', source: 'direct', signalCode: 'SIG-REPORT-DONE' } }).catch(() => null)
+    res.json({ report })
+  } catch (e) { next(e) }
+})
+
+r.get('/career/report', requireRole('trainee'), async (req, res, next) => {
+  try { const t = await me(req); const art = await careerArtifacts(t); res.json({ report: art.report || null }) } catch (e) { next(e) }
 })
 
 export default r

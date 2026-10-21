@@ -85,6 +85,10 @@ export default function AvatarCall({
   // turn-specific directives (e.g. "reply in English because that's
   // what the trainee just wrote").
   getExtraSystem,
+  // Optional: called with each card the server emits. Return true to
+  // consume it (not shown in the thread); the career canvas uses this for
+  // the assessment and report cards.
+  onCard,
 }) {
   const { showToast, meExtra, role, refreshThreads, openCanvas } = useApp()
   const { setActions } = useContext(CanvasHeaderActionsContext) || {}
@@ -358,7 +362,8 @@ export default function AvatarCall({
               // Card events from the server's card parser — append to the
           // current assistant bubble's `cards` list so ChatBubble can render
           // the rich component below the text.
-          if (p.card && typeof p.card === 'object') {
+          if (p.card && typeof p.card === 'object' && onCard && onCard(p.card) === true) { /* consumed by the parent */ }
+          else if (p.card && typeof p.card === 'object') {
             const idx = placeholderIndex
             setMessages(m => {
               const c = m.slice()
