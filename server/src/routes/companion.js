@@ -412,7 +412,7 @@ r.post('/career/report', requireRole('trainee'), async (req, res, next) => {
     const c = await careerContext(t, record)
     const profile = { ...art.profile, psychometric_profile: art.assessment || null }
     const comp = completeness(profile, record)
-    if (!comp.reportUnlocked) return res.status(409).json({ error: comp.assessmentDone ? 'locked' : 'assessment_required', completeness: comp })
+    if (!comp.reportUnlocked) return res.status(409).json({ error: 'assessment_required', completeness: comp })
     const dims = readiness({ record, profile, activity: c.activity })
     const report = await synthCareerReport({ record, profile, psych: art.assessment, roles: c.roles, opportunities: c.opportunities, programmes: c.programmes, readinessDims: dims, name: t.name })
     await saveArtifact(t, 'career_report', report.title, report)
