@@ -45,7 +45,7 @@ export function completeness(profile = {}, record = {}) {
   if (profile.psychometric_profile?.holland_code) parts.assessment = ASSESSMENT_WEIGHT
   for (const f of CHAT_FIELDS) { const v = profile[f.key]; if (Array.isArray(v) ? v.length : (v != null && String(v).trim())) parts.conversation += f.weight }
   const total = Math.round(parts.record + parts.assessment + parts.conversation)
-  return { ...parts, total, threshold: FULL_REPORT_THRESHOLD, reportUnlocked: total >= FULL_REPORT_THRESHOLD }
+  return { ...parts, total, threshold: FULL_REPORT_THRESHOLD, reportUnlocked: parts.assessment >= ASSESSMENT_WEIGHT && total >= FULL_REPORT_THRESHOLD, assessmentDone: parts.assessment >= ASSESSMENT_WEIGHT }
 }
 
 export function nextProbes(profile = {}, n = 3) {

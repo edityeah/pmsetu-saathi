@@ -26,8 +26,8 @@ export default function CareerCounsellorCanvas({ context }) {
   const c = d.completeness
   async function generate() {
     setBusy(true)
-    try { await api.careerReport(false); showToast({ kind: 'success', text: 'Your career report is ready.' }); reload(); setView('report') }
-    catch (e) { showToast({ kind: 'warn', text: /locked/.test(e.message) ? `A few more minutes of talking with Karuna unlocks the report (${c.total} of ${c.threshold}).` : e.message }) }
+    try { await api.careerReport(); showToast({ kind: 'success', text: 'Your career report is ready.' }); reload(); setView('report') }
+    catch (e) { showToast({ kind: 'warn', text: /assessment_required/.test(e.message) ? 'Take the psychometric assessment first; the report is built on it.' : /locked/.test(e.message) ? `A few more minutes of talking with Karuna unlocks the report (${c.total} of ${c.threshold}).` : e.message }) }
     finally { setBusy(false) }
   }
   function onCard(card) {
@@ -45,7 +45,7 @@ ROLE MAP for ${d.trainee.tradeCode || 'this trade'}: ${d.roles.map(r => `${r.rol
 LIVE OPPORTUNITIES for this trade: ${d.opportunities.map(o => `${o.title} at ${o.employer} (${o.type}${o.pay ? ', ' + o.pay : ''}, ${o.location}, ${o.openings} open)`).join(' | ') || 'none right now'}.
 READINESS: ${d.readiness.map(r => `${r.label} ${r.score}`).join(', ')}.`
   const chips = [
-    { title: 'Guide me from scratch', prompt: "I don't know what to do after this course. Guide me." },
+    { title: 'What should I focus on this month?', prompt: 'Looking at my attendance, marks, practicals and applications, what should I focus on this month to be placement-ready?' },
     { title: `Roles after ${d.trainee.tradeCode || 'my trade'}`, prompt: `${d.trainee.trade || 'Mere trade'} ke baad kaunse entry roles hain, kya kaam hota hai, aur Delhi NCR mein starting pay kya hoti hai?` },
     { title: 'Apprenticeship or job?', prompt: 'Apprenticeship pehle karun ya seedha wage job? Mere liye kya sahi hai?' },
     { title: 'Stay near home?', prompt: 'Ghar ke paas hi kaam karna hai. Kaunse live opportunities mere trade ke liye abhi hain?' },
@@ -70,8 +70,8 @@ READINESS: ${d.readiness.map(r => `${r.label} ${r.score}`).join(', ')}.`
         </div>
       )}
       <div className="flex-1 min-h-0">
-        <AvatarCall persona="career-counsellor" title="Karuna" intro={d.assessment ? 'Assessment ho gaya. Ab batao, aage kya sochte ho?' : 'Career ke baare mein jo bhi sawaal ho, pucho. Ya "guide me" bolo.'} useWebSearch={false} extraSystem={ctx} pendingPrompt={pending} threadId={context?.threadId} onCallStateChange={(s) => setOnCall(s !== 'idle')} onCard={onCard}
-          suggestions={['Guide me from scratch', 'Electrician ki starting wage kitni hoti hai?', 'Apprenticeship vs direct job?']} />
+        <AvatarCall persona="career-counsellor" title="Karuna" intro={d.assessment ? 'Assessment ho gaya. Ab batao, aage kya sochte ho?' : `${d.trainee.trade || 'Course'} ke baad kya karna hai, yeh saath mein plan karte hain. Pehla sawaal: course ke baad kaunse kaam ke baare mein socha hai?`} useWebSearch={false} extraSystem={ctx} pendingPrompt={pending} threadId={context?.threadId} onCallStateChange={(s) => setOnCall(s !== 'idle')} onCard={onCard}
+          suggestions={[`${d.trainee.trade || 'Mere trade'} ke baad sabse pehla job kya hota hai?`, 'Mujhe placement ke liye kya kami hai?', 'Apprenticeship vs direct job?']} />
       </div>
     </div>
   )
