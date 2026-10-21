@@ -78,7 +78,7 @@ async function wipe() {
     'chatMessage', 'chatThread', 'notification', 'otpCode',
     'followUp', 'employmentSpell', 'application', 'opportunity', 'employerFeedback', 'employer',
     'kbCourse', 'kbRole', 'kbInterest', 'kbTopic', 'supportContact', 'signalType', 'responseRule',
-    'companionArtifact', 'referral', 'companionEvent',
+    'traineeDocument', 'companionArtifact', 'referral', 'companionEvent',
     'supportAction', 'practicalObservation', 'practicalTask', 'markEntry', 'assessmentPlan', 'attendanceMark', 'session',
     'trainerAvailability', 'finding', 'visit', 'opsIssue', 'trainerAssignment', 'moduleProgress', 'courseModule', 'grievance',
     'trainee', 'batch', 'subject', 'machine', 'civilWork', 'procurementPackage', 'budgetLine', 'escrowDeposit', 'utilisationCertificate',
@@ -917,6 +917,21 @@ async function main() {
   // ══════════════════════════════════════════════════════════════════════
   // GRIEVANCES + NOTIFICATIONS
   // ══════════════════════════════════════════════════════════════════════
+  // ── Document vault: every trainee has a marksheet and Aadhaar from DigiLocker; photos and certificates vary.
+  console.log('[seed] document vault…')
+  const docRows = []
+  for (const t of traineeRows) {
+    const v = addDays(t.enrolledAt || daysAgo(60), rand(0, 10))
+    docRows.push({ traineeId: t.id, name: 'Class 10 marksheet', kind: 'marksheet', source: 'digilocker', state: 'verified', verifiedAt: v })
+    docRows.push({ traineeId: t.id, name: 'Aadhaar', kind: 'id', source: 'digilocker', state: 'verified', verifiedAt: v })
+    if (chance(0.7)) docRows.push({ traineeId: t.id, name: 'Passport photo', kind: 'photo', source: 'upload', state: 'self' })
+    const r = rnd()
+    if (r < 0.2) docRows.push({ traineeId: t.id, name: 'Caste / income certificate', kind: 'certificate', source: 'digilocker', state: 'verified', verifiedAt: addDays(v, 2) })
+    else if (r < 0.45) docRows.push({ traineeId: t.id, name: 'Caste / income certificate', kind: 'certificate', source: 'upload', state: 'awaiting', note: 'Uploaded; institute check pending' })
+    if (t.id === DEMO_STU) docRows.push({ traineeId: t.id, name: 'ITI bonafide letter', kind: 'letter', source: 'institute', state: 'verified', verifiedAt: daysAgo(12) })
+  }
+  await createMany('traineeDocument', docRows)
+
   console.log('[seed] grievances + notifications…')
   // Support & grievance cases: a queue per ITI with owners, priorities, SLA
   // due dates, a timeline and a response log. Pusa carries the demo load.

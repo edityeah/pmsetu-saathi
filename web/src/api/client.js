@@ -111,6 +111,14 @@ export const api = {
   saveArtifact:    (kind, body) => req('PUT', `/api/companion/artifacts/${kind}`, body),
   studentVoice:    (o) => req('GET', `/api/companion/voice${q(o)}`),
   companionKb:     (o) => req('GET', `/api/companion/kb${q(o)}`),
+  passport:        () => req('GET', '/api/companion/passport'),
+  documents:       () => req('GET', '/api/companion/documents'),
+  addDocument:     (body) => req('POST', '/api/companion/documents', body),
+  digilockerFetch: () => req('POST', '/api/companion/documents/digilocker', {}),
+  timetable:       (o) => req('GET', `/api/companion/timetable${q(o)}`),
+  marks:           () => req('GET', '/api/companion/marks'),
+  placementJourney:() => req('GET', '/api/companion/placement-journey'),
+  upskilling:      () => req('GET', '/api/companion/upskilling'),
 
   // Module D — placement
   employers:       () => req('GET', '/api/placement/employers'),

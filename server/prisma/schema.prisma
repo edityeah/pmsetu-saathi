@@ -442,6 +442,7 @@ model Trainee {
   companionEvents CompanionEvent[]
   referrals       Referral[]
   artifacts       CompanionArtifact[]
+  documents       TraineeDocument[]
   applications    Application[]
   spells          EmploymentSpell[]
 }
@@ -712,6 +713,19 @@ model Referral {
   response  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model TraineeDocument {
+  id         String    @id @default(cuid())
+  traineeId  String
+  trainee    Trainee   @relation(fields: [traineeId], references: [id])
+  name       String    // Class 10 marksheet, Aadhaar, Passport photo, Caste / income certificate, ITI bonafide letter, Appointment letter
+  kind       String    // marksheet | id | photo | certificate | letter | other
+  source     String    // digilocker | upload | institute
+  state      String    @default("self") // verified | self | awaiting | missing
+  verifiedAt DateTime?
+  note       String?
+  createdAt  DateTime  @default(now())
 }
 
 model CompanionArtifact {

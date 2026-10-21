@@ -4,6 +4,13 @@ import DailyOperationsCanvas from './DailyOperationsCanvas.jsx'
 import ClusterRegistryCanvas from './ClusterRegistryCanvas.jsx'
 import BudgetAnalyticsCanvas from './BudgetAnalyticsCanvas.jsx'
 import MyInstituteCanvas from './MyInstituteCanvas.jsx'
+import SkillPassportCanvas from './SkillPassportCanvas.jsx'
+import DocumentVaultCanvas from './DocumentVaultCanvas.jsx'
+import TimetableCanvas from './TimetableCanvas.jsx'
+import MarksAnalyticsCanvas from './MarksAnalyticsCanvas.jsx'
+import PlacementJourneyCanvas from './PlacementJourneyCanvas.jsx'
+import ResumeBuilderCanvas from './ResumeBuilderCanvas.jsx'
+import UpskillingCanvas from './UpskillingCanvas.jsx'
 import NotificationsCanvas from './NotificationsCanvas.jsx'
 import SaathiAssistantCanvas from './SaathiAssistantCanvas.jsx'
 import GrievanceCanvas from './GrievanceCanvas.jsx'
@@ -83,12 +90,20 @@ export const CANVAS_MODULES = {
   course_builder: CourseBuilderCanvas, ncvet_pipeline: NcvetPipelineCanvas, verification_queue: VerificationQueueCanvas, kpi_audit: KpiAuditCanvas, report_review: ReportReviewCanvas, state_scorecard: StateScorecardCanvas,
   notifications: NotificationsCanvas, saathi_assistant: SaathiAssistantCanvas,
   daily_operations: DailyOperationsCanvas, cluster_registry: ClusterRegistryCanvas, budget_analytics: BudgetAnalyticsCanvas, my_institute: MyInstituteCanvas,
+  skill_passport: SkillPassportCanvas, document_vault: DocumentVaultCanvas, timetable: TimetableCanvas, marks_analytics: MarksAnalyticsCanvas, placement_journey: PlacementJourneyCanvas, resume_builder: ResumeBuilderCanvas, upskilling: UpskillingCanvas,
   __default__: GenericCanvas,
 }
 
 const META = {
   daily_operations: { title: 'Daily Operations', subtitle: 'Attendance · assessment · infrastructure readiness · upcoming events', icon: '🗓️' },
   my_institute: { title: 'My Institute', subtitle: 'Profile · campus facilities · trade offerings · students · trainers · batches', icon: '🏫' },
+  skill_passport: { title: 'Skill Passport', subtitle: 'Verified skills · stated interests · certificates', icon: '🎖️' },
+  document_vault: { title: 'Document Vault', subtitle: 'DigiLocker · uploads · what is verified', icon: '🗂️' },
+  timetable: { title: 'Timetable', subtitle: "Today · this week · exams", icon: '🗓️' },
+  marks_analytics: { title: 'Marks & Analytics', subtitle: 'Every assessment with its source and date', icon: '📊' },
+  placement_journey: { title: 'My Placement KPIs', subtitle: 'Applications · interviews · offers', icon: '🔻' },
+  resume_builder: { title: 'Résumé Builder', subtitle: 'From your record and passport', icon: '📄' },
+  upskilling: { title: 'Future Upskilling', subtitle: 'Programmes and next roles after experience', icon: '📈' },
   cluster_registry: { title: 'Cluster Registry', subtitle: 'Student registry · enrolment analytics · trainer registry', icon: '🗂️' },
   budget_analytics: { title: 'Budget Analytics', subtitle: 'AOP utilisation against the approved allocation', icon: '🧾' },
   cluster_home: { title: 'Cluster Home', subtitle: 'SIP funding · Year-1 by category and ITI · this month · headline KPIs · risks', icon: '🏠' },

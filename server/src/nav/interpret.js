@@ -45,6 +45,18 @@ const KEYWORDS = {
   student_voice: ['student voice', 'students saying', 'barrier', 'barriers', 'complain', 'travel cost', 'themes'],
   grievances: ['grievance', 'grievances', 'complaint', 'complaints', 'शिकायत'],
   notifications: ['notification', 'notifications', 'alert', 'alerts', 'reminder', 'reminders'],
+  student_marks: ['marks', 'attendance', 'exam score', 'average', 'result', 'results', 'उपस्थिति', 'हाज़िरी', 'नंबर'],
+  student_timetable: ['timetable', 'class', 'classes', 'next exam', 'exam kab', 'schedule', 'today', 'aaj'],
+  student_placement: ['application', 'applications', 'offer', 'offers', 'interview', 'interviews', 'placement', 'job', 'naukri'],
+  student_documents: ['document', 'documents', 'aadhaar', 'marksheet', 'certificate', 'digilocker', 'vault'],
+  student_passport: ['passport', 'skills', 'skill'],
+  student_resume: ['resume', 'résumé', 'cv', 'biodata'],
+  student_interview: ['interview prep', 'mock interview', 'practise', 'practice interview'],
+  student_doubt: ['doubt', 'explain', 'samjhao', 'samajh', 'revise'],
+  student_courses: ['module', 'modules', 'lesson', 'lessons', 'my course', 'mera course'],
+  student_upskilling: ['upskill', 'upskilling', 'next role', 'next roles', 'short programme', 'diploma', 'aage kya'],
+  student_career: ['career', 'counsellor', 'which course', 'kaunsa course', 'trade choose'],
+  student_buddy: ['still working', 'changed job', 'problem at work', 'check-in', 'check in'],
 }
 const ITI_WORDS = /\b(pusa|shahdara|narela|rohini|okhla|pus|sha|nar|roh|okh)\b|पूसा|शाहदरा|नरेला|रोहिणी|ओखला/i
 const HI_ITI = { 'पूसा': 'Pusa', 'शाहदरा': 'Shahdara', 'नरेला': 'Narela', 'रोहिणी': 'Rohini', 'ओखला': 'Okhla' }
@@ -174,6 +186,12 @@ export function templateAnswer(target, data, itiName) {
       case 'student_voice': return `${data.totals.events} companion events from ${data.totals.students} students in ${data.days} days; top themes ${(data.themes || []).slice(0, 3).map(t => `${t.theme} (${t.students})`).join(', ')}.`
       case 'grievances': return `${where}${data.totals.open} open cases, ${data.totals.overdue} overdue, ${data.totals.escalated} escalated, ${data.totals.resolvedThisMonth} resolved this month${data.openByCategory?.length ? `; most are ${data.openByCategory[0].category.replace(/_/g, ' ')} (${data.openByCategory[0].n})` : ''}.`
       case 'notifications': return `${data.total} notifications, ${data.unread} unread.`
+      case 'student_marks': return `Attendance ${data.attendance.pct ?? '—'}% in the last ${data.attendance.windowDays} days (minimum ${data.attendance.threshold}%)${data.average != null ? `; average ${data.average}% across your assessments` : ''}${data.lastExam ? `; last exam ${data.lastExam.title} ${data.lastExam.pct}%` : ''}${data.nextExam ? `; next exam ${data.nextExam.title} in ${data.nextExam.daysLeft} days` : ''}.`
+      case 'student_timetable': return data.enrolled ? `Today: ${data.today.map(s => `${s.startTime} ${s.subject}${s.room ? ' in ' + s.room : ''}`).join(', ') || 'no sessions'}. ${data.thisWeek.classes} classes this week${data.thisWeek.nextExam ? `; next exam ${data.thisWeek.nextExam.title} in ${data.thisWeek.nextExam.daysLeft} days` : ''}.` : 'You are not enrolled in a batch yet.'
+      case 'student_placement': return `${data.kpis.applications} applications, ${data.kpis.interviews} interviewed, ${data.kpis.offers} offers, ${data.kpis.joined} joined; résumé ${data.kpis.resumePct}% complete.`
+      case 'student_documents': return `${data.counts.verified} verified documents, ${data.counts.self} self uploaded, ${data.counts.awaiting} awaiting institute check, ${data.counts.missing} not added yet.`
+      case 'student_passport': return `Skill passport ${data.pct}% complete: ${data.verified.length} verified skills${data.verified.length ? ` (${data.verified.slice(0, 3).join(', ')})` : ''}, ${data.stated.length} stated interests.`
+      case 'student_upskilling': return `${data.programmes.length} programmes and ${data.nextRoles.length} next roles for your trade${data.current ? `; you are working as ${data.current.role} at ${data.current.employer}` : ''}.`
       default: return null
     }
   } catch { return null }

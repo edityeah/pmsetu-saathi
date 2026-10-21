@@ -14,7 +14,7 @@ export default function PhoneEntryPage() {
 
   useEffect(() => { api.demoUsers().then(r => setDemoUsers(r.users || [])).catch(() => {}) }, [])
 
-  const onChange = e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 8))
+  const onChange = e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
   const canProceed = phone.length === 10
 
   async function submit() {

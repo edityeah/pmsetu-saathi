@@ -39,6 +39,19 @@ const SECTION_TARGETS = [
   // 5 · Placement analytics
   { id: 'placement_analytics', canvas: 'placement_pipeline', tab: null, label: 'Placement analytics', roles: ANALYST_P, params: ['iti', 'trade'], say: ['placement pipeline', 'how many joined', 'placement funnel', 'verified placements', 'retention after joining', 'placements from Shahdara'] },
   { id: 'employer_directory', canvas: 'employer_register', tab: null, label: 'Employer directory', roles: ['spv_ceo', 'iti_principal', 'employer'], params: [], say: ['employer directory', 'which employers are active', 'MoU status', 'live opportunities', 'who is hiring welders'] },
+  // Student (trainee) sections
+  { id: 'student_career', canvas: 'career_counsellor', tab: null, label: 'Career counsellor', roles: ['trainee'], params: [], say: ['career counsellor', 'which course suits me', 'what jobs after my trade', 'kaunsa course sahi hai'] },
+  { id: 'student_passport', canvas: 'skill_passport', tab: null, label: 'Skill passport', roles: ['trainee'], params: [], say: ['skill passport', 'my verified skills', 'meri skills'] },
+  { id: 'student_documents', canvas: 'document_vault', tab: null, label: 'Document vault', roles: ['trainee'], params: [], say: ['document vault', 'my documents', 'which documents are verified', 'aadhaar marksheet', 'documents chahiye'] },
+  { id: 'student_timetable', canvas: 'timetable', tab: null, label: 'Timetable', roles: ['trainee'], params: ['date'], say: ['timetable', "today's classes", 'aaj kaunsi class hai', 'when is my next exam', 'this week'] },
+  { id: 'student_courses', canvas: 'my_course', tab: null, label: 'My courses', roles: ['trainee'], params: [], say: ['my course', 'my modules', 'continue learning', 'mera course'] },
+  { id: 'student_marks', canvas: 'marks_analytics', tab: null, label: 'Marks and analytics', roles: ['trainee'], params: [], say: ['my marks', 'my attendance', 'meri attendance kaisi hai', 'last exam score', 'average marks', 'mere marks'] },
+  { id: 'student_doubt', canvas: 'doubt_solver', tab: null, label: 'AI doubt solver', roles: ['trainee'], params: [], say: ['I have a doubt', 'explain this topic', 'samjhao', 'help me revise'] },
+  { id: 'student_interview', canvas: 'job_prep', tab: null, label: 'Interview prep', roles: ['trainee'], params: [], say: ['interview prep', 'practise for my interview', 'mock interview', 'interview ke sawaal'] },
+  { id: 'student_resume', canvas: 'resume_builder', tab: null, label: 'Résumé builder', roles: ['trainee'], params: [], say: ['résumé', 'resume builder', 'build my cv', 'mera resume'] },
+  { id: 'student_placement', canvas: 'placement_journey', tab: null, label: 'My placement KPIs', roles: ['trainee'], params: [], say: ['my applications', 'placement journey', 'did I get the job', 'my offers', 'meri application kahan tak pahunchi', 'interviews'] },
+  { id: 'student_buddy', canvas: 'on_job_buddy', tab: null, label: 'Retention check', roles: ['trainee'], params: [], say: ['check in about my job', 'I am still working', 'problem at work', 'retention check'] },
+  { id: 'student_upskilling', canvas: 'upskilling', tab: null, label: 'Future upskilling and next roles', roles: ['trainee'], params: [], say: ['upskilling', 'next roles', 'what course after this job', 'short programme', 'aage kya karun'] },
   // 6 · Support and alerts
   { id: 'student_voice', canvas: 'student_voice', tab: null, label: 'Student voice', roles: ['spv_ceo', 'iti_principal', 'ima_officer'], params: ['iti'], say: ['student voice', 'what are students saying', 'barriers students face', 'travel cost complaints'] },
   { id: 'grievances', canvas: 'grievances_admin', tab: null, label: 'Grievances', roles: ['spv_ceo', 'iti_principal'], params: ['iti'], say: ['grievances', 'open complaints', 'grievance register', 'support cases', 'which cases are overdue', 'escalated cases'] },
@@ -63,7 +76,7 @@ const LEGACY_TARGETS = Object.entries(ACTIONS).filter(([id, a]) => id !== 'ANSWE
   let roles = a.roles
   if (SECTION_CANVASES.has(a.module)) roles = roles.filter(r => r !== 'spv_ceo' && r !== 'iti_principal' && r !== 'ima_officer' && r !== 'state_pmu')
   // The CEO and the principal navigate only within their sections.
-  roles = roles.filter(r => r !== 'spv_ceo' && r !== 'iti_principal')
+  roles = roles.filter(r => r !== 'spv_ceo' && r !== 'iti_principal' && r !== 'trainee')
   return { id: a.module, canvas: a.module, tab: null, label: a.description.split(':')[0], roles, params: ['iti'], say: LEGACY_SAY[a.module] || [], legacy: true, actionId: id }
 }).filter(t => t.roles.length)
 

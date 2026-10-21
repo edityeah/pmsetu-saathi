@@ -148,25 +148,30 @@ async function trainer(user) {
 async function trainee(user) {
   const t = await traineeFor(user)
   if (!t) return { title: 'No student record', items: [] }
-  const since = daysAgo(15)
-  const [marks, progress, apps, spells, support] = await Promise.all([
-    prisma.attendanceMark.findMany({ where: { traineeId: t.id, session: { date: { gte: since } } }, select: { status: true } }),
-    prisma.moduleProgress.findMany({ where: { traineeId: t.id }, include: { module: { select: { title: true, hours: true } } } }),
-    prisma.application.findMany({ where: { traineeId: t.id }, select: { stage: true } }),
-    prisma.employmentSpell.findMany({ where: { traineeId: t.id, state: 'active' }, select: { hoursLogged: true, hoursTarget: true, type: true } }),
-    prisma.supportAction.count({ where: { traineeId: t.id, state: { not: 'closed' } } }),
+  const today = todayUTC(), since = daysAgo(15)
+  const [marks, entries, plans, apps, docs, artifacts] = await Promise.all([
+    prisma.attendanceMark.findMany({ where: { traineeId: t.id, session: { date: { gte: since, lte: today }, attendanceState: { not: 'not_reported' } } }, select: { status: true } }),
+    prisma.markEntry.findMany({ where: { traineeId: t.id, marks: { not: null } }, include: { assessment: { select: { title: true, maxMarks: true, date: true } } } }),
+    t.batchId ? prisma.assessmentPlan.findMany({ where: { batchId: t.batchId, state: 'planned', date: { gte: today } }, orderBy: { date: 'asc' }, take: 1 }) : [],
+    prisma.application.findMany({ where: { traineeId: t.id } }),
+    prisma.traineeDocument.findMany({ where: { traineeId: t.id } }),
+    prisma.companionArtifact.findMany({ where: { traineeId: t.id } }),
   ])
-  const present = marks.filter(m => m.status === 'present' || m.status === 'late').length
-  const att = pct(present, marks.length)
-  const cur = progress.sort((a, b) => (b.lastActivityAt?.getTime() || 0) - (a.lastActivityAt?.getTime() || 0))[0]
-  const active = apps.filter(a => !['declined', 'withdrawn', 'not_selected'].includes(a.stage)).length
-  const spell = spells[0]
+  const present = marks.filter(m => m.status === 'present' || m.status === 'late').length, counted = marks.filter(m => ['present', 'late', 'absent'].includes(m.status)).length
+  const att = pct(present, counted)
+  const last = [...entries].sort((a, b) => b.assessment.date - a.assessment.date)[0] || null
+  const lastPct = last ? pct(last.marks, last.assessment.maxMarks) : null
+  const next = plans[0] || null, daysLeft = next ? Math.round((next.date - today) / 86400000) : null
+  const live = apps.filter(a => !['declined', 'withdrawn', 'not_selected'].includes(a.stage))
+  const offers = live.filter(a => ['offered', 'joined', 'follow_up'].includes(a.stage)).length
+  const verifiedDocs = docs.filter(d => d.state === 'verified').length
+  const passport = Math.min(100, (docs.some(d => d.kind === 'id' && d.state === 'verified') ? 15 : 0) + (artifacts.some(a => a.kind === 'resume') ? 15 : 0) + Math.min(15, verifiedDocs * 8) + 20)
   return { title: t.name, items: [
-    item({ key: 'att', label: 'My attendance', value: att == null ? '—' : `${att}%`, pct: att, target: 'last 15 days', hint: `${present} of ${marks.length} sessions`, tone: att >= 85 ? 'emerald' : 'amber', canvas: 'what_i_know' }),
-    item({ key: 'module', label: 'Current module', value: cur ? `${cur.pctComplete}%` : '—', pct: cur?.pctComplete ?? null, target: cur?.module?.title || null, hint: cur ? `${cur.hoursLogged} of ${cur.module.hours} hours` : 'no module started', tone: 'indigo', canvas: 'my_plan' }),
-    item({ key: 'apps', label: 'My applications', value: num(active), hint: `${apps.filter(a => ['joined', 'follow_up'].includes(a.stage)).length} joined`, tone: 'violet', canvas: 'applications' }),
-    item({ key: 'ojt', label: spell ? (spell.type === 'ojt' ? 'OJT hours' : 'Work hours') : 'OJT', value: spell ? `${spell.hoursLogged}` : '—', pct: spell ? pct(spell.hoursLogged, spell.hoursTarget) : null, target: spell?.hoursTarget ? `of ${spell.hoursTarget} h` : null, hint: spell ? 'logged so far' : 'no placement yet', tone: 'teal', canvas: 'ojt_logbook' }),
-    item({ key: 'help', label: 'Help in progress', value: num(support), hint: 'support actions open for you', tone: support ? 'rose' : 'emerald', canvas: 'help_from_institute' }),
+    item({ key: 'att', label: 'Attendance', value: att == null ? '—' : `${att}%`, pct: att, target: 'last 15 days', hint: att == null ? 'no sessions reported yet' : att >= 75 ? `above the 75% minimum · ${present} of ${counted}` : `below the 75% minimum · ${present} of ${counted}`, tone: att == null ? 'amber' : att >= 75 ? 'emerald' : 'rose', canvas: 'marks_analytics', open: { canvas: 'timetable' } }),
+    item({ key: 'exam', label: 'Last exam', value: lastPct == null ? '—' : `${lastPct}%`, pct: lastPct, target: last ? last.assessment.title : 'no marks yet', hint: last ? `${last.marks} of ${last.assessment.maxMarks} · ${last.assessment.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : '', tone: 'violet', canvas: 'marks_analytics', open: { canvas: 'marks_analytics' } }),
+    item({ key: 'next', label: 'Next exam', value: next ? `${daysLeft} day${daysLeft === 1 ? '' : 's'}` : '—', target: next ? next.title : 'nothing scheduled', hint: next ? next.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '', tone: daysLeft != null && daysLeft <= 7 ? 'amber' : 'sky', canvas: 'timetable', open: { canvas: 'timetable' } }),
+    item({ key: 'apps', label: 'Applications', value: num(live.length), target: `${offers} offer${offers === 1 ? '' : 's'}`, hint: `${live.filter(a => a.stage === 'interviewed').length} interviewed · ${live.filter(a => ['joined', 'follow_up'].includes(a.stage)).length} joined`, tone: 'emerald', canvas: 'placement_journey', open: { canvas: 'placement_journey' } }),
+    item({ key: 'passport', label: 'Skill passport', value: `${passport}%`, pct: passport, target: 'complete', hint: `${verifiedDocs} verified documents`, tone: 'amber', canvas: 'skill_passport', open: { canvas: 'skill_passport' } }),
   ] }
 }
 
