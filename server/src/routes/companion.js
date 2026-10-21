@@ -371,7 +371,7 @@ r.get('/career', requireRole('trainee'), async (req, res, next) => {
     const comp = completeness(profile, record)
     const known = [
       ...RECORD_FIELDS.map(f => ({ key: f.key, label: f.label, value: f.key === 'trade' ? [record.trade, record.batch].filter(Boolean).join(' · ') : f.key === 'attendance' ? (record.attendance != null ? `${record.attendance}% in 15 days` : null) : f.key === 'marks' ? (record.marks != null ? `${record.marks}% average` : null) : f.key === 'practicals' ? `${record.practicals} demonstrated · ${record.modulesDone} modules done` : record[f.key], source: 'record' })),
-      ...(art.assessment ? [{ key: 'assessment', label: 'Assessment', value: `Holland ${art.assessment.holland_code} · ${art.assessment.top.join(', ')}`, source: 'assessment' }] : []),
+      ...(art.assessment ? [{ key: 'assessment', label: 'Psychometric assessment', value: `Completed · leans ${art.assessment.top.join(' and ')}`, source: 'assessment' }] : []),
       ...CHAT_FIELDS.map(f => ({ key: f.key, label: f.label, value: Array.isArray(art.profile[f.key]) ? art.profile[f.key].join(', ') : art.profile[f.key] || null, source: 'stated' })),
     ]
     res.json({ trainee: { name: t.name, trade: record.trade, tradeCode: record.tradeCode, batch: record.batch, iti: record.iti }, record, completeness: comp, known, probes: nextProbes(art.profile), assessment: art.assessment ? { holland_code: art.assessment.holland_code, top: art.assessment.top, completed_at: art.assessment.completed_at, items: art.assessment.items } : null, report: art.report ? { generatedAt: art.report.generatedAt, source: art.report.source } : null, roles: c.roles, opportunities: c.opportunities.slice(0, 5), readiness: readiness({ record, profile, activity: c.activity }) })
@@ -388,7 +388,7 @@ r.post('/career/assessment', requireRole('trainee'), async (req, res, next) => {
     const body = z.object({ responses: z.array(z.object({ itemId: z.string(), value: z.number().int().min(1).max(5) })).min(10) }).parse(req.body)
     const scored = scoreAssessment(body.responses)
     await saveArtifact(t, 'career_assessment', 'Career assessment', scored)
-    await prisma.companionEvent.create({ data: { traineeId: t.id, itiId: t.itiId, stage: 'career', topic: `Assessment completed · Holland ${scored.holland_code}`, theme: 'aspiration', source: 'direct', signalCode: 'SIG-ASSESSMENT-DONE' } }).catch(() => null)
+    await prisma.companionEvent.create({ data: { traineeId: t.id, itiId: t.itiId, stage: 'career', topic: 'Psychometric assessment completed', theme: 'aspiration', source: 'direct', signalCode: 'SIG-ASSESSMENT-DONE' } }).catch(() => null)
     res.json({ assessment: scored })
   } catch (e) { next(e) }
 })
