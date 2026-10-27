@@ -143,7 +143,7 @@ function TimelineStrip({ events }) {
 function AttendanceTab(b) {
   const [time, setTime] = useState('all')
   const { data: d } = useLoad(() => api.dailyAttendance({ ...b.common, time }), [b.date, b.scope, b.trade, b.batch, time])
-  useSaathiContext(d ? `Attendance on ${fmtDate(d.date)}${d.fallback ? ' (latest reported day)' : ''}: rate ${d.totals.attendancePct}% (${d.totals.attended} of ${d.totals.expected} learner-sessions), coverage ${d.totals.reported} of ${d.totals.scheduled} registers, ${d.totals.pending} pending; present ${d.totals.present}, late ${d.totals.late}, absent ${d.totals.absent}, excused ${d.totals.excused}; by ITI ${d.byIti.map(i => `${i.name} ${i.attendancePct}% (${i.reported}/${i.scheduled})`).join(', ')}.` : '', ['Which ITI has lower attendance today?', 'Which registers are still pending?'])
+  useSaathiContext(d ? `Attendance on ${fmtDate(d.date)}${d.fallback ? ' (latest reported day)' : ''}: rate ${d.totals.attendancePct}% (${d.totals.attended} present or late of ${d.totals.counted ?? d.totals.expected} counted learner-sessions; ${d.totals.excused} excused are not counted), coverage ${d.totals.reported} of ${d.totals.scheduled} registers, ${d.totals.pending} pending; present ${d.totals.present}, late ${d.totals.late}, absent ${d.totals.absent}, excused ${d.totals.excused}; by ITI ${d.byIti.map(i => `${i.name} ${i.attendancePct}% (${i.reported}/${i.scheduled})`).join(', ')}.` : '', ['Which ITI has lower attendance today?', 'Which registers are still pending?'])
   const filters = [...baseFilters(b, d?.options), { label: 'Session', value: time, options: [{ id: 'all', label: 'All sessions' }, ...((d?.options.times || []).map(t => ({ id: t, label: t })))], onChange: setTime }]
   if (!d) return <><FilterBar items={filters} /><Loading /></>
   const t = d.totals
@@ -152,7 +152,7 @@ function AttendanceTab(b) {
     <div className="p-4 space-y-4">
       {d.fallback && <NoFeed>No attendance has been reported for {fmtDate(d.requestedDate)} yet. Showing the latest reported day, <b>{fmtDate(d.date)}</b>.</NoFeed>}
       <StatGrid>
-        <Stat label="Attendance rate" value={fmtPct(t.attendancePct)} sub="present + late ÷ expected learners in submitted registers" tone={t.attendancePct >= 85 ? 'emerald' : 'amber'} />
+        <Stat label="Attendance rate" value={fmtPct(t.attendancePct)} sub="present + late ÷ present + late + absent, as on the headline; excused not counted" tone={t.attendancePct >= 85 ? 'emerald' : 'amber'} />
         <Stat label="Reporting coverage" value={`${t.reported} of ${t.scheduled}`} sub="sessions with a register" tone={t.coveragePct >= 90 ? 'emerald' : 'amber'} />
         <Stat label="Attended learner-sessions" value={`${fmtNum(t.attended)} of ${fmtNum(t.expected)}`} sub={`${t.rosterIssues} roster issues flagged`} tone="indigo" />
         <Stat label="Registers pending" value={t.pending} sub="scheduled, not yet submitted" tone={t.pending ? 'amber' : 'emerald'} />

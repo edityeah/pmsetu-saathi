@@ -40,7 +40,7 @@ async function attendanceDay(sc, requested, time) {
   const m = Object.fromEntries(marks.map(x => [x.status, x._count]))
   const present = (m.present || 0), late = (m.late || 0), absent = (m.absent || 0), excused = (m.excused || 0)
   const expected = present + late + absent + excused
-  return { date, fallback, sessions, rep, totals: { scheduled: sessions.length, reported: rep.length, pending: sessions.length - rep.length, coveragePct: pct(rep.length, sessions.length), attendancePct: pct(present + late, expected), attended: present + late, expected, present, late, absent, excused, rosterIssues: m.roster_issue || 0 } }
+  return { date, fallback, sessions, rep, totals: { scheduled: sessions.length, reported: rep.length, pending: sessions.length - rep.length, coveragePct: pct(rep.length, sessions.length), attendancePct: pct(present + late, present + late + absent), attended: present + late, expected, counted: present + late + absent, present, late, absent, excused, rosterIssues: m.roster_issue || 0 } }
 }
 
 r.get('/attendance', async (req, res, next) => {
