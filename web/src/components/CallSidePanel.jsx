@@ -4,20 +4,21 @@
 // call, the live transcript (both sides, the agent's reply streaming in),
 // mute, stop sharing and end, and a text box that goes into the same call.
 import { useEffect, useRef, useState } from 'react'
-import { Mic, MicOff, PhoneOff, ScreenShareOff, Send, Sparkles } from 'lucide-react'
+import { Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Send, Sparkles } from 'lucide-react'
 import { useCall } from '../context/CallProvider.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import ChatBubble from './ChatBubble.jsx'
 
 export default function CallSidePanel() {
-  const { activeCall, transcript = [], toggleMute, endCall, stopScreenShare, sendText } = useCall() || {}
+  const { activeCall, transcript = [], toggleMute, endCall, startScreenShare, stopScreenShare, sendText } = useCall() || {}
   const { openCanvas } = useApp() || {}
   const [input, setInput] = useState('')
   const endRef = useRef(null)
   useEffect(() => { try { endRef.current?.scrollIntoView({ block: 'end' }) } catch {} }, [transcript.length, transcript[transcript.length - 1]?.text?.length])
   if (!activeCall) return null
   const name = (activeCall.title || activeCall.persona || 'Saathi').split(' · ')[0]
-  const status = activeCall.state === 'connecting' ? 'Connecting…' : activeCall.state === 'error' ? (activeCall.error || 'Call error') : activeCall.muted ? 'Muted · sharing screen' : 'Listening · sharing screen'
+  const sharing = !!activeCall.screenSharing
+  const status = activeCall.state === 'connecting' ? 'Connecting…' : activeCall.state === 'error' ? (activeCall.error || 'Call error') : `${activeCall.muted ? 'Muted' : 'Listening'}${sharing ? ' · sharing screen' : ''}`
   function submit(e) { e?.preventDefault?.(); const t = input.trim(); if (!t) return; setInput(''); sendText?.(t) }
   return (
     <aside className="hidden md:flex w-1/2 max-w-[640px] min-w-[360px] flex-shrink-0 flex-col border-l border-bdr-strong bg-white">
@@ -31,13 +32,13 @@ export default function CallSidePanel() {
           <div className="text-[11px] text-txt-secondary truncate inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />{status}</div>
         </div>
         <button onClick={toggleMute} title={activeCall.muted ? 'Unmute' : 'Mute'} className={`w-9 h-9 rounded-full flex items-center justify-center ${activeCall.muted ? 'bg-danger text-white' : 'bg-white border border-bdr-light text-txt-primary hover:bg-slate-50'}`}>{activeCall.muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}</button>
-        <button onClick={stopScreenShare} title="Stop sharing" className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90"><ScreenShareOff className="w-4 h-4" /></button>
+        <button onClick={() => sharing ? stopScreenShare?.() : startScreenShare?.()} title={sharing ? 'Stop sharing' : 'Share screen'} className={`w-9 h-9 rounded-full flex items-center justify-center ${sharing ? 'bg-primary text-white hover:opacity-90' : 'bg-white border border-bdr-light text-txt-primary hover:bg-slate-50'}`}>{sharing ? <ScreenShareOff className="w-4 h-4" /> : <ScreenShare className="w-4 h-4" />}</button>
         <button onClick={endCall} title="End call" className="inline-flex items-center gap-1 px-3 py-2 rounded-pill bg-danger text-white font-bold text-[12px] hover:bg-danger/90"><PhoneOff className="w-3.5 h-3.5" /> End</button>
       </header>
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-2.5">
         <div className="rounded-2xl border border-bdr-light bg-gradient-to-b from-primary-light/30 to-white p-3 text-[12px] text-txt-secondary">
-          <div className="text-[11px] uppercase tracking-wider font-bold text-primary mb-1">Screen share is on</div>
-          {name} sees the screen on the left and answers from its live figures. Ask about anything you see; when another screen is relevant an Open button appears here and you choose when to open it.
+          <div className="text-[11px] uppercase tracking-wider font-bold text-primary mb-1">{sharing ? 'Screen share is on' : 'On a call'}</div>
+          {sharing ? `${name} sees the screen on the left and answers from its live figures. Ask about anything you see; when another screen is relevant an Open button appears here and you choose when to open it.` : `${name} knows what is open on the left. Ask anything; answers, Open buttons and follow-ups appear here, and the screen you open sits on the left.`}
         </div>
         {transcript.length === 0 && <div className="text-center py-6 text-txt-tertiary text-[12px]">Speak, or type below. What you both say appears here.</div>}
         {transcript.map((m, i) => (

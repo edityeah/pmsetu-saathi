@@ -13,13 +13,7 @@ import { useApp } from '../context/AppContext.jsx'
 import { useCall } from '../context/CallProvider.jsx'
 import { Phone, Mic, MicOff, PhoneOff, Maximize2, Sparkles } from 'lucide-react'
 
-// Map server-side persona slug → canvas type registered in modules/index.js.
-// Keep in sync with PERSONA_TO_CANVAS in AppContext.jsx.
-const PERSONA_TO_CANVAS = {
-  'career-counsellor':  'career_counsellor',
-  'learning-assistant': 'doubt_solver',
-  'general':            'saathi_assistant',
-}
+import { PERSONA_TO_CANVAS, callSplit } from '../utils/callView.js'
 
 export default function FloatingCallPill() {
   const { canvas, openCanvas } = useApp() || {}
@@ -32,8 +26,8 @@ export default function FloatingCallPill() {
   // If user is already viewing the call's canvas, the AvatarCall in there is
   // already showing the full call UI — don't double up with the pill.
   if (onMatchingCanvas) return null
-  // While the screen is shared the call sits in the split view on desktop.
-  const splitView = activeCall.screenSharing && activeCall.mode === 'voice'
+  // On desktop the call panel beside the screen already shows the call.
+  const splitView = callSplit(activeCall, canvas)
 
   const status =
     activeCall.state === 'connecting' ? 'Connecting…' :

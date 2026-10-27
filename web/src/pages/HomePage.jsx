@@ -17,6 +17,7 @@ import CanvasPanel from '../canvas/CanvasPanel.jsx'
 import FloatingCallPill from '../components/FloatingCallPill.jsx'
 import CallSidePanel from '../components/CallSidePanel.jsx'
 import { useCall } from '../context/CallProvider.jsx'
+import { callSplit } from '../utils/callView.js'
 
 const TONES = {
   indigo:  { bg: 'bg-indigo-100',  fg: 'text-indigo-600',  ring: 'hover:border-indigo-300' },
@@ -41,10 +42,11 @@ export default function HomePage() {
   const chips = suggestionsFor(ctx.role)
   const threads = ctx.threads || []
   const mobile = homeLayoutFor(ctx.role) === 'mobile'
-  // Screen share on a voice call splits the main area: the dashboard the
-  // agent opens on the left, the live conversation on the right.
+  // A live voice call on any screen other than its own chat splits the main
+  // area: the screen (or home) on the left, the live conversation with its
+  // Open buttons and follow-ups on the right. Screen share uses the same view.
   const { activeCall } = useCall() || {}
-  const split = !!(activeCall && activeCall.mode === 'voice' && activeCall.screenSharing)
+  const split = callSplit(activeCall, ctx.canvas)
 
   const now = Date.now(), DAY = 86400000
   const todayT = threads.filter(t => now - new Date(t.updatedAt).getTime() < DAY)
