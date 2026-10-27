@@ -74,6 +74,8 @@ export function CallProvider({ children }) {
   const lastDescriptionRef = useRef('')
   const lastScreenKeyRef = useRef('')
   const unsubScreenRef = useRef(null)
+  const sendScreenRef = useRef(null)       // latest sendScreen, so screen share can re-send on start
+  const lastFrameSigRef = useRef('')       // coarse signature of the last described frame
   const handlersRef       = useRef({})         // current view's onTranscript / onDelta / onDone
   const videoElementRef   = useRef(null)       // <video> for Anam (provided by current view)
   const userRoleRef       = useRef(null)
@@ -152,8 +154,9 @@ export function CallProvider({ children }) {
       if (key === lastScreenKeyRef.current) return
       lastScreenKeyRef.current = key
       if (!sc) { realtimeRef.current.sendContext?.('[SCREEN DATA] The user closed the screen; nothing is open now.'); return }
-      realtimeRef.current.sendContext?.(`[SCREEN DATA] The user is looking at "${sc.title}"${sc.tab ? ` · ${sc.tab} tab` : ''}. The figures on that screen right now: ${sc.context || 'the screen has not published its data yet'}. When the user asks about what they see, use these exact figures; never estimate from the picture.`)
+      realtimeRef.current.sendContext?.(`[SCREEN DATA] The user is looking at "${sc.title}"${sc.tab ? ` · ${sc.tab} tab` : ''}. The figures on that screen right now: ${sc.context || 'the screen has not published its data yet; use the [SCREEN] note for what is visible'}. When the user asks about what they see, use these exact figures in this screen's scope; do not call lookup_data for them and never estimate from the picture.`)
     }
+    sendScreenRef.current = sendScreen
     unsubScreenRef.current?.()
     unsubScreenRef.current = screenStore.subscribe(sendScreen)
     setTimeout(() => sendScreen(screenStore.current), 1500)
@@ -344,7 +347,7 @@ Rules: answer about what is on screen from these notes without calling a tool un
     patchCall({ screenSharing: false })
   }
 
-  async function captureAndDescribe() {
+  async function captureAndDescribe(force = false) {
     const stream = screenStreamRef.current
     if (!stream || !realtimeRef.current) return
     let video = screenVideoRef.current
@@ -383,6 +386,19 @@ Rules: answer about what is on screen from these notes without calling a tool un
     const canvas = document.createElement('canvas')
     canvas.width = w; canvas.height = h
     canvas.getContext('2d').drawImage(video, 0, 0, w, h)
+    // Only describe a frame that differs from the last one described: a
+    // coarse 24x16 greyscale signature. A static screen costs nothing and the
+    // agent is not flooded with identical notes; scrolling or a new screen
+    // triggers a fresh description within a tick.
+    try {
+      const tiny = document.createElement('canvas'); tiny.width = 24; tiny.height = 16
+      tiny.getContext('2d').drawImage(canvas, 0, 0, 24, 16)
+      const px = tiny.getContext('2d').getImageData(0, 0, 24, 16).data
+      let sig = ''
+      for (let i = 0; i < px.length; i += 4) sig += String.fromCharCode(97 + Math.floor((px[i] + px[i + 1] + px[i + 2]) / 3 / 10.3))
+      if (sig === lastFrameSigRef.current && !force) return
+      lastFrameSigRef.current = sig
+    } catch {}
     const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
     try {
       const sc = screenStore.current
@@ -408,15 +424,21 @@ Rules: answer about what is on screen from these notes without calling a tool un
   const startScreenShare = useCallback(async () => {
     if (!realtimeRef.current) return false
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false })
+      // Offer this tab first in the picker so the agent sees Saathi, not
+      // another window; the user can still pick a window or the whole screen.
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5, displaySurface: 'browser' }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'include' })
       screenStreamRef.current = stream
       patchCall({ screenSharing: true })
       stream.getVideoTracks()[0].onended = () => stopScreenShareInternal()
       // Announce vision is ON to the model BEFORE the first frame arrives so
-      // any user question in the gap gets the right framing.
+      // any user question in the gap gets the right framing, then re-send
+      // the open screen's figures so the two notes arrive together.
       try { realtimeRef.current?.sendContext?.(VISION_ON) } catch {}
-      setTimeout(() => captureAndDescribe(), 600)
-      screenIntervalRef.current = setInterval(captureAndDescribe, 5000)
+      lastScreenKeyRef.current = ''
+      try { sendScreenRef.current?.(screenStore.current) } catch {}
+      lastFrameSigRef.current = ''
+      setTimeout(() => captureAndDescribe(true), 600)
+      screenIntervalRef.current = setInterval(() => captureAndDescribe(false), 4000)
       return true
     } catch (e) {
       console.warn('[screen] getDisplayMedia failed', e?.message || e)

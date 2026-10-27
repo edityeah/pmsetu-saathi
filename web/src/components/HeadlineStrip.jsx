@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client.js'
 import { useApp } from '../context/AppContext.jsx'
+import { screenStore } from '../canvas/CanvasSaathi.jsx'
 
 const TONE = {
   indigo:  { ring: '#4f46e5', card: 'from-indigo-50 to-indigo-100/60 border-indigo-200', fg: 'text-indigo-700', val: 'text-indigo-900' },
@@ -33,6 +34,14 @@ export default function HeadlineStrip() {
   const { role, openCanvas } = useApp()
   const [data, setData] = useState(null)
   useEffect(() => { let on = true; setData(null); api.headline().then(d => on && setData(d)).catch(() => on && setData({ items: [] })); return () => { on = false } }, [role])
+  // The headline is what a caller sees when no screen is open: publish it so
+  // calls and screen share quote these exact figures.
+  useEffect(() => {
+    if (!data?.items?.length) return
+    const context = `Home headline (${data.title || role}): ` + data.items.map(it => `${it.label}: ${it.value}${it.target ? ` (${it.target}${it.delta ? ` ${it.delta.text}` : ''} ${it.hint || ''})` : it.hint ? ` (${it.hint})` : ''}`).join('; ')
+    screenStore.setHome({ type: 'home', title: 'Home', tab: null, context, quickAsks: [] })
+    return () => screenStore.setHome(null)
+  }, [data, role])
   if (!data) return <div className="mt-7 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">{[0, 1, 2, 3, 4].map(i => <div key={i} className="h-[92px] rounded-2xl bg-white border border-bdr-light animate-pulse" />)}</div>
   if (!data.items?.length) return null
   return (

@@ -16,10 +16,15 @@ const Ctx = createContext(null)
 // so the call layer (above the canvas tree) can read it and subscribe.
 export const screenStore = {
   current: null,
+  home: null,        // the home page's headline, shown when no canvas is open
   listeners: new Set(),
-  set(next) { this.current = next; for (const l of this.listeners) { try { l(next) } catch {} } },
+  set(next) { this.current = next || this.home; for (const l of this.listeners) { try { l(this.current) } catch {} } },
+  setHome(home) { this.home = home; if (!this.current || this.current.type === 'home') this.set(null) },
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn) },
 }
+
+// Dev only: lets the published screen data be inspected from the console.
+if (import.meta.env.DEV) { try { window.__screenStore = screenStore } catch {} }
 
 export function CanvasSaathiProvider({ children, screen }) {
   const [published, setPublished] = useState({ context: '', quickAsks: [] })

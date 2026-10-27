@@ -326,7 +326,7 @@ r.post('/ask', async (req, res, next) => {
 //
 // Cost guard: 60/hr/user is plenty for a demo; bump in prod if needed.
 r.post('/describe-screen',
-  rateLimit({ windowMs: 60 * 60 * 1000, limit: 60, keyGenerator: (req) => req.user?.id || req.ip }),
+  rateLimit({ windowMs: 60 * 60 * 1000, limit: 600, keyGenerator: (req) => req.user?.id || req.ip }),
   async (req, res, next) => {
     try {
       const body = z.object({
