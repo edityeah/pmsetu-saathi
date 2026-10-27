@@ -65,12 +65,12 @@ export default function AttendanceBotCanvas({ context }) {
               <Stat label="Roster issues" value={counts.roster_issue || 0} sub="goes to principal" tone={counts.roster_issue ? 'violet' : 'slate'} />
               <Stat label="State" value={titleCase(active.session.attendanceState)} sub={active.session.syncState === 'saved_on_device' ? 'saved on device' : active.session.captureMethod ? titleCase(active.session.captureMethod) : 'not submitted'} tone="sky" />
             </StatGrid>
-            <Section title="Delivery status" hint="Was the session held? Cancelled or rescheduled sessions record no attendance.">
+            <Section tone="indigo" title="Delivery status" hint="Was the session held? Cancelled or rescheduled sessions record no attendance.">
               <div className="flex gap-2 flex-wrap items-center"><Chips options={['delivered', 'partial', 'rescheduled', 'cancelled']} value={delivery} onChange={setDelivery} />{(delivery === 'partial' || delivery === 'rescheduled' || delivery === 'cancelled') && <input value={deliveryReason} onChange={e => setDeliveryReason(e.target.value)} placeholder="Reason (power cut, trainer leave, room…)" className={`${inputCls} max-w-xs`} />}</div>
               {active.session.deliveryReason && <div className="text-[11px] text-txt-secondary mt-1">Recorded: {active.session.deliveryReason}</div>}
             </Section>
             {delivery !== 'cancelled' && delivery !== 'rescheduled' && (
-              <Section title={`Register · ${active.roster.length} students`} hint="Tap a mark. Roster issue = student not in this batch any more, or missing from the list." right={!locked && <div className="flex gap-1"><Btn small tone="ghost" onClick={() => setMarks(Object.fromEntries(active.roster.map(t => [t.id, 'present'])))}>All present</Btn>{!isPrincipal && <Btn small onClick={submit} disabled={saving}>{saving ? 'Saving…' : offline ? 'Save on device' : 'Submit'}</Btn>}</div>}>
+              <Section tone="emerald" title={`Register · ${active.roster.length} students`} hint="Tap a mark. Roster issue = student not in this batch any more, or missing from the list." right={!locked && <div className="flex gap-1"><Btn small tone="ghost" onClick={() => setMarks(Object.fromEntries(active.roster.map(t => [t.id, 'present'])))}>All present</Btn>{!isPrincipal && <Btn small onClick={submit} disabled={saving}>{saving ? 'Saving…' : offline ? 'Save on device' : 'Submit'}</Btn>}</div>}>
                 <ul className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                   {active.roster.map(t => { const m = marks[t.id] || 'present'; return (
                     <li key={t.id} className="rounded-xl border border-bdr-light px-2.5 py-2">

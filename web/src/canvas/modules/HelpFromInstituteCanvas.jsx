@@ -54,7 +54,7 @@ export default function HelpFromInstituteCanvas({ context }) {
             <div className="flex justify-end gap-2"><Btn small tone="ghost" type="button" onClick={() => setSel(null)}>Cancel</Btn><Btn small type="submit">Confirm and send</Btn></div>
           </form>
         )}
-        <Section title="My requests">
+        <Section tone="indigo" title="My requests">
           <ul className="space-y-2">{data.referrals.map(r => (
             <li key={r.id} className="rounded-xl border border-bdr-light bg-white p-2.5 text-[12px]">
               <div className="flex items-center gap-2 flex-wrap"><Pill kind="neutral">{titleCase(r.kind)}</Pill><Pill kind={stateKind(r.state)}>{r.state.replace(/_/g, ' ')}</Pill><span className="text-[10px] text-txt-tertiary">to {r.toUser?.name || r.shared?.recipient || r.toRole} · {fmtDate(r.createdAt)}</span></div>

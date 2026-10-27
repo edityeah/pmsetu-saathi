@@ -26,7 +26,9 @@ import { CanvasSaathiProvider, usePublishedSaathi } from './CanvasSaathi.jsx'
 // button in its header that starts a saved thread about that screen.
 const IS_CHAT = new Set(['doubt_solver', 'course_selection', 'career_counsellor', 'job_prep', 'on_job_buddy', 'grievance', 'course_builder', 'saathi_assistant'])
 
-export default function CanvasPanel() {
+// `fill` makes the panel fill its parent (the dashboard half of the
+// screen-share split view) instead of sliding in as an overlay.
+export default function CanvasPanel({ fill = false }) {
   const { canvas, closeCanvas, openCanvas } = useApp()
   const [expanded, setExpanded] = useState(false)
   const [headerActions, setHeaderActions] = useState(null)
@@ -51,7 +53,7 @@ export default function CanvasPanel() {
   const back = () => { if (canvas.from) openCanvas(canvas.from); else closeCanvas() }
 
   // On mobile (default), force expanded full-screen layout
-  const expandedDesktop = expanded
+  const expandedDesktop = expanded || fill
   return (
     <>
       {/* Mobile backdrop when overlay (only relevant on tablets where overlay shows) */}

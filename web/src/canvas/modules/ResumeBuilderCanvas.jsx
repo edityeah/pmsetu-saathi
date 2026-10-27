@@ -48,10 +48,10 @@ export default function ResumeBuilderCanvas() {
           <Stat label="You stated" value={(resume.skills || []).length} sub="projects and skills" tone="amber" />
           <Stat label="To confirm" value={rows.filter(r => r.prov === 'confirm').length} sub="before export" tone={rows.some(r => r.prov === 'confirm') ? 'rose' : 'emerald'} />
         </StatGrid>
-        <Section title="Your résumé" hint="Each line says where it came from.">
+        <Section tone="indigo" title="Your résumé" hint="Each line says where it came from.">
           <ul className="divide-y divide-bdr-light/60">{rows.map((r, i) => <li key={i} className="py-3 flex items-start gap-3"><span className={`mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center text-[12px] font-bold ${r.value ? 'bg-emerald-50 text-emerald-700' : 'bg-surface-page text-txt-tertiary'}`}>{r.value ? '✓' : '!'}</span><div className="flex-1 min-w-0"><div className="text-[12px] font-bold text-txt-primary">{r.label}</div><div className="text-[12px] text-txt-secondary">{r.value || (r.suggestion ? <span className="italic">{r.suggestion}</span> : <span className="text-txt-tertiary">Not added</span>)}</div>{r.label === 'Summary line' && !resume.summary && <div className="mt-2 flex gap-2 flex-wrap"><input className={`${inputCls} max-w-md`} value={summary ?? suggestedSummary} onChange={e => setSummary(e.target.value)} /><Btn small onClick={acceptSummary}>Use this line</Btn></div>}{r.prov === 'confirm' && <div className="mt-2"><Btn small onClick={confirmPhone}>Yes, this number is correct</Btn></div>}</div><Pill kind={PROV[r.prov].kind}>{PROV[r.prov].label}</Pill></li>)}</ul>
         </Section>
-        <Section title="Add a project or skill you have done" hint="Marked as stated. It becomes verified only when a trainer records it.">
+        <Section tone="emerald" title="Add a project or skill you have done" hint="Marked as stated. It becomes verified only when a trainer records it.">
           <div className="flex gap-2 flex-wrap"><input className={`${inputCls} max-w-sm`} value={skill} onChange={e => setSkill(e.target.value)} placeholder="e.g. Wired a 4-point board in the workshop" /><Btn onClick={addSkill}>Add</Btn></div>
         </Section>
       </div>

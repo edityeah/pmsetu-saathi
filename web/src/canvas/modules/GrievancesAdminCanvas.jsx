@@ -79,8 +79,8 @@ export default function GrievancesAdminCanvas({ context }) {
               <Stat label="Escalated" value={d.totals.escalated} sub="with the SPV CEO" tone="rose" onClick={() => setTab('escalated')} />
               <Stat label="Resolved this month" value={d.totals.resolvedThisMonth} sub={`${d.totals.resolved} resolved in range`} tone="emerald" onClick={() => { setStatus('resolved'); setTab('all') }} />
             </StatGrid>
-            <Section title={`Case queue · ${queue.length}`} hint="Open cases, newest first. Tap a case to see its timeline, add a response, escalate or resolve." right={<button className="text-[11px] text-primary font-bold" onClick={() => setCreating(true)}>Log an issue raised offline →</button>}>
-              <Table columns={queueCols} rows={shown} empty="No open cases in this range." />
+            <Section tone="indigo" title={`Case queue · ${queue.length}`} hint="Open cases, newest first. Tap a case to see its timeline, add a response, escalate or resolve." right={<button className="text-[11px] text-primary font-bold" onClick={() => setCreating(true)}>Log an issue raised offline →</button>}>
+              <Table tone="indigo" columns={queueCols} rows={shown} empty="No open cases in this range." />
               {queue.length > 5 && <div className="flex items-center justify-between pt-2 text-[11px] text-txt-tertiary"><span>Showing {shown.length} of {queue.length}</span><button className="text-primary font-bold" onClick={() => setAll(a => !a)}>{all ? 'Show five' : `View more (${queue.length - 5})`} →</button></div>}
             </Section>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
@@ -96,7 +96,7 @@ export default function GrievancesAdminCanvas({ context }) {
         {tab === 'all' && (
           <div className="p-4 space-y-5">
             <div className="flex items-center gap-2 flex-wrap"><label className="relative flex-1 min-w-[200px] max-w-sm"><Search className="w-3.5 h-3.5 absolute left-2 top-2.5 text-txt-tertiary" /><input className={`${inputCls} pl-7`} placeholder="Search case ID or text" value={q} onChange={e => setQ(e.target.value)} /></label>{(category !== 'all' || priority !== 'all' || status !== 'all' || source !== 'all' || q) && <button className="text-[11px] text-primary font-bold" onClick={() => { setCategory('all'); setPriority('all'); setStatus('all'); setSource('all'); setQ('') }}>Clear filters</button>}</div>
-            <Section title={`All cases · ${d.grievances.length}`} hint="Every case in the date range, newest first."><Table columns={queueCols} rows={d.grievances} empty="No cases match." /></Section>
+            <Section tone="emerald" title={`All cases · ${d.grievances.length}`} hint="Every case in the date range, newest first."><Table tone="emerald" columns={queueCols} rows={d.grievances} empty="No cases match." /></Section>
           </div>
         )}
         {tab === 'escalated' && (
@@ -106,7 +106,7 @@ export default function GrievancesAdminCanvas({ context }) {
               <Stat label="Overdue among them" value={d.grievances.filter(g => g.status === 'escalated' && g.overdue).length} sub="past the SLA date" tone="amber" />
               <Stat label="High priority" value={d.grievances.filter(g => g.status === 'escalated' && g.priority === 'high').length} tone="violet" />
             </StatGrid>
-            <Section title="Escalated to the SPV CEO" hint="Cases that need a decision outside the institute."><Table columns={queueCols} rows={d.grievances.filter(g => g.status === 'escalated')} empty="Nothing escalated in this range." /></Section>
+            <Section tone="amber" title="Escalated to the SPV CEO" hint="Cases that need a decision outside the institute."><Table tone="amber" columns={queueCols} rows={d.grievances.filter(g => g.status === 'escalated')} empty="Nothing escalated in this range." /></Section>
           </div>
         )}
       </>)}
@@ -158,11 +158,11 @@ function KnowledgeHelp() {
   if (!data) return <Loading />
   return (
     <div className="p-4 space-y-5">
-      <Section title="Support directory" hint="Who handles which issue at this institute, the channel and the expected response time.">
-        <Table columns={[{ key: 'supportType', label: 'Support', render: s => <span className="font-semibold">{s.supportType}</span> }, { key: 'responsibleRole', label: 'Responsible' }, { key: 'contactChannel', label: 'Channel' }, { key: 'issuesHandled', label: 'Issues handled', render: s => <span className="text-[11px]">{s.issuesHandled}</span> }, { key: 'responseTime', label: 'Response time' }, { key: 'status', label: 'Status', render: s => <Pill kind={s.status === 'Active' ? 'ok' : 'neutral'}>{s.status}</Pill> }]} rows={data.support || []} empty="No support contacts recorded for this institute." />
+      <Section tone="violet" title="Support directory" hint="Who handles which issue at this institute, the channel and the expected response time.">
+        <Table tone="violet" columns={[{ key: 'supportType', label: 'Support', render: s => <span className="font-semibold">{s.supportType}</span> }, { key: 'responsibleRole', label: 'Responsible' }, { key: 'contactChannel', label: 'Channel' }, { key: 'issuesHandled', label: 'Issues handled', render: s => <span className="text-[11px]">{s.issuesHandled}</span> }, { key: 'responseTime', label: 'Response time' }, { key: 'status', label: 'Status', render: s => <Pill kind={s.status === 'Active' ? 'ok' : 'neutral'}>{s.status}</Pill> }]} rows={data.support || []} empty="No support contacts recorded for this institute." />
       </Section>
-      <Section title="Response rules" hint="How Saathi and staff respond to each kind of signal.">
-        <Table columns={[{ key: 'appliesTo', label: 'Applies to', render: r => <span className="font-semibold">{r.appliesTo}</span> }, { key: 'instruction', label: 'Instruction', render: r => <span className="text-[11px]">{r.instruction}</span> }, { key: 'fallback', label: 'If unsure', render: r => <span className="text-[11px]">{r.fallback}</span> }]} rows={(data.rules || []).slice(0, 8)} empty="No rules recorded." />
+      <Section tone="sky" title="Response rules" hint="How Saathi and staff respond to each kind of signal.">
+        <Table tone="sky" columns={[{ key: 'appliesTo', label: 'Applies to', render: r => <span className="font-semibold">{r.appliesTo}</span> }, { key: 'instruction', label: 'Instruction', render: r => <span className="text-[11px]">{r.instruction}</span> }, { key: 'fallback', label: 'If unsure', render: r => <span className="text-[11px]">{r.fallback}</span> }]} rows={(data.rules || []).slice(0, 8)} empty="No rules recorded." />
       </Section>
     </div>
   )

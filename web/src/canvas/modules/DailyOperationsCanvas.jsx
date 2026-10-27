@@ -25,7 +25,7 @@ function TopFive({ columns, rows, empty, label = 'records' }) {
   const [all, setAll] = useState(false)
   const shown = all ? rows : rows.slice(0, 5)
   return (<>
-    <Table columns={columns} rows={shown} empty={empty} />
+    <Table tone="indigo" columns={columns} rows={shown} empty={empty} />
     {rows.length > 5 && <div className="flex items-center justify-between pt-2 text-[11px] text-txt-tertiary"><span>Showing {shown.length} of {rows.length} {label}</span><button className="text-primary font-bold" onClick={() => setAll(a => !a)}>{all ? 'Show five' : `View more (${rows.length - 5})`} →</button></div>}
   </>)
 }
@@ -89,8 +89,8 @@ function OverviewTab(b) {
           <TimelineStrip events={ev.next} />
         </OverviewCard>
       </div>
-      <Section title="Operational flow by ITI" hint="Attendance reporting for the day, assessments on the latest assessment day, workshops ready now, next scheduled event.">
-        <Table columns={[
+      <Section tone="indigo" title="Operational flow by ITI" hint="Attendance reporting for the day, assessments on the latest assessment day, workshops ready now, next scheduled event.">
+        <Table tone="indigo" columns={[
           { key: 'name', label: 'ITI', render: x => <b>{x.name}</b> },
           { key: 'coveragePct', label: 'Attendance reporting', render: x => <Pill kind={x.coveragePct >= 90 ? 'ok' : x.coveragePct >= 75 ? 'warn' : 'bad'}>{fmtPct(x.coveragePct)}</Pill> },
           { key: 'attendancePct', label: 'Attendance', align: 'right', render: x => fmtPct(x.attendancePct) },
@@ -166,8 +166,8 @@ function AttendanceTab(b) {
         </Card></div>
       </div>
       {d.earlyWarning ? <EarlyWarning ew={d.earlyWarning} openCanvas={b.openCanvas} /> : (
-      <Section title="ITI comparison" hint="Rates are on submitted registers only; a missing register is a gap to chase, not an absence.">
-        <Table columns={[
+      <Section tone="emerald" title="ITI comparison" hint="Rates are on submitted registers only; a missing register is a gap to chase, not an absence.">
+        <Table tone="emerald" columns={[
           { key: 'name', label: 'ITI', render: x => <b>{x.name}</b> },
           { key: 'attendancePct', label: 'Attendance rate', align: 'right', render: x => <b>{fmtPct(x.attendancePct)}</b> },
           { key: 'reported', label: 'Registers submitted', align: 'right', render: x => `${x.reported} of ${x.scheduled}` },
@@ -175,7 +175,7 @@ function AttendanceTab(b) {
           { key: 'marks', label: 'Named marks', align: 'right', render: x => `${fmtNum(x.marks)} learner marks` },
         ]} rows={d.byIti} />
       </Section>)}
-      <Section title="Registers pending" hint="Sessions scheduled on this day without a submitted register.">
+      <Section tone="amber" title="Registers pending" hint="Sessions scheduled on this day without a submitted register.">
         <TopFive label="pending registers" columns={[{ key: 'startTime', label: 'Session' }, { key: 'batch', label: 'Batch' }, { key: 'itiCode', label: 'ITI' }]} rows={d.pending} empty="Every scheduled session has a register." />
       </Section>
     </div>
@@ -219,7 +219,7 @@ function AssessmentsTab(b) {
           <div style={{ height: Math.max(180, d.byIti.length * 44) }}><ResponsiveContainer><BarChart data={d.byIti} layout="vertical" margin={{ top: 4, right: 20, left: 4, bottom: 0 }} barGap={2}><XAxis type="number" fontSize={10} stroke="#7383A5" /><YAxis type="category" dataKey="name" width={64} fontSize={10} stroke="#7383A5" /><Tooltip contentStyle={tip} /><Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} /><RBar dataKey="scheduled" name="Scheduled" fill={C.primary} radius={[0, 3, 3, 0]} /><RBar dataKey="conducted" name="Conducted" fill={C.emerald} radius={[0, 3, 3, 0]} /><RBar dataKey="marksUploaded" name="Marks uploaded" fill={C.violet} radius={[0, 3, 3, 0]} /></BarChart></ResponsiveContainer></div>
         </Card></div>
       </div>)}
-      <Section title="Assessment records" hint="Scheduled, conducted and marks uploaded are separate states; blank marks are not zero.">
+      <Section tone="violet" title="Assessment records" hint="Scheduled, conducted and marks uploaded are separate states; blank marks are not zero.">
         <TopFive label="assessments" columns={[
           { key: 'title', label: 'Assessment', render: x => <div><div className="font-semibold">{x.title}</div><div className="text-[10px] text-txt-tertiary">{titleCase(x.type)} · {x.maxMarks} marks</div></div> },
           { key: 'iti', label: 'ITI / trade', render: x => `${x.itiCode} · ${x.trade}` },
@@ -269,7 +269,7 @@ function ReadinessTab(b) {
           <div className="mt-3 text-[10px] text-txt-tertiary">A facility is ready only when all five checks for its scheduled use are met.</div>
         </Card></div>
       </div>)}
-      <Section title="Facility readiness records" hint="Recorded readiness is operational evidence, not formal safety certification.">
+      <Section tone="sky" title="Facility readiness records" hint="Recorded readiness is operational evidence, not formal safety certification.">
         <TopFive label="facilities" columns={[
           { key: 'name', label: 'Facility', render: x => <button className="text-left hover:text-primary" onClick={() => { setCompIti(x.itiId); setCompLab(x.id) }}><div className="font-semibold">{x.name}</div><div className="text-[10px] text-txt-tertiary">{titleCase(x.kind)}</div></button> },
           { key: 'iti', label: 'ITI / trade', render: x => `${x.itiName} · ${x.tradeName}` },
@@ -311,7 +311,7 @@ function EventsTab(b) {
           <Donut data={kinds} centre={t.total} centreSub="events" size={140} />
         </Card></div>
       </div>
-      <Section title="Event schedule" hint="Tap an event to open where it is managed.">
+      <Section tone="rose" title="Event schedule" hint="Tap an event to open where it is managed.">
         <TopFive label="events" columns={[
           { key: 'date', label: 'Date', render: e => <b>{fmtDate(e.date)}</b> },
           { key: 'kind', label: 'Kind', render: e => <Pill kind={KIND[e.kind]?.kind || 'neutral'}>{KIND[e.kind]?.label || e.kind}</Pill> },
@@ -348,8 +348,8 @@ function EarlyWarning({ ew, openCanvas }) {
         <div style={{ height: Math.max(180, rows.length * 34 + 24) }}><ResponsiveContainer><BarChart data={rows} layout="vertical" margin={{ top: 4, right: 36, left: 8, bottom: 0 }} barCategoryGap={6}><XAxis type="number" hide allowDecimals={false} /><YAxis type="category" dataKey="label" width={150} fontSize={10} stroke="#7383A5" interval={0} /><Tooltip contentStyle={tip} /><Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} /><RBar dataKey="male" name="Men" stackId="g" fill={C.primary} /><RBar dataKey="female" name="Women" stackId="g" fill={C.violet} radius={[0, 6, 6, 0]}><LabelList dataKey="total" position="right" fontSize={10} fill="#1A1F36" /></RBar></BarChart></ResponsiveContainer></div>
       </Card></div>
     </div>
-    <Section title="Students under early warning" hint={`Lowest attendance first. Showing ${shown.length} of ${ew.students.length}. Tap a student for the record.`}>
-      <Table columns={[
+    <Section tone="teal" title="Students under early warning" hint={`Lowest attendance first. Showing ${shown.length} of ${ew.students.length}. Tap a student for the record.`}>
+      <Table tone="teal" columns={[
         { key: 'name', label: 'Student', render: t => <button className="text-left hover:text-primary" onClick={() => openCanvas({ type: 'student_profile', traineeId: t.id })}><div className="font-semibold">{t.name}</div><div className="text-[10px] text-txt-tertiary">{t.gender === 'F' ? 'F' : 'M'} · {t.batch}</div></button> },
         { key: 'trade', label: 'Course' },
         { key: 'attendancePct', label: 'Attendance (15d)', render: t => <div className="min-w-[120px]"><Bar pct={t.attendancePct} label={`${t.attendancePct}%`} tone="auto" /></div> },

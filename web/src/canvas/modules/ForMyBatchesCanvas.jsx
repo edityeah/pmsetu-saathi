@@ -23,19 +23,19 @@ export default function ForMyBatchesCanvas() {
           <Stat label="Joined" value={applications.filter(a => ['joined', 'follow_up'].includes(a.stage)).length} tone="emerald" />
           <Stat label="Live opportunities" value={liveOpportunities.length} tone="teal" />
         </StatGrid>
-        <Section title="Needs preparation" hint="Review the résumé and checklist, then mark prepared.">
-          <Table columns={[
+        <Section tone="indigo" title="Needs preparation" hint="Review the résumé and checklist, then mark prepared.">
+          <Table tone="indigo" columns={[
             { key: 'trainee', label: 'Student', render: r => <button className="font-semibold text-primary" onClick={() => openCanvas({ type: 'student_profile', traineeId: r.trainee.id })}>{r.trainee.name}</button> },
             { key: 'opp', label: 'Wants', render: r => <div>{r.opportunity.title}<div className="text-[10px] text-txt-tertiary">{r.opportunity.employer.name} · {r.opportunity.type}</div></div> },
             { key: 'since', label: 'Since', render: r => fmtDate(r.lastEventAt) },
             { key: 'act', label: '', align: 'right', render: r => <Btn small onClick={() => prepared(r)}>Mark prepared</Btn> },
           ]} rows={needPreparation} empty="Nobody waiting." />
         </Section>
-        <Section title="Mock interview requests">
+        <Section tone="emerald" title="Mock interview requests">
           <ul className="space-y-1.5 text-[12px]">{mockInterviews.map(m => <li key={m.id} className="flex items-center gap-2 flex-wrap"><Pill kind={stateKind(m.state)}>{m.state.replace(/_/g, ' ')}</Pill><span className="flex-1"><b>{m.trainee.name}</b>: {m.summary}</span>{m.state !== 'resolved' && <><Btn small tone="ghost" onClick={() => mock(m, 'action_agreed')}>Schedule</Btn><Btn small tone="ok" onClick={() => mock(m, 'resolved')}>Done</Btn></>}</li>)}{mockInterviews.length === 0 && <li className="text-txt-tertiary">None.</li>}</ul>
         </Section>
-        <Section title="All applications from my batches">
-          <Table columns={[
+        <Section tone="amber" title="All applications from my batches">
+          <Table tone="amber" columns={[
             { key: 'trainee', label: 'Student', render: r => r.trainee.name },
             { key: 'opp', label: 'Opportunity', render: r => `${r.opportunity.title} · ${r.opportunity.employer.name}` },
             { key: 'stage', label: 'Stage', render: r => <Pill kind={stateKind(r.stage)}>{r.stage.replace(/_/g, ' ')}</Pill> },
@@ -43,7 +43,7 @@ export default function ForMyBatchesCanvas() {
             { key: 'nextAction', label: 'Next', render: r => <span className="text-[11px]">{r.nextAction || '—'}</span> },
           ]} rows={applications} empty="No applications yet." />
         </Section>
-        <Section title="Live opportunities for your trades" hint="What students can see now.">
+        <Section tone="violet" title="Live opportunities for your trades" hint="What students can see now.">
           <ul className="space-y-1.5 text-[12px]">{liveOpportunities.map(o => <li key={o.id} className="flex items-center gap-2"><Pill kind="neutral">{o.type}</Pill><span className="flex-1 truncate"><b>{o.title}</b> · {o.employer.name} · trades {o.tradeCodes.join(', ') || 'any'}</span><span className="text-[10px] text-txt-tertiary">{o.wageMin ? `${fmtInr(o.wageMin)}–${fmtInr(o.wageMax)}` : o.stipend ? `stipend ${fmtInr(o.stipend)}` : ''}{o.closingAt ? ` · closes ${fmtDate(o.closingAt)}` : ''}</span></li>)}</ul>
         </Section>
       </div>

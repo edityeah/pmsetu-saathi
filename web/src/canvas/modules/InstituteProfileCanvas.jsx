@@ -50,7 +50,7 @@ export default function InstituteProfileCanvas({ context }) {
         right={<div className="flex items-center gap-2"><Pill kind={state === 'confirmed' ? 'ok' : 'warn'}>{state}{sec[tab]?.confirmedAt ? ` · ${fmtDate(sec[tab].confirmedAt)}` : ''}</Pill>{canConfirm && (state === 'confirmed' ? <Btn small tone="ghost" onClick={() => confirm('draft')}>Reopen</Btn> : <Btn small tone="ok" onClick={() => confirm('confirmed')}>Confirm tab</Btn>)}</div>} />
       <div className="p-4 space-y-4">
         {tab === 'overview' && role === 'spv_ceo' && (<>
-          <Section title="About this institute">
+          <Section tone="indigo" title="About this institute">
             <p className="text-[12px] text-txt-secondary mb-3">{iti.kind === 'hub' ? 'The hub institute of the cluster: it hosts the shared specialist labs, coordinates with the four spokes and carries the largest Year-1 programme.' : 'A spoke institute of the cluster: it runs its own core trades and draws on the hub for specialist labs and shared services.'}{iti.sectorFocus ? ` Sector focus: ${iti.sectorFocus}.` : ''}</p>
             <LabelGrid items={[['Institute type', iti.kind === 'hub' ? 'Hub ITI' : 'Spoke ITI'], ['Location', `${iti.district}, Delhi`], ['Institute code', iti.code], ['Cluster role', iti.kind === 'hub' ? 'Shared training and technical support' : 'Core trades; hub for specialist labs'], ['Registry', iti.registryConnected ? 'Connected' : 'Not yet connected'], ['Operating context', `Year 1 of the five-year plan · ₹${iti.fiveYearCr} Cr`]]} />
           </Section>
@@ -60,15 +60,15 @@ export default function InstituteProfileCanvas({ context }) {
             <Stat label="Trainers" value={`${staffing.registryTrainers || '—'}`} sub={`baseline ${staffing.baseline} · Y1 plan ${staffing.plan.Y1}`} tone="emerald" onClick={() => openCanvas({ type: 'cluster_registry', tab: 'trainers', filters: { scope: iti.id } })} />
             <Stat label="Year-1 tasks" value={`${tasks.filter(t => ['completed', 'reviewed'].includes(t.state)).length}/${tasks.length}`} sub={`${tasks.filter(t => t.overdue).length} overdue`} tone={tasks.some(t => t.overdue) ? 'rose' : 'teal'} onClick={() => openCanvas({ type: 'annual_plan', itiId: iti.id })} />
           </StatGrid>
-          <Section title="Campus & access" right={<button className="text-[11px] text-primary font-bold" onClick={() => setTab('infrastructure')}>Explore facilities and labs →</button>}>
+          <Section tone="emerald" title="Campus & access" right={<button className="text-[11px] text-primary font-bold" onClick={() => setTab('infrastructure')}>Explore facilities and labs →</button>}>
             <LabelGrid items={[['Teaching spaces', `${iti.roomsWorking} of ${iti.roomsBaseline} rooms working · Year-5 target ${iti.roomsY5}`], ['Workshops and labs', `${facilities.filter(f => f.kind !== 'space' && f.status !== 'being_set_up').length} in use · ${facilities.filter(f => f.status === 'being_set_up').length} being set up`], ['Shared facilities', facilities.filter(f => /Shared/.test(f.sharing)).map(f => f.name).slice(0, 3).join(', ') || '—'], ['Works on campus', `${facilities.filter(f => f.kind === 'space').length} civil packages · ${infrastructure.civil.filter(w => w.state === 'delayed').length} delayed`], ['Machines', `${infrastructure.machines.filter(m => ['functional', 'installed'].includes(m.status)).length} of ${infrastructure.machines.length} functional`], ['Access', 'Accessibility, sanitation and safety works in progress']]} />
           </Section>
-          <Section title="Leadership & contacts" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'cluster_registry', tab: 'trainers', filters: { scope: iti.id } })}>Open linked staff records →</button>}>
+          <Section tone="amber" title="Leadership & contacts" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'cluster_registry', tab: 'trainers', filters: { scope: iti.id } })}>Open linked staff records →</button>}>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">
               {[contacts.principal, contacts.placement].filter(Boolean).map(c => <li key={c.role} className="flex items-center gap-3"><span className="w-9 h-9 rounded-full bg-primary-light text-primary-dark font-bold flex items-center justify-center text-[12px]">{c.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span><div className="min-w-0"><div className="font-bold text-txt-primary truncate">{c.name}</div><div className="text-[10px] text-txt-tertiary">{c.role}{c.phone ? ` · ${c.phone}` : ''}</div></div></li>)}
             </ul>
           </Section>
-          <Section title="Connected sections" hint="Each opens already scoped to this institute.">
+          <Section tone="violet" title="Connected sections" hint="Each opens already scoped to this institute.">
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 text-[12px]">
               {[['Students & trainers', () => openCanvas({ type: 'cluster_registry', tab: 'students', filters: { scope: iti.id } })], ['Daily operations', () => openCanvas({ type: 'daily_operations', tab: 'attendance', filters: { scope: iti.id } })], ['Employer & placement view', () => openCanvas({ type: 'placement_pipeline', itiId: iti.id })], ['AOP allocation & releases', () => openCanvas({ type: 'budget_analytics', tab: 'overview', filters: { itiId: iti.id } })]].map(([l, fn]) => <li key={l} className="border-b border-bdr-light"><button onClick={fn} className="w-full flex items-center justify-between py-2 text-left hover:text-primary"><span className="font-semibold">{l}</span><span className="text-primary">→</span></button></li>)}
             </ul>
@@ -86,7 +86,7 @@ export default function InstituteProfileCanvas({ context }) {
             <Stat label="Principal" value={iti.principal?.name || '—'} sub={`${iti.kind === 'hub' ? 'Hub' : 'Spoke'} · PR-${iti.code}`} tone="slate" />
           </StatGrid>
           {!iti.registryConnected && <NoFeed>Student and trainer figures for {iti.name} come from the plan only. The registry connection milestone is due 31 Dec; until then operations dashboards show "no feed".</NoFeed>}
-          <Section title="Sources" hint="Where each tab's values come from.">
+          <Section tone="sky" title="Sources" hint="Where each tab's values come from.">
             <ul className="text-[12px] space-y-1 text-txt-secondary"><li><b>Budgets</b> — SIP section 7 ITI envelope, derived package allocation (66 packages cluster-wide).</li><li><b>Staff and rooms</b> — planning values; confirm against the sanctioned strength.</li><li><b>Intake</b> — course annual plan (places, enrolments by period); actual Year-1 enrolments from the registry where connected.</li><li><b>Gates</b> — one row per prerequisite per new offering (space, staff, course route, students).</li></ul>
           </Section>
         </>)}
@@ -98,10 +98,10 @@ export default function InstituteProfileCanvas({ context }) {
             <Stat label="Baseline" value={staffing.baseline} tone="slate" />
             <Stat label="Plan Y1 → Y5" value={`${staffing.plan.Y1} → ${staffing.plan.Y5}`} sub="planning values" tone="amber" />
           </StatGrid>
-          <Section title="Trainers by programme" hint="Count of faculty records per programme; adequacy not validated.">
+          <Section tone="rose" title="Trainers by programme" hint="Count of faculty records per programme; adequacy not validated.">
             {Object.keys(staffing.byProgramme).length === 0 ? <NoFeed /> : <div className="flex flex-wrap gap-2">{Object.entries(staffing.byProgramme).sort((a, b) => b[1] - a[1]).map(([p, n]) => <span key={p} className="text-[11px] rounded-pill bg-surface-page px-2.5 py-1"><b>{p}</b> · {n}</span>)}</div>}
           </Section>
-          <Section title="Trainer plan by year"><div className="grid grid-cols-5 gap-2">{['Y1', 'Y2', 'Y3', 'Y4', 'Y5'].map(y => <div key={y} className="rounded-xl bg-surface-page p-2 text-center"><div className="text-[10px] text-txt-tertiary">{y}</div><div className="text-[16px] font-bold">{staffing.plan[y]}</div></div>)}</div></Section>
+          <Section tone="teal" title="Trainer plan by year"><div className="grid grid-cols-5 gap-2">{['Y1', 'Y2', 'Y3', 'Y4', 'Y5'].map(y => <div key={y} className="rounded-xl bg-surface-page p-2 text-center"><div className="text-[10px] text-txt-tertiary">{y}</div><div className="text-[16px] font-bold">{staffing.plan[y]}</div></div>)}</div></Section>
         </>)}
         {tab === 'infrastructure' && <FacilitiesDirectory facilities={facilities} iti={iti} infrastructure={infrastructure} onOpen={setFacility} openCanvas={openCanvas} />}
         {tab === 'budget' && (<>
@@ -111,8 +111,8 @@ export default function InstituteProfileCanvas({ context }) {
             <Stat label="Year-1" value={fmtCr(budget.reduce((s, p) => s + (p.yearly[1] || 0), 0))} sub={`spent ${fmtCr(budget.reduce((s, p) => s + p.aops.filter(a => a.year === 1).reduce((x, a) => x + a.spentCr, 0), 0))}`} tone="amber" />
             <Stat label="Packages" value={budget.length} sub={`${budget.filter(p => p.expenditureType === 'CapEx').length} CapEx`} tone="sky" />
           </StatGrid>
-          <Section title="Work packages" hint="Task budgets are never added; money sits on the package and its annual AOP record.">
-            <Table columns={[
+          <Section tone="fuchsia" title="Work packages" hint="Task budgets are never added; money sits on the package and its annual AOP record.">
+            <Table tone="fuchsia" columns={[
               { key: 'id', label: 'Package', render: r => <div><div className="font-semibold">{r.id} · {r.title}</div><div className="text-[10px] text-txt-tertiary">{r.category} · {r.expenditureType} · {r.courseScope}</div></div> },
               { key: 'totalCr', label: 'Total', align: 'right', render: r => fmtCr(r.totalCr) },
               ...[1, 2, 3, 4, 5].map(y => ({ key: `y${y}`, label: `Y${y}`, align: 'right', render: r => r.yearly[y] ? r.yearly[y].toFixed(2) : '·' })),
@@ -121,22 +121,22 @@ export default function InstituteProfileCanvas({ context }) {
           </Section>
         </>)}
         {tab === 'targets' && (<>
-          <Section title="KPI targets the institute contributes to" hint="Cluster KPI plan: baseline and yearly targets; 'now' only where a source exists.">
-            <Table columns={[
+          <Section tone="indigo" title="KPI targets the institute contributes to" hint="Cluster KPI plan: baseline and yearly targets; 'now' only where a source exists.">
+            <Table tone="indigo" columns={[
               { key: 'code', label: 'KPI', render: r => <div><div className="font-semibold">{r.code} · {r.name}</div><div className="text-[10px] text-txt-tertiary">{r.unit}{r.ownerRole ? ` · owner ${r.ownerRole}` : ''}</div></div> },
               { key: 'baseline', label: 'Baseline', align: 'right', render: r => r1(r.baseline) ?? '—' },
               ...['Y1', 'Y2', 'Y3', 'Y4', 'Y5'].map(y => ({ key: y, label: y, align: 'right', render: r => r1(r.targets?.[y]) ?? '—' })),
               { key: 'current', label: 'Now', align: 'right', render: r => r.current == null ? <span className="text-txt-tertiary">—</span> : <b>{r1(r.current)}</b> },
             ]} rows={(data.kpis || []).filter(k => ['K01', 'K02', 'K03', 'K04', 'K05', 'K06', 'K07', 'K08', 'K09', 'K11'].includes(k.code))} />
           </Section>
-          <Section title="Institute anchors"><div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[12px]">{[['Five-year', fmtCr(targets.fiveYearCr)], ['Civil', fmtCr(targets.civilCr)], ['Digital', fmtCr(targets.digitalCr)], ['Trainers Y5', staffing.plan.Y5]].map(([l, v]) => <div key={l} className="rounded-xl bg-surface-page p-2.5"><div className="text-[10px] uppercase font-bold text-txt-tertiary">{l}</div><div className="text-[16px] font-bold">{v}</div></div>)}</div></Section>
-          <Section title="Enrolment plan by course" hint="Planned enrolments per period (places in grey).">
-            <Table columns={[{ key: 'trade', label: 'Course', render: r => r.trade.name }, ...periods.map((p, i) => ({ key: p, label: p, align: 'right', render: r => r.plans[i] ? <span>{r.plans[i].enrolments} <span className="text-txt-tertiary text-[10px]">/{r.plans[i].places}</span></span> : '—' }))]} rows={trades} />
+          <Section tone="emerald" title="Institute anchors"><div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[12px]">{[['Five-year', fmtCr(targets.fiveYearCr)], ['Civil', fmtCr(targets.civilCr)], ['Digital', fmtCr(targets.digitalCr)], ['Trainers Y5', staffing.plan.Y5]].map(([l, v]) => <div key={l} className="rounded-xl bg-surface-page p-2.5"><div className="text-[10px] uppercase font-bold text-txt-tertiary">{l}</div><div className="text-[16px] font-bold">{v}</div></div>)}</div></Section>
+          <Section tone="amber" title="Enrolment plan by course" hint="Planned enrolments per period (places in grey).">
+            <Table tone="amber" columns={[{ key: 'trade', label: 'Course', render: r => r.trade.name }, ...periods.map((p, i) => ({ key: p, label: p, align: 'right', render: r => r.plans[i] ? <span>{r.plans[i].enrolments} <span className="text-txt-tertiary text-[10px]">/{r.plans[i].places}</span></span> : '—' }))]} rows={trades} />
           </Section>
         </>)}
         {tab === 'launch_gates' && (
-          <Section title="Launch gates for new offerings" hint="No intake without all four: space, named staff, course route, students. Course gates follow the NCVET pipeline.">
-            {gates.length === 0 ? <div className="text-[12px] text-txt-tertiary">No new offerings planned at this ITI.</div> : <Table columns={[
+          <Section tone="violet" title="Launch gates for new offerings" hint="No intake without all four: space, named staff, course route, students. Course gates follow the NCVET pipeline.">
+            {gates.length === 0 ? <div className="text-[12px] text-txt-tertiary">No new offerings planned at this ITI.</div> : <Table tone="violet" columns={[
               { key: 'id', label: 'Gate', render: r => <div><div className="font-semibold">{r.offering.tradeId} · {r.prerequisite}</div><div className="text-[10px] text-txt-tertiary">{r.id} · before {r.beforeLaunch} · owner {r.ownerRole} · reviewer {r.reviewerRole}</div></div> },
               { key: 'evidence', label: 'Evidence', render: r => <span className="text-[11px]">{r.evidence}</span> },
               { key: 'state', label: 'State', render: r => <Pill kind={r.state === 'passed' ? 'ok' : r.state === 'ready' ? 'warn' : r.state === 'failed' ? 'bad' : 'info'}>{r.state}</Pill> },
@@ -165,13 +165,13 @@ export function TradeOfferings({ trades, otherTrades, kb, facilities, iti, perio
   return (
     <div className="space-y-4">
       {facilityPick && <div className="rounded-xl bg-primary-light/40 border border-primary/20 px-3 py-2 text-[12px] flex items-center gap-2"><span>Courses linked to <b>{facilityPick.name}</b></span><button className="ml-auto text-primary font-bold" onClick={onClearPick}>Show all courses</button></div>}
-      <Section title="Trade offerings" hint="Programme details and linked training spaces. Tap a course for its profile.">
+      <Section tone="sky" title="Trade offerings" hint="Programme details and linked training spaces. Tap a course for its profile.">
         <div className="flex items-center gap-2 flex-wrap mb-3">
           <label className="relative"><Search className="w-3.5 h-3.5 absolute left-2 top-2.5 text-txt-tertiary" /><input className={`${inputCls} pl-7 w-[200px]`} placeholder="Search courses" value={q} onChange={e => setQ(e.target.value)} /></label>
           <select className={inputCls + ' w-auto'} value={kind} onChange={e => setKind(e.target.value)}><option value="all">Programme type: All</option><option value="existing_core">Long-term trades</option><option value="new_specialist">New specialist</option><option value="short_term">Short-term</option></select>
           <select className={inputCls + ' w-auto'} value={status} onChange={e => setStatus(e.target.value)}><option value="all">Status: All</option><option value="offered">Offered</option><option value="planned">Planned</option></select>
         </div>
-        <Table columns={[
+        <Table tone="sky" columns={[
           { key: 'name', label: 'Course', render: r => <button className="text-left hover:text-primary" onClick={() => onOpen(r)}><div className="font-semibold">{r.trade.name}</div><div className="text-[10px] text-txt-tertiary">Code: {r.trade.code} · NSQF {r.trade.nsqfLevel}</div></button> },
           { key: 'kind', label: 'Type', render: r => KIND_LABEL[r.trade.kind] || titleCase(r.trade.kind) },
           { key: 'status', label: 'Status', render: r => offered(r) ? <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Offered · Year-1 intake</span> : <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Planned · launch {r.launch}</span> },
@@ -186,7 +186,7 @@ export function TradeOfferings({ trades, otherTrades, kb, facilities, iti, perio
           <ul className="space-y-1 text-[12px]">{planned.map(t => <li key={t.id} className="flex items-center gap-2 flex-wrap"><b>{t.trade.name}</b><Pill kind="warn">{KIND_LABEL[t.trade.kind]}</Pill><span className="text-txt-secondary">Launch {t.launch} · not open for Year-1 admission</span><button className="ml-auto text-primary font-bold" onClick={() => onOpen(t)}>View programme reference →</button></li>)}</ul>
         </div>
       )}
-      {otherTrades.length > 0 && <Section title="Registry programmes counted under OTH" hint="Running batches in the registry that the SIP aggregates as 'other trades'."><div className="flex flex-wrap gap-2">{otherTrades.map(t => <span key={t.tradeId} className="text-[11px] rounded-pill bg-surface-page px-2.5 py-1"><b>{t.tradeId}</b> · {t.batches} batches · {t.enrolled} students</span>)}</div></Section>}
+      {otherTrades.length > 0 && <Section tone="rose" title="Registry programmes counted under OTH" hint="Running batches in the registry that the SIP aggregates as 'other trades'."><div className="flex flex-wrap gap-2">{otherTrades.map(t => <span key={t.tradeId} className="text-[11px] rounded-pill bg-surface-page px-2.5 py-1"><b>{t.tradeId}</b> · {t.batches} batches · {t.enrolled} students</span>)}</div></Section>}
     </div>
   )
 }
@@ -201,7 +201,7 @@ export function CourseDetail({ t, kb, facility, iti, periods, onBack, onBatches,
         <LabelGrid cols={2} items={[['Duration', dur], ['Total hours', tr.totalHours ? tr.totalHours.toLocaleString('en-IN') : '—'], ['Entry requirement', kb?.entryQualification || tr.entryAssumption || '—'], ['Practical focus', kb?.practicalFocus || tr.roleDirection || '—'], ['Sample project', kb?.sampleProject || '—'], ['Common tools', kb?.commonTools || '—'], ['Job family', kb?.jobFamily || tr.roleDirection || '—'], ['Fits a student who', kb?.fitPrompt || '—']]} />
       </DetailCard>
       <DetailCard title="Places and intake" icon="🎓">
-        <Table columns={[{ key: 'period', label: 'Period' }, { key: 'places', label: 'Places', align: 'right' }, { key: 'enrolments', label: 'Planned enrolments', align: 'right' }, { key: 'actual', label: 'Actual', align: 'right', render: r => r.actual == null ? <span className="text-txt-tertiary">—</span> : <b className="text-emerald-700">{r.actual}</b> }]} rows={periods.map((p, i) => t.plans[i] ? { period: p, places: t.plans[i].places, enrolments: t.plans[i].enrolments, actual: p === 'Y1' ? t.actualY1 : null } : null).filter(Boolean)} />
+        <Table tone="rose" columns={[{ key: 'period', label: 'Period' }, { key: 'places', label: 'Places', align: 'right' }, { key: 'enrolments', label: 'Planned enrolments', align: 'right' }, { key: 'actual', label: 'Actual', align: 'right', render: r => r.actual == null ? <span className="text-txt-tertiary">—</span> : <b className="text-emerald-700">{r.actual}</b> }]} rows={periods.map((p, i) => t.plans[i] ? { period: p, places: t.plans[i].places, enrolments: t.plans[i].enrolments, actual: p === 'Y1' ? t.actualY1 : null } : null).filter(Boolean)} />
         <div className="text-[12px] mt-3"><span className="text-txt-tertiary">Batches now: </span><b>{t.runningBatches ? `${t.runningBatches} batches · ${t.enrolledNow} students` : 'none running'}</b></div>
       </DetailCard>
       <DetailCard title="Training space" icon="🏭">
@@ -226,13 +226,13 @@ export function FacilitiesDirectory({ facilities, iti, infrastructure, onOpen, o
         <Stat label="Machines functional" value={`${infrastructure.machines.filter(m => ['functional', 'installed'].includes(m.status)).length}/${infrastructure.machines.length}`} sub={down ? `${down} not functional` : 'all working'} tone={down ? 'rose' : 'emerald'} onClick={() => openCanvas({ type: 'machines_infra', itiId: iti.id })} />
         <Stat label="Works on campus" value={facilities.filter(f => f.kind === 'space').length} sub={`${facilities.filter(f => f.status === 'delayed').length} delayed`} tone="amber" onClick={() => openCanvas({ type: 'civil_works', itiId: iti.id })} />
       </StatGrid>
-      <Section title="Facility directory" hint="Workshops, labs and spaces, with the courses that use them. Tap a facility for its details.">
+      <Section tone="teal" title="Facility directory" hint="Workshops, labs and spaces, with the courses that use them. Tap a facility for its details.">
         <div className="flex items-center gap-2 flex-wrap mb-3">
           <label className="relative"><Search className="w-3.5 h-3.5 absolute left-2 top-2.5 text-txt-tertiary" /><input className={`${inputCls} pl-7 w-[200px]`} placeholder="Search facilities" value={q} onChange={e => setQ(e.target.value)} /></label>
           <select className={inputCls + ' w-auto'} value={kind} onChange={e => setKind(e.target.value)}><option value="all">Facility type: All</option><option value="workshop">Workshops</option><option value="lab">Labs</option><option value="space">Spaces and works</option></select>
           <select className={inputCls + ' w-auto'} value={sharing} onChange={e => setSharing(e.target.value)}><option value="all">Sharing: All</option><option value="shared">Shared</option><option value="institute">Institute only</option></select>
         </div>
-        <Table columns={[
+        <Table tone="teal" columns={[
           { key: 'name', label: 'Facility', render: r => <button className="text-left hover:text-primary" onClick={() => onOpen(r)}><div className="font-semibold">{r.name}</div><div className="text-[10px] text-txt-tertiary">{KIND[r.kind]} · {r.location}</div></button> },
           { key: 'purpose', label: 'Purpose', render: r => <span className="text-[11px]">{r.purpose}</span> },
           { key: 'trades', label: 'Courses', render: r => <span className="text-[11px]">{r.linkedTrades.length ? r.linkedTrades.join(', ') : '—'}</span> },
@@ -256,7 +256,7 @@ export function FacilityDetail({ f, trades, iti, onBack, onCourses, onMachines }
       <DetailCard title="Equipment" icon="⚙️">
         {f.machines ? (<>
           <div className="text-[12px] mb-2 font-semibold">{f.machines.functional} of {f.machines.total} functional{f.machines.nonFunctional ? <span className="text-rose-700"> · {f.machines.nonFunctional} not functional</span> : ''}{f.machines.awaiting ? ` · ${f.machines.awaiting} awaiting commissioning` : ''}{f.machines.ordered ? ` · ${f.machines.ordered} ordered` : ''}</div>
-          <Table columns={[{ key: 'name', label: 'Machine', render: r => <span className={r.status === 'non_functional' ? 'text-rose-700 font-semibold' : 'font-semibold'}>{r.name}</span> }, { key: 'status', label: 'Status', render: r => <Pill kind={r.status === 'non_functional' ? 'bad' : ['functional', 'installed'].includes(r.status) ? 'ok' : 'info'}>{titleCase(r.status)}</Pill> }]} rows={f.machines.items} />
+          <Table tone="teal" columns={[{ key: 'name', label: 'Machine', render: r => <span className={r.status === 'non_functional' ? 'text-rose-700 font-semibold' : 'font-semibold'}>{r.name}</span> }, { key: 'status', label: 'Status', render: r => <Pill kind={r.status === 'non_functional' ? 'bad' : ['functional', 'installed'].includes(r.status) ? 'ok' : 'info'}>{titleCase(r.status)}</Pill> }]} rows={f.machines.items} />
         </>) : <div className="text-[12px] text-txt-secondary">Equipment arrives with the package; machines appear on the register once commissioned.</div>}
       </DetailCard>
       <div className="flex gap-2 flex-wrap">{f.machines && <Btn tone="ghost" onClick={onMachines}>Open machine register</Btn>}{f.linkedTrades.length > 0 && <Btn onClick={onCourses}>View linked courses</Btn>}</div>

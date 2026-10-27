@@ -29,7 +29,7 @@ export default function ConfirmHireCanvas() {
           <Stat label="Interviewed" value={apps.filter(a => a.stage === 'interviewed').length} tone="sky" />
           <Stat label="Disputed" value={apps.filter(a => a.evidenceLevel === 'disputed').length} tone="rose" />
         </StatGrid>
-        <Section title="Pending your confirmation">
+        <Section tone="indigo" title="Pending your confirmation">
           <ul className="space-y-2">{pending.map(a => (
             <li key={a.id} className="rounded-xl border border-bdr-light bg-white p-3 text-[12px]">
               <div className="flex items-center gap-2 flex-wrap"><b className="text-[13px]">{a.trainee.name}</b><Pill kind="info">{a.stage.replace(/_/g, ' ')}</Pill><Pill kind={a.evidenceLevel === 'disputed' ? 'bad' : 'warn'}>{a.evidenceLevel.replace(/_/g, ' ')}</Pill></div>
@@ -37,7 +37,7 @@ export default function ConfirmHireCanvas() {
               {a.evidenceLevel !== 'disputed' && <div className="mt-2 flex gap-1.5 flex-wrap items-center"><input type="number" placeholder={a.opportunity.type === 'wage' ? 'Wage / month' : 'Stipend'} value={wage[a.id] ?? ''} onChange={e => setWage(w => ({ ...w, [a.id]: e.target.value }))} className="w-32 rounded-lg border border-bdr px-2 py-1.5" /><Btn small tone="ok" onClick={() => confirm(a)}>{a.stage === 'interviewed' ? 'Confirm offer made' : ['joined', 'follow_up'].includes(a.stage) ? 'Confirm joined' : 'Confirm'}</Btn>{a.stage === 'interviewed' && <Btn small tone="ghost" onClick={() => notSelected(a)}>Not selected</Btn>}<Btn small tone="danger" onClick={() => dispute(a)}>Dispute</Btn></div>}
             </li>))}{pending.length === 0 && <li className="text-[12px] text-txt-tertiary">Nothing pending.</li>}</ul>
         </Section>
-        <Section title="Confirmed">
+        <Section tone="emerald" title="Confirmed">
           <ul className="space-y-1 text-[12px]">{confirmed.map(a => <li key={a.id} className="flex items-center gap-2"><Pill kind="ok">{a.evidenceLevel.replace(/_/g, ' ')}</Pill><span className="flex-1 truncate">{a.trainee.name} · {a.opportunity.title}</span><span className="text-[10px] text-txt-tertiary">{titleCase(a.stage)} · {fmtDate(a.lastEventAt)}</span></li>)}{confirmed.length === 0 && <li className="text-txt-tertiary">None yet.</li>}</ul>
         </Section>
       </div>

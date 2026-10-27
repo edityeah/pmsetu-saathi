@@ -32,8 +32,8 @@ export default function MachinesCanvas({ context }) {
           <Stat label="Non-functional / obsolete" value={machineStats.nonFunctional} tone="rose" onClick={() => setFilter('non_functional')} />
         </StatGrid>
         <div className="flex gap-2 flex-wrap">{['all', ...STATUSES].map(f => <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-pill text-[11px] font-bold border ${filter === f ? 'bg-primary text-white border-primary' : 'bg-white border-bdr text-txt-secondary'}`}>{titleCase(f)}</button>)}</div>
-        <Section title="Register">
-          <Table columns={[
+        <Section tone="indigo" title="Register">
+          <Table tone="indigo" columns={[
             { key: 'name', label: 'Asset', render: r => <div><div className="font-semibold">{r.name}</div><div className="text-[10px] text-txt-tertiary">{r.trade?.name || titleCase(r.category)} · {titleCase(r.source)}</div></div> },
             { key: 'status', label: 'Status', render: r => <Pill kind={stateKind(r.status)}>{titleCase(r.status)}</Pill> },
             { key: 'installedAt', label: 'Installed', render: r => fmtDate(r.installedAt) },

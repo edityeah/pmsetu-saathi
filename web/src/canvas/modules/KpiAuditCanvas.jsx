@@ -26,8 +26,8 @@ export default function KpiAuditCanvas() {
           <Stat label="At / above Y1 target" value={withValue.filter(x => x.achievementPct >= 100).length} sub={`${withValue.filter(x => x.achievementPct < 50).length} below half-way`} tone="sky" />
         </StatGrid>
         {areas.map(a => (
-          <Section key={a} title={titleCase(a)}>
-            <Table columns={[
+          <Section tone="indigo" key={a} title={titleCase(a)}>
+            <Table tone="indigo" columns={[
               { key: 'name', label: 'KPI', render: r => <div><div className="font-semibold">{r.code} · {r.name}</div><div className="text-[10px] text-txt-tertiary">{r.unit} · weight {Math.round(r.weight * 100)}% · {r.actualSource || 'source tbd'}</div></div> },
               { key: 'baseline', label: 'Baseline', align: 'right', render: r => r.baseline ?? <span className="text-txt-tertiary">{r.baselineText || '—'}</span> },
               { key: 'current', label: 'Current', align: 'right', render: r => r.current == null ? <span className="text-txt-tertiary">—</span> : <b>{r.current}</b> },

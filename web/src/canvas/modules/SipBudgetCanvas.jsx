@@ -25,7 +25,7 @@ export default function SipBudgetCanvas() {
         </StatGrid>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <DonutChartCard card={{ title: 'Year-1 by category (₹ Cr)', unit: '₹ Cr', annotation: `Capex ${Math.round(100 * capex / totals.budgetCr)}% of Year 1; equipment peaks in Years 2–3.`, data: lines.map(l => ({ label: l.label.split(' (')[0], value: l.budgetCr })) }} />
-          <Section title="Utilisation" hint="UCs certified by the CA against each line; PFMS-matched.">
+          <Section tone="indigo" title="Utilisation" hint="UCs certified by the CA against each line; PFMS-matched.">
             <div className="space-y-3">
               {lines.map(l => (
                 <div key={l.id}>
@@ -37,11 +37,11 @@ export default function SipBudgetCanvas() {
             </div>
           </Section>
         </div>
-        <Section title="Five-year packages by category" hint="66 packages; each has a yearly AOP record. Task budgets are never added on top.">
-          <Table columns={[{ key: 'category', label: 'Category' }, { key: 'n', label: 'Packages', align: 'right' }, { key: 'totalCr', label: '5-year', align: 'right', render: r => fmtCr(r.totalCr) }, { key: 'y1', label: 'Year 1', align: 'right', render: r => fmtCr(r.y1) }]} rows={Object.values(byCat).sort((a, b) => b.totalCr - a.totalCr)} />
+        <Section tone="emerald" title="Five-year packages by category" hint="66 packages; each has a yearly AOP record. Task budgets are never added on top.">
+          <Table tone="emerald" columns={[{ key: 'category', label: 'Category' }, { key: 'n', label: 'Packages', align: 'right' }, { key: 'totalCr', label: '5-year', align: 'right', render: r => fmtCr(r.totalCr) }, { key: 'y1', label: 'Year 1', align: 'right', render: r => fmtCr(r.y1) }]} rows={Object.values(byCat).sort((a, b) => b.totalCr - a.totalCr)} />
         </Section>
-        <Section title="Year-1 budget lines" hint="Weights feed the cost-weighted KPI score used for tranche release.">
-          <Table columns={[
+        <Section tone="amber" title="Year-1 budget lines" hint="Weights feed the cost-weighted KPI score used for tranche release.">
+          <Table tone="amber" columns={[
             { key: 'label', label: 'Line', render: r => <div><div className="font-semibold">{r.label}</div><Pill kind={r.capex ? 'info' : 'neutral'}>{r.capex ? 'capex' : 'opex'}</Pill></div> },
             { key: 'budgetCr', label: 'Budget', align: 'right', render: r => fmtCr(r.budgetCr) },
             { key: 'committedCr', label: 'Committed', align: 'right', render: r => fmtCr(r.committedCr) },

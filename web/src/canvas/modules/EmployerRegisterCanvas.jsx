@@ -56,8 +56,8 @@ export default function EmployerRegisterCanvas({ context }) {
               <Stat label="Live opportunities" value={fmtNum(liveOpps.length)} sub={`${new Set(liveOpps.map(o => o.employerId)).size} employers hiring now`} tone="violet" />
               <Stat label="Live opening seats" value={fmtNum(liveOpps.reduce((s, o) => s + Math.max(0, o.openings - o.filled), 0))} sub="openings not yet filled" tone="amber" />
             </StatGrid>
-            <Section title="Cluster employer list" hint={`Showing ${shown.length} of ${rows.length}. Tap an employer for its record.`}>
-              <Table columns={[
+            <Section tone="indigo" title="Cluster employer list" hint={`Showing ${shown.length} of ${rows.length}. Tap an employer for its record.`}>
+              <Table tone="indigo" columns={[
                 { key: 'name', label: 'Employer', render: e => <button className="text-left hover:text-primary" onClick={() => setOpen(e.id)}><div className="font-semibold">{e.name}</div><div className="text-[10px] text-txt-tertiary font-mono">{e.code}</div></button> },
                 { key: 'sector', label: 'Sector / geography', render: e => <span className="text-[11px]">{e.sector} · {e.city}</span> },
                 { key: 'itis', label: 'Participating ITIs', render: e => <span className="text-[11px]">{(e.participatingItis || []).join(' + ') || '—'}</span> },
@@ -93,14 +93,14 @@ function EmployerRecord({ id, onBack, openCanvas }) {
         <Stat label="On OJT" value={d.stats.onOjt} sub="active spells" tone="teal" />
       </StatGrid>
       <DetailCard title="Linked opportunities" icon="📋">
-        <Table columns={[{ key: 'title', label: 'Opportunity', render: o => <div><div className="font-semibold">{o.title}</div><div className="text-[10px] text-txt-tertiary">{o.location} · {o.tradeCodes.join(', ')}</div></div> }, { key: 'type', label: 'Type', render: o => o.type === 'ojt' ? 'OJT' : titleCase(o.type) }, { key: 'openings', label: 'Openings', align: 'right', render: o => `${o.openings - o.filled} of ${o.openings}` }, { key: 'status', label: 'Status', render: o => <Pill kind={stateKind(o.status)}>{titleCase(o.status)}</Pill> }]} rows={e.opportunities.slice(0, 5)} empty="No opportunities posted." />
+        <Table tone="indigo" columns={[{ key: 'title', label: 'Opportunity', render: o => <div><div className="font-semibold">{o.title}</div><div className="text-[10px] text-txt-tertiary">{o.location} · {o.tradeCodes.join(', ')}</div></div> }, { key: 'type', label: 'Type', render: o => o.type === 'ojt' ? 'OJT' : titleCase(o.type) }, { key: 'openings', label: 'Openings', align: 'right', render: o => `${o.openings - o.filled} of ${o.openings}` }, { key: 'status', label: 'Status', render: o => <Pill kind={stateKind(o.status)}>{titleCase(o.status)}</Pill> }]} rows={e.opportunities.slice(0, 5)} empty="No opportunities posted." />
       </DetailCard>
       <DetailCard title="Our students here" icon="🎓">
-        <Table columns={[{ key: 'name', label: 'Student', render: x => <div><div className="font-semibold">{x.name}</div><div className="text-[10px] text-txt-tertiary">{x.itiId} · {x.role}</div></div> }, { key: 'type', label: 'Type', render: x => x.type === 'ojt' ? 'OJT' : titleCase(x.type) }, { key: 'startAt', label: 'Since', render: x => fmtDate(x.startAt) }, { key: 'evidenceLevel', label: 'Evidence', render: x => <Pill kind={x.evidenceLevel === 'disputed' ? 'bad' : ['employer_confirmed', 'independently_verified'].includes(x.evidenceLevel) ? 'ok' : 'warn'}>{titleCase(x.evidenceLevel)}</Pill> }]} rows={d.placements.slice(0, 5)} empty="No joins recorded yet." />
+        <Table tone="indigo" columns={[{ key: 'name', label: 'Student', render: x => <div><div className="font-semibold">{x.name}</div><div className="text-[10px] text-txt-tertiary">{x.itiId} · {x.role}</div></div> }, { key: 'type', label: 'Type', render: x => x.type === 'ojt' ? 'OJT' : titleCase(x.type) }, { key: 'startAt', label: 'Since', render: x => fmtDate(x.startAt) }, { key: 'evidenceLevel', label: 'Evidence', render: x => <Pill kind={x.evidenceLevel === 'disputed' ? 'bad' : ['employer_confirmed', 'independently_verified'].includes(x.evidenceLevel) ? 'ok' : 'warn'}>{titleCase(x.evidenceLevel)}</Pill> }]} rows={d.placements.slice(0, 5)} empty="No joins recorded yet." />
         {d.placements.length > 5 && <div className="text-[11px] text-txt-tertiary pt-2">Showing 5 of {d.placements.length}. The placement pipeline has the full list.</div>}
       </DetailCard>
       <DetailCard title="Interaction history" icon="🗒️">
-        <Table columns={[{ key: 'date', label: 'Date', render: h => fmtDate(h.date) }, { key: 'kind', label: 'Kind', render: h => <Pill kind="neutral">{h.kind}</Pill> }, { key: 'text', label: 'Note', render: h => <span className="text-[12px]">{h.text}</span> }, { key: 'by', label: 'By' }]} rows={d.history.slice(0, 5)} empty="No interactions recorded." />
+        <Table tone="indigo" columns={[{ key: 'date', label: 'Date', render: h => fmtDate(h.date) }, { key: 'kind', label: 'Kind', render: h => <Pill kind="neutral">{h.kind}</Pill> }, { key: 'text', label: 'Note', render: h => <span className="text-[12px]">{h.text}</span> }, { key: 'by', label: 'By' }]} rows={d.history.slice(0, 5)} empty="No interactions recorded." />
       </DetailCard>
       <div className="flex gap-2 flex-wrap"><Btn tone="ghost" onClick={() => openCanvas({ type: 'placement_pipeline' })}>Open placement analytics</Btn></div>
     </DetailPage>

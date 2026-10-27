@@ -82,17 +82,17 @@ function ClusterBudget({ context }) {
               <Stat label="Released / allocated" value={fmtPct(data.totals.releasedPct)} sub={`utilised so far ${fmtCr(data.totals.spentCr)}`} tone="sky" onClick={() => setTab('utilisation')} />
             </StatGrid>
 
-            <Section title="Institute allocations & releases" hint="Tap an ITI's bars to scope the work-package analytics below to that institute; tap again for the whole cluster." right={itiId !== 'all' ? <button className="text-[11px] text-primary font-bold" onClick={() => setItiId('all')}>Show cluster →</button> : null}>
+            <Section tone="indigo" title="Institute allocations & releases" hint="Tap an ITI's bars to scope the work-package analytics below to that institute; tap again for the whole cluster." right={itiId !== 'all' ? <button className="text-[11px] text-primary font-bold" onClick={() => setItiId('all')}>Show cluster →</button> : null}>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <ItiBars rows={data.byIti} selected={itiId} onPick={id => setItiId(itiId === id ? 'all' : id)} />
                 <ReleaseLine timeline={data.timeline} scope={scopeName} />
               </div>
             </Section>
 
-            <Section title={`Cluster-level analytics by work package · ${scopeName}`} hint="Allocation by work package. Pick a package above or tap a slice: it stays bright, the rest dim, and the totals re-scope." right={category !== 'all' ? <button className="text-[11px] text-primary font-bold" onClick={() => setCategory('all')}>All packages →</button> : null}>
+            <Section tone="emerald" title={`Cluster-level analytics by work package · ${scopeName}`} hint="Allocation by work package. Pick a package above or tap a slice: it stays bright, the rest dim, and the totals re-scope." right={category !== 'all' ? <button className="text-[11px] text-primary font-bold" onClick={() => setCategory('all')}>All packages →</button> : null}>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <PackagePie rows={data.byPackage} selected={category} onPick={c => setCategory(category === c ? 'all' : c)} />
-                <Table columns={[
+                <Table tone="emerald" columns={[
                   { key: 'category', label: 'Work package', render: r => <button className={`text-left ${r.selected ? 'text-primary font-bold' : 'font-semibold'}`} onClick={() => setCategory(category === r.category ? 'all' : r.category)}>{r.category}<span className="block text-[10px] font-normal text-txt-tertiary">{r.packages} packages</span></button> },
                   { key: 'allocationCr', label: 'Allocated', align: 'right', render: r => fmtCr(r.allocationCr) },
                   { key: 'releasedCr', label: 'Released', align: 'right', render: r => fmtCr(r.releasedCr) },
@@ -101,7 +101,7 @@ function ClusterBudget({ context }) {
               </div>
             </Section>
 
-            <Section title="Latest releases" hint="The five most recent releases in this scope. Tap a release for the project behind it." right={data.releases.length > 5 ? <button className="text-[11px] text-primary font-bold" onClick={() => setTab('history')}>View all {data.releases.length} →</button> : null}>
+            <Section tone="amber" title="Latest releases" hint="The five most recent releases in this scope. Tap a release for the project behind it." right={data.releases.length > 5 ? <button className="text-[11px] text-primary font-bold" onClick={() => setTab('history')}>View all {data.releases.length} →</button> : null}>
               <ReleaseTable rows={data.releases.slice(0, 5)} onPick={setRelease} />
             </Section>
           </div>
@@ -118,7 +118,7 @@ function ClusterBudget({ context }) {
               <Stat label="Projects in progress" value={data.releases.filter(r => r.projectState === 'in_progress').length} sub={`${data.releases.filter(r => r.projectState === 'completed').length} completed`} tone="sky" />
               <Stat label="Projects stopped" value={data.releases.filter(r => r.projectState === 'stopped').length} sub="funded, work blocked" tone={data.releases.some(r => r.projectState === 'stopped') ? 'rose' : 'emerald'} />
             </StatGrid>
-            <Section title={`Release history · ${data.releases.length}`} hint="Every release in this scope, newest first. Tap a release to see the work package, the project it funded, the date and where the project stands.">
+            <Section tone="violet" title={`Release history · ${data.releases.length}`} hint="Every release in this scope, newest first. Tap a release to see the work package, the project it funded, the date and where the project stands.">
               <ReleaseTable rows={data.releases} onPick={setRelease} />
             </Section>
           </div>
@@ -136,8 +136,8 @@ function ClusterBudget({ context }) {
               <Stat label="Headroom to 75% gate" value={`${Math.max(0, 75 - util.totals.utilisedPct)} pts`} sub={`₹${Math.max(0, +(0.75 * util.totals.budgetCr - util.totals.utilisedCr).toFixed(2))} Cr more to certify`} tone="rose" />
             </StatGrid>
             <BarChartCard card={{ title: 'Utilised against allocation by line (₹ Cr)', unit: '₹ Cr', orient: 'horizontal', annotation: `Utilised ₹${util.totals.utilisedCr} Cr of ₹${util.totals.budgetCr} Cr (${util.totals.utilisedPct}%); committed ${util.totals.committedPct}%. The Year-2 first tranche needs 75% utilised and certified.`, data: util.lines.map(l => ({ label: l.label.split(' (')[0], value: l.utilisedCr, color: l.utilisedPct >= 50 ? 'emerald' : l.utilisedPct >= 25 ? 'amber' : 'rose' })) }} />
-            <Section title="Allocation, committed and utilised by line" hint="Physical progress is the component's own measure (works complete, units installed, hires made).">
-              <Table columns={[
+            <Section tone="sky" title="Allocation, committed and utilised by line" hint="Physical progress is the component's own measure (works complete, units installed, hires made).">
+              <Table tone="sky" columns={[
                 { key: 'label', label: 'Line', render: r => <div><div className="font-semibold">{r.label}</div><Pill kind={r.capex ? 'info' : 'neutral'}>{r.capex ? 'capex' : 'opex'}</Pill></div> },
                 { key: 'budgetCr', label: 'Allocation', align: 'right', render: r => fmtCr(r.budgetCr) },
                 { key: 'committedCr', label: 'Committed', align: 'right', render: r => fmtCr(r.committedCr) },
@@ -146,8 +146,8 @@ function ClusterBudget({ context }) {
                 { key: 'progressPct', label: 'Physical', align: 'right', render: r => `${r.progressPct}%` },
               ]} rows={util.lines} />
             </Section>
-            <Section title="Utilisation certificates" hint="Certified by the SPV head of finance and a CA; accepted by the SPMU.">
-              <Table columns={[{ key: 'period', label: 'Period' }, { key: 'amountCr', label: 'Amount', align: 'right', render: r => fmtCr(r.amountCr) }, { key: 'submittedAt', label: 'Submitted', render: r => fmtDate(r.submittedAt) }, { key: 'state', label: 'State', render: r => <Pill kind={r.state === 'accepted' ? 'ok' : 'warn'}>{r.state}</Pill> }, { key: 'pfms', label: 'PFMS', render: r => r.pfmsMatched ? 'matched' : 'pending' }]} rows={util.ucs} empty="No certificates yet." />
+            <Section tone="rose" title="Utilisation certificates" hint="Certified by the SPV head of finance and a CA; accepted by the SPMU.">
+              <Table tone="rose" columns={[{ key: 'period', label: 'Period' }, { key: 'amountCr', label: 'Amount', align: 'right', render: r => fmtCr(r.amountCr) }, { key: 'submittedAt', label: 'Submitted', render: r => fmtDate(r.submittedAt) }, { key: 'state', label: 'State', render: r => <Pill kind={r.state === 'accepted' ? 'ok' : 'warn'}>{r.state}</Pill> }, { key: 'pfms', label: 'PFMS', render: r => r.pfmsMatched ? 'matched' : 'pending' }]} rows={util.ucs} empty="No certificates yet." />
             </Section>
           </div>
         )}
@@ -160,7 +160,7 @@ function ClusterBudget({ context }) {
 
 export function ReleaseTable({ rows, onPick }) {
   return (
-    <Table columns={[
+    <Table tone="rose" columns={[
       { key: 'releasedAt', label: 'Date', render: r => <b>{fmtDate(r.releasedAt)}</b> },
       { key: 'itiCode', label: 'ITI' },
       { key: 'project', label: 'Work package · project', render: r => <button className="text-left hover:text-primary" onClick={() => onPick(r)}><div className="font-semibold">{r.category}</div><div className="text-[10px] text-txt-tertiary">{r.packageTitle}</div></button> },

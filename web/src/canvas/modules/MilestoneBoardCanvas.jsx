@@ -72,7 +72,7 @@ export default function MilestoneBoardCanvas() {
             <div className="md:col-span-2 flex gap-2 justify-end"><Btn small tone="ghost" onClick={() => setProposing(null)}>Cancel</Btn><Btn small type="submit">Log change request</Btn></div>
           </form>
         )}
-        <Section title="Change requests" hint="Approved internally = date/forecast updated here; routed formal = recorded, awaiting the body that can approve.">
+        <Section tone="indigo" title="Change requests" hint="Approved internally = date/forecast updated here; routed formal = recorded, awaiting the body that can approve.">
           {changes.length === 0 ? <div className="text-[12px] text-txt-tertiary">None yet.</div> : <ul className="space-y-2">{changes.map(c => (
             <li key={c.id} className="rounded-xl border border-bdr-light p-2.5 text-[12px]">
               <div className="flex items-center gap-2 flex-wrap"><Pill kind={stateKind(c.state)}>{c.state.replace(/_/g, ' ')}</Pill><b>{c.title}</b><span className="text-[10px] text-txt-tertiary">{c.targetId} · {c.itiCode || 'cluster'} · {c.proposer.name} · {fmtDate(c.createdAt)}</span>{c.formalApprovalNeeded && <Pill kind="violet">formal</Pill>}</div>
@@ -82,7 +82,7 @@ export default function MilestoneBoardCanvas() {
               {role === 'spv_ceo' && c.state === 'proposed' && <div className="flex gap-1.5 mt-1.5"><Btn small tone="ok" onClick={() => decide(c, 'approved_internal')}>Approve internally</Btn><Btn small tone="ghost" onClick={() => decide(c, 'routed_formal')}>Route for formal approval</Btn><Btn small tone="danger" onClick={() => decide(c, 'returned')}>Return</Btn></div>}
             </li>))}</ul>}
         </Section>
-        <Section title="IMA milestones" hint="Cluster milestones certified by the Independent Monitoring Agency; linked tasks move with them." right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'milestones' })}>Evidence packs →</button>}>
+        <Section tone="emerald" title="IMA milestones" hint="Cluster milestones certified by the Independent Monitoring Agency; linked tasks move with them." right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'milestones' })}>Evidence packs →</button>}>
           <ul className="space-y-1 text-[12px]">{milestones.map(m => <li key={m.id} className="flex items-center gap-2"><Pill kind={stateKind(m.state)}>{m.state}</Pill><span className="flex-1 truncate">{m.title}</span><span className="text-[10px] text-txt-tertiary whitespace-nowrap">{m.itiCode || 'cluster'} · due {fmtDate(m.dueAt)}{m.taskId ? ` · ${m.taskId}` : ''}</span></li>)}</ul>
         </Section>
       </div>

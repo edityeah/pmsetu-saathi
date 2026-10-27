@@ -48,8 +48,8 @@ export default function FiveYearTargetsCanvas({ context }) {
   const line = { title: 'Cluster annual places vs planned enrolments', yAxis: 'course enrolments', series: [{ name: 'Places', color: 'sky', data: clusterPlan.map(p => ({ x: p.period, y: p.places })) }, { name: 'Enrolments', color: 'primary', data: clusterPlan.map(p => ({ x: p.period, y: p.enrolments })) }], annotation: 'Enrolments are course episodes, not unique people (K01 definition). Utilisation = enrolments / places.' }
   const siteTable = { title: 'Site budgets by year (₹ Cr)', columns: [{ key: 'name', label: 'ITI', type: 'text' }, { key: 'anchorCr', label: 'Anchor', type: 'number' }, ...[1, 2, 3, 4, 5].map(y => ({ key: `y${y}`, label: `Y${y}`, type: 'number' })), { key: 'totalCr', label: 'Total', type: 'number' }], rows: siteBudgets.map(s => ({ ...s, y1: s.yearly[0], y2: s.yearly[1], y3: s.yearly[2], y4: s.yearly[3], y5: s.yearly[4] })) }
   const kpiTable = (
-    <Section title="KPI trajectories K01–K27" hint="Baseline and yearly targets from the plan; 'current' only where a source exists.">
-      <Table columns={[
+    <Section tone="indigo" title="KPI trajectories K01–K27" hint="Baseline and yearly targets from the plan; 'current' only where a source exists.">
+      <Table tone="indigo" columns={[
         { key: 'code', label: 'KPI', render: r => <div><div className="font-semibold">{r.code} · {r.name}</div><div className="text-[10px] text-txt-tertiary">{r.unit} · owner {r.ownerRole || '—'}</div></div> },
         { key: 'baseline', label: 'Base', align: 'right', render: r => r1(r.baseline) ?? '—' },
         ...years.map(y => ({ key: y, label: y, align: 'right', render: r => r1(r.targets[y]) ?? '—' })),
@@ -59,8 +59,8 @@ export default function FiveYearTargetsCanvas({ context }) {
     </Section>
   )
   const offTable = (
-    <Section title={`Enrolment plan by offering · ${list.length} offerings`} hint="Planned enrolments per period · places in grey · Y1 actual from registry where connected." right={<button className="text-[11px] text-primary font-bold" onClick={() => setShowPlan(s => !s)}>{showPlan ? 'Hide' : 'Show plan'} →</button>}>
-      {showPlan ? <Table columns={[
+    <Section tone="emerald" title={`Enrolment plan by offering · ${list.length} offerings`} hint="Planned enrolments per period · places in grey · Y1 actual from registry where connected." right={<button className="text-[11px] text-primary font-bold" onClick={() => setShowPlan(s => !s)}>{showPlan ? 'Hide' : 'Show plan'} →</button>}>
+      {showPlan ? <Table tone="emerald" columns={[
         { key: 'id', label: 'Offering', render: r => <div><div className="font-semibold">{r.iti.code} · {r.trade.name}</div><div className="text-[10px] text-txt-tertiary">{r.id} · launch {r.launch}</div></div> },
         ...periods.map((p, i) => ({ key: p, label: p, align: 'right', render: r => r.plans[i] ? <span>{r.plans[i].enrolments}<span className="text-txt-tertiary text-[10px]">/{r.plans[i].places}</span>{p === 'Y1' && r.plans[i].actualEnrolments != null && <span className="block text-[10px] text-emerald-700 font-bold">actual {r.plans[i].actualEnrolments}</span>}</span> : '·' })),
       ]} rows={list} /> : <div className="text-[12px] text-txt-secondary">Cluster plan: {clusterPlan.filter(p => p.period !== 'Baseline').map(p => `${p.period} ${p.enrolments.toLocaleString('en-IN')}/${p.places.toLocaleString('en-IN')}`).join(' · ')}. Open the plan to see every offering by period.</div>}

@@ -46,8 +46,8 @@ export default function FieldVisitCanvas() {
             <div className="flex justify-end gap-2"><Btn small tone="ghost" type="button" onClick={() => setCreating(false)}>Cancel</Btn><Btn small type="submit">Submit visit</Btn></div>
           </form>
         )}
-        <Section title="Open findings" hint="Owner and due date set at the visit; closure needs a note.">
-          <Table columns={[
+        <Section tone="indigo" title="Open findings" hint="Owner and due date set at the visit; closure needs a note.">
+          <Table tone="indigo" columns={[
             { key: 'item', label: 'Finding', render: r => <div><div className="font-semibold">{r.item}</div><div className="text-[10px] text-txt-tertiary">{r.workshop} · {r.iti.code}{r.affectedClass ? ` · affects ${r.affectedClass}` : ''}</div></div> },
             { key: 'severity', label: 'Severity', render: r => <Pill kind={r.severity === 'high' ? 'bad' : r.severity === 'medium' ? 'warn' : 'neutral'}>{r.severity}</Pill> },
             { key: 'ownerRole', label: 'Owner' },
@@ -56,7 +56,7 @@ export default function FieldVisitCanvas() {
             { key: 'act', label: '', align: 'right', render: r => (role === 'iti_principal' || role === 'spv_ceo' || role === 'trainer') ? <Btn small tone="ghost" onClick={() => close(r)}>Close</Btn> : null },
           ]} rows={openFindings} empty="No open findings." />
         </Section>
-        <Section title="Visit log">
+        <Section tone="emerald" title="Visit log">
           <ul className="space-y-2">{visits.map(v => <li key={v.id} className="rounded-xl border border-bdr-light p-2.5 text-[12px]"><div className="flex items-center gap-2 flex-wrap"><b>{v.workshop}</b><Pill kind="neutral">{titleCase(v.visitType)}</Pill><span className="text-[10px] text-txt-tertiary">{v.iti.code} · {fmtDate(v.date)} · {v.visitor.name}</span></div><div className="mt-1 flex flex-wrap gap-1">{Object.entries(v.checklist).map(([k, s]) => <span key={k} className={`text-[9px] px-1.5 py-0.5 rounded ${s === 'satisfactory' ? 'bg-emerald-50 text-emerald-700' : s === 'action_needed' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>{k}</span>)}</div>{v.note && <div className="text-[11px] text-txt-secondary mt-1">{v.note}</div>}<div className="text-[10px] text-txt-tertiary mt-1">{v.findings.length} finding(s) · {v.findings.filter(f => f.state === 'closed').length} closed</div></li>)}</ul>
         </Section>
       </div>

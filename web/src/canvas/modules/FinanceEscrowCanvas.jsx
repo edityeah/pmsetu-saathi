@@ -26,7 +26,7 @@ export default function FinanceEscrowCanvas() {
           <Stat label="Due from parties" value={fmtCr(escrow.pendingCr)} sub="next tranche" tone="amber" />
         </StatGrid>
         {Object.entries(byYear).map(([k, rows]) => (
-          <Section key={k} title={k} hint="Funds usable only after Centre, State and Industry have all deposited.">
+          <Section tone="indigo" key={k} title={k} hint="Funds usable only after Centre, State and Industry have all deposited.">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {rows.map(d => (
                 <div key={d.id} className={`rounded-xl border p-3 ${d.state === 'deposited' ? 'bg-emerald-50 border-emerald-200/60' : 'bg-amber-50 border-amber-200/60'}`}>
@@ -38,8 +38,8 @@ export default function FinanceEscrowCanvas() {
             </div>
           </Section>
         ))}
-        <Section title="Utilisation certificates" hint="Certified by the SPV head of finance and a Chartered Accountant; reviewed by SPMU / NPMU.">
-          <Table columns={[
+        <Section tone="emerald" title="Utilisation certificates" hint="Certified by the SPV head of finance and a Chartered Accountant; reviewed by SPMU / NPMU.">
+          <Table tone="emerald" columns={[
             { key: 'period', label: 'Period' },
             { key: 'amountCr', label: 'Amount', align: 'right', render: r => fmtCr(r.amountCr) },
             { key: 'caCertified', label: 'CA', render: r => <Pill kind={r.caCertified ? 'ok' : 'warn'}>{r.caCertified ? 'certified' : 'pending'}</Pill> },

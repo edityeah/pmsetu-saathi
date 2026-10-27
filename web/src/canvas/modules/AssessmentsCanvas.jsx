@@ -57,8 +57,8 @@ export default function AssessmentsCanvas({ context }) {
           </form>
         )}
         {tab === 'calendar' && (
-          <Section title="Planned and past assessments">
-            <Table columns={[
+          <Section tone="indigo" title="Planned and past assessments">
+            <Table tone="indigo" columns={[
               { key: 'date', label: 'Date', render: r => fmtDate(r.date) },
               { key: 'title', label: 'Assessment', render: r => <div><div className="font-semibold">{r.title}</div><div className="text-[10px] text-txt-tertiary">{r.batch.name} · {r.subject?.name || r.type} · max {r.maxMarks}</div></div> },
               { key: 'state', label: 'State', render: r => <Pill kind={stateKind(r.state)}>{r.state.replace(/_/g, ' ')}</Pill> },
@@ -70,8 +70,8 @@ export default function AssessmentsCanvas({ context }) {
         {(tab === 'enter' || tab === 'review') && (<>
           {!plan && <div className="space-y-2"><div className="text-[12px] text-txt-secondary">{tab === 'review' ? 'Pick a plan awaiting review:' : 'Pick a plan to enter marks:'}</div><Chips options={(tab === 'review' ? reviewable : plans.filter(p => ['planned', 'conducted', 'marks_pending', 'needs_review', 'submitted'].includes(p.state))).slice(0, 12).map(p => ({ id: p.id, label: `${p.title} · ${p.batch.name.split(' · ')[1] || p.batch.name}` }))} value={planId} onChange={setPlanId} /></div>}
           {plan && (
-            <Section title={`${plan.roster.length} students`} hint={scan ? scan.note : 'Type marks, or scan the paper sheet. Rows the scan is unsure about must be checked before submit.'} right={<div className="flex gap-1.5 flex-wrap">{editable && <Btn small tone="ghost" onClick={doScan} disabled={busy}><ScanLine className="w-3.5 h-3.5" /> Scan sheet</Btn>}{editable && <Btn small onClick={submit} disabled={busy}><Save className="w-3.5 h-3.5" /> Submit marks</Btn>}{isPrincipal && ['needs_review', 'submitted'].includes(plan.plan.state) && <><Btn small tone="danger" onClick={() => review('return')}>Return</Btn><Btn small tone="ok" onClick={() => review('confirm')}>Confirm all</Btn></>}<Btn small tone="ghost" onClick={() => setPlanId(null)}>Close</Btn></div>}>
-              <Table columns={[
+            <Section tone="emerald" title={`${plan.roster.length} students`} hint={scan ? scan.note : 'Type marks, or scan the paper sheet. Rows the scan is unsure about must be checked before submit.'} right={<div className="flex gap-1.5 flex-wrap">{editable && <Btn small tone="ghost" onClick={doScan} disabled={busy}><ScanLine className="w-3.5 h-3.5" /> Scan sheet</Btn>}{editable && <Btn small onClick={submit} disabled={busy}><Save className="w-3.5 h-3.5" /> Submit marks</Btn>}{isPrincipal && ['needs_review', 'submitted'].includes(plan.plan.state) && <><Btn small tone="danger" onClick={() => review('return')}>Return</Btn><Btn small tone="ok" onClick={() => review('confirm')}>Confirm all</Btn></>}<Btn small tone="ghost" onClick={() => setPlanId(null)}>Close</Btn></div>}>
+              <Table tone="emerald" columns={[
                 { key: 'name', label: 'Student', render: r => <div className="font-semibold">{r.name}</div> },
                 { key: 'marks', label: `Marks / ${plan.plan.maxMarks}`, render: r => { const e = entries[r.id] || {}; return editable ? <input type="number" min="0" max={plan.plan.maxMarks} value={e.status === 'scored' && e.marks != null ? e.marks : ''} disabled={e.status !== 'scored'} onChange={ev => setEntries(x => ({ ...x, [r.id]: { ...x[r.id], marks: ev.target.value === '' ? null : Number(ev.target.value), source: 'manual', ocrConfidence: undefined } }))} className={`w-20 rounded-lg border px-2 py-1 text-[12px] ${e.ocrConfidence != null && e.ocrConfidence < 0.75 ? 'border-amber-400 bg-amber-50' : 'border-bdr'}`} /> : <b>{e.marks ?? '—'}</b> } },
                 { key: 'status', label: 'Status', render: r => { const e = entries[r.id] || {}; return editable ? <select value={e.status || 'scored'} onChange={ev => setEntries(x => ({ ...x, [r.id]: { ...x[r.id], status: ev.target.value } }))} className="text-[11px] rounded-lg border border-bdr px-1.5 py-1 bg-white">{['scored', 'absent', 'not_assessed', 'withheld'].map(s => <option key={s} value={s}>{titleCase(s)}</option>)}</select> : <Pill kind={e.status === 'scored' ? 'ok' : 'neutral'}>{titleCase(e.status || 'scored')}</Pill> } },

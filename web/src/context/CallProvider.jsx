@@ -53,6 +53,14 @@ export function CallProvider({ children }) {
   // Single source of truth for any in-progress call.
   // null = no call. Shape: { persona, mode, state, muted, screenSharing, threadId, startedAt, error?, title? }
   const [activeCall, setActiveCall] = useState(null)
+  // Transcript of the live call (user turns and the agent's replies as they
+  // stream). AvatarCall keeps its own thread while mounted; this copy lets
+  // the screen-share split view show the conversation beside the dashboard.
+  const [transcript, setTranscript] = useState([])
+  const streamingRef = useRef(false)
+  const tUser = (text) => { if (!text) return; streamingRef.current = false; setTranscript(t => [...t, { role: 'user', text }]) }
+  const tDelta = (delta) => { if (!delta) return; setTranscript(t => { if (streamingRef.current && t.length && t[t.length - 1].role === 'bot') { const c = t.slice(); c[c.length - 1] = { ...c[c.length - 1], text: c[c.length - 1].text + delta }; return c } streamingRef.current = true; return [...t, { role: 'bot', text: delta }] }) }
+  const tDone = (full) => { setTranscript(t => { if (streamingRef.current && t.length && t[t.length - 1].role === 'bot') { const c = t.slice(); c[c.length - 1] = { ...c[c.length - 1], text: full || c[c.length - 1].text }; return c } return full?.trim() ? [...t, { role: 'bot', text: full }] : t }); streamingRef.current = false }
 
   // Refs (intentionally outside React state so they survive renders without
   // triggering re-renders on every update).
@@ -96,6 +104,7 @@ export function CallProvider({ children }) {
     personaRef.current = persona
     threadIdRef.current = threadId || null
     userRoleRef.current = role || null
+    setTranscript([]); streamingRef.current = false
     setActiveCall({
       persona, title: title || persona, mode: 'voice', state: 'connecting',
       muted: false, screenSharing: false, threadId: threadId || null,
@@ -110,13 +119,16 @@ export function CallProvider({ children }) {
       onState: (s) => patchCall({ state: s }),
       onUserTranscript: (text) => {
         try { handlersRef.current.onUserTranscript?.(text) } catch {}
+        tUser(text)
         persistMessage('user', text)
       },
       onAssistantDelta: (delta) => {
         try { handlersRef.current.onAssistantDelta?.(delta) } catch {}
+        tDelta(delta)
       },
       onAssistantDone: (full) => {
         try { handlersRef.current.onAssistantDone?.(full) } catch {}
+        tDone(full)
         if (full?.trim()) persistMessage('bot', full)
       },
       onError: (err) => patchCall({ state: 'error', error: err?.message || String(err) }),
@@ -293,6 +305,7 @@ export function CallProvider({ children }) {
     if (!text || !activeCall) return false
     if (activeCall.mode === 'voice' && realtimeRef.current) {
       try { handlersRef.current.onUserTranscript?.(text) } catch {}
+      tUser(text)
       persistMessage('user', text)
       realtimeRef.current.sendText(text)
       return true
@@ -393,7 +406,7 @@ Rules: answer about what is on screen from these notes without calling a tool un
   }
 
   const startScreenShare = useCallback(async () => {
-    if (!realtimeRef.current) return
+    if (!realtimeRef.current) return false
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false })
       screenStreamRef.current = stream
@@ -404,8 +417,10 @@ Rules: answer about what is on screen from these notes without calling a tool un
       try { realtimeRef.current?.sendContext?.(VISION_ON) } catch {}
       setTimeout(() => captureAndDescribe(), 600)
       screenIntervalRef.current = setInterval(captureAndDescribe, 5000)
+      return true
     } catch (e) {
       console.warn('[screen] getDisplayMedia failed', e?.message || e)
+      return false
     }
   }, [])
 
@@ -429,6 +444,7 @@ Rules: answer about what is on screen from these notes without calling a tool un
     threadIdRef.current = null
     userRoleRef.current = null
     setActiveCall(null)
+    setTranscript([]); streamingRef.current = false
   }, [])
 
   // ── View binding ─────────────────────────────────────────────────────────
@@ -437,13 +453,25 @@ Rules: answer about what is on screen from these notes without calling a tool un
   // transcripts continue flowing to the thread but not to any UI.
   const bindHandlers = useCallback((h) => { handlersRef.current = h || {} }, [])
 
+  // Dev only: lets the split view be checked without a live voice call.
+  // Stripped from production builds. window.__mockCall(true|false).
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    window.__mockCall = (on) => {
+      if (!on) { setActiveCall(null); setTranscript([]); return }
+      setActiveCall({ persona: 'general', title: 'Saathi', mode: 'voice', state: 'live', muted: false, screenSharing: true, threadId: null, startedAt: Date.now() })
+      setTranscript([{ role: 'user', text: 'Show me the budget analytics for Pusa.' }, { role: 'bot', text: 'I am showing you Budget analytics for Government ITI Pusa. Utilisation is 61% of the approved AOP.' }, { role: 'user', text: 'Which package is slipping?' }, { role: 'bot', text: 'The civil works package is 2 months behind its milestone; the equipment package is on track' }])
+    }
+    return () => { delete window.__mockCall }
+  }, [])
+
   // Safety net: if the provider itself unmounts (full app teardown), tear down
   // any live call so we don't leak network connections.
   useEffect(() => () => endCall(), [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <CallCtx.Provider value={{
-      activeCall,
+      activeCall, transcript,
       startVoiceCall, startVideoCall, endCall,
       toggleMute, sendText,
       startScreenShare, stopScreenShare,

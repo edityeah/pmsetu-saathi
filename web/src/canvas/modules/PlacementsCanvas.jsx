@@ -34,8 +34,8 @@ export default function PlacementsCanvas() {
           <Stat label="Median wage (reported)" value={wages.length ? fmtInr(wages[Math.floor(wages.length / 2)]) : '—'} sub="Y1 target band ₹12–14k" tone="violet" />
         </StatGrid>
         <Chips options={[{ id: 'all', label: `All (${joined.length})` }, ...EV.map(e => ({ id: e, label: `${titleCase(e)} ${counts[e]}` }))]} value={filter} onChange={setFilter} />
-        <Section title="Records">
-          <Table columns={[
+        <Section tone="indigo" title="Records">
+          <Table tone="indigo" columns={[
             { key: 'trainee', label: 'Student', render: r => <div><div className="font-semibold">{r.trainee.name}</div><div className="text-[10px] text-txt-tertiary">{r.trainee.iti.code} · {r.trainee.batch?.tradeId}{r.trainee.batch?.cohortLabel?.includes('Pre-scheme') ? ' · pre-scheme' : ''} · {r.trainee.gender}</div></div> },
             { key: 'opp', label: 'Role · employer', render: r => <div>{r.opportunity.title}<div className="text-[10px] text-txt-tertiary">{r.opportunity.employer.name} · {r.opportunity.type}</div></div> },
             { key: 'joinedAt', label: 'Joined', render: r => fmtDate(r.joinedAt) },

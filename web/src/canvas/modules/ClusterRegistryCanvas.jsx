@@ -58,7 +58,7 @@ function Overview({ scope, setScope, scopeOpts, canSwitch, onStudents, onTrainer
           <RegistryCard icon="🎓" title="Student registry" desc="Enrolled learners through ITI, trade and batch mappings." a={[fmtNum(s.total), 'active students']} b={[fmtNum(s.options.batches.length), 'mapped batches']} line={s.byIti.filter(i => i.n != null).map(i => `${i.name.replace('Government ITI ', '')} ${fmtNum(i.n)}`).join(' · ')} rows={s.byIti} max={maxS} color="bg-primary" cta="Open student registry" onOpen={onStudents} />
           <RegistryCard icon="👩‍🏫" title="Trainer registry" desc="Staff, subject assignments and batch responsibilities." a={[fmtNum(t.total), 'active trainers']} b={[fmtNum(t.assignments), 'subject assignments']} line={t.byIti.filter(i => i.n != null).map(i => `${i.name.replace('Government ITI ', '')} ${fmtNum(i.n)}`).join(' · ')} rows={t.byIti} max={maxT} color="bg-emerald-500" cta="Open trainer registry" onOpen={onTrainers} />
         </div>
-        <Section title="How the registry is connected" hint="CEO: cluster view · Principal: own ITI and add records">
+        <Section tone="indigo" title="How the registry is connected" hint="CEO: cluster view · Principal: own ITI and add records">
           <div className="flex items-stretch gap-2 flex-wrap text-[12px]">
             {[['🏫', 'Institute', 'Pusa, Shahdara and other cluster ITIs'], ['📘', 'Trade', 'Trades offered at each ITI'], ['👥', 'Batch', 'Batches within trades · trainers hold subject assignments'], ['🎓', 'Students', 'Enrolled learners in each batch']].map(([ic, k, v], i, arr) => (
               <div key={k} className="flex items-center gap-2 flex-1 min-w-[180px]">
@@ -107,8 +107,8 @@ export function Students({ scope, setScope, scopeOpts, canSwitch, f0, onOpen }) 
           <BarChartCard card={{ title: 'Students by trade', unit: 'students', height: 260, orient: 'horizontal', annotation: d.byTrade.length > 6 ? `Top 6 of ${d.byTrade.length} trades; filter by trade for the rest.` : undefined, data: d.byTrade.slice(0, 6).map(t => ({ label: t.name.slice(0, 22), value: t.n, color: 'primary' })) }} />
           <DonutChartCard card={{ title: `Gender composition · ${fmtNum(d.total)} students`, unit: 'students', size: 220, data: [{ label: 'Male', value: d.gender.male, color: 'primary' }, { label: 'Female', value: d.gender.female, color: 'teal' }] }} />
         </div>
-        <Section title="Student records" hint={`Showing ${d.total ? (d.page - 1) * d.pageSize + 1 : 0}–${Math.min(d.total, d.page * d.pageSize)} of ${fmtNum(d.total)}`}>
-          <Table columns={[
+        <Section tone="emerald" title="Student records" hint={`Showing ${d.total ? (d.page - 1) * d.pageSize + 1 : 0}–${Math.min(d.total, d.page * d.pageSize)} of ${fmtNum(d.total)}`}>
+          <Table tone="emerald" columns={[
             { key: 'name', label: 'Student', render: r => <button className="text-left hover:text-primary" onClick={() => onOpen(r.id)}><div className="font-semibold">{r.name}</div><div className="text-[10px] text-txt-tertiary font-mono">{r.id}</div></button> },
             { key: 'itiCode', label: 'ITI' }, { key: 'trade', label: 'Trade', render: r => r.trade || '—' }, { key: 'batch', label: 'Batch', render: r => <span className="text-[11px]">{r.batch || '—'}</span> },
             { key: 'status', label: 'Status', render: r => <Pill kind={r.status === 'active' ? 'ok' : 'neutral'}>{titleCase(r.status)}</Pill> },
@@ -142,8 +142,8 @@ export function Trainers({ scope, setScope, scopeOpts, canSwitch, f0 = {}, onOpe
           <BarChartCard card={{ title: 'Trainers by trade', unit: 'trainers', height: 260, orient: 'horizontal', annotation: d.byTrade.length > 6 ? `Top 6 of ${d.byTrade.length} trades; filter by trade for the rest.` : undefined, data: d.byTrade.slice(0, 6).map(t => ({ label: t.code, value: t.n, color: 'primary' })) }} />
           <DonutChartCard card={{ title: `Mapped batch load · ${fmtNum(d.total)} trainers`, unit: 'trainers', size: 220, annotation: 'Load counts mapped batches, not teaching hours or staffing adequacy.', data: d.byLoad.map((l, i) => ({ label: l.label, value: l.n, color: ['primary', 'sky', 'teal', 'amber', 'rose'][i % 5] })) }} />
         </div>
-        <Section title="Trainer records" hint={`Showing ${d.total ? (d.page - 1) * d.pageSize + 1 : 0}–${Math.min(d.total, d.page * d.pageSize)} of ${fmtNum(d.total)}`}>
-          <Table columns={[
+        <Section tone="amber" title="Trainer records" hint={`Showing ${d.total ? (d.page - 1) * d.pageSize + 1 : 0}–${Math.min(d.total, d.page * d.pageSize)} of ${fmtNum(d.total)}`}>
+          <Table tone="amber" columns={[
             { key: 'name', label: 'Trainer', render: r => <button className="text-left hover:text-primary" onClick={() => onOpen(r.id)}><div className="font-semibold">{r.name}</div><div className="text-[10px] text-txt-tertiary font-mono">ID: {r.facultyCode}</div></button> },
             { key: 'itiCode', label: 'ITI' }, { key: 'programme', label: 'Trade' },
             { key: 'batches', label: 'Mapped batches', align: 'right', render: r => r.batches.length }, { key: 'subjects', label: 'Subject assignments', align: 'right', render: r => r.subjects.length },
@@ -176,8 +176,8 @@ function Enrolment({ scope, setScope, scopeOpts, canSwitch, openCanvas }) {
           <BarChartCard card={{ title: 'Seat utilisation by ITI', unit: '% of sanctioned seats', data: e.byIti.filter(i => i.registryConnected).map(i => ({ label: i.code, value: i.pct || 0, color: (i.pct || 0) >= 70 ? 'emerald' : 'amber' })) }} />
           <DonutChartCard card={{ title: 'Sanctioned seats by ITI', unit: 'seats', data: e.byIti.map(i => ({ label: i.code, value: i.seats })) }} />
         </div>
-        <Section title="By ITI" hint="Planned Year-1 enrolments from the SIP alongside the registry count.">
-          <Table columns={[
+        <Section tone="violet" title="By ITI" hint="Planned Year-1 enrolments from the SIP alongside the registry count.">
+          <Table tone="violet" columns={[
             { key: 'name', label: 'ITI', render: r => <div><div className="font-semibold">{r.name}</div><div className="text-[10px] text-txt-tertiary">{r.kind} · {r.registryConnected ? 'registry connected' : 'no feed'}</div></div> },
             { key: 'seats', label: 'Sanctioned seats', align: 'right', render: r => fmtNum(r.seats) }, { key: 'plannedEnrolments', label: 'Planned Y1', align: 'right', render: r => fmtNum(r.plannedEnrolments) },
             { key: 'enrolled', label: 'Enrolled', align: 'right', render: r => r.registryConnected ? fmtNum(r.enrolled) : <Pill kind="warn">no feed</Pill> },
@@ -210,7 +210,7 @@ export function StudentRecord({ id, onBack, openCanvas }) {
       </DetailCard>
       <DetailCard title="Attendance and marks" icon="🗓️">
         <div className="text-[12px] mb-2"><span className="text-txt-tertiary">Last 15 days: </span><b>{d.attendance.pct == null ? 'no sessions recorded' : `${d.attendance.pct}% present (${d.attendance.present} of ${d.attendance.total} sessions)`}</b></div>
-        <Table columns={[{ key: 'title', label: 'Assessment' }, { key: 'date', label: 'Date', render: r => fmtDate(r.date) }, { key: 'marks', label: 'Marks', align: 'right', render: r => `${r.marks} / ${r.maxMarks}` }]} rows={d.marks} empty="No marks entered yet." />
+        <Table tone="violet" columns={[{ key: 'title', label: 'Assessment' }, { key: 'date', label: 'Date', render: r => fmtDate(r.date) }, { key: 'marks', label: 'Marks', align: 'right', render: r => `${r.marks} / ${r.maxMarks}` }]} rows={d.marks} empty="No marks entered yet." />
       </DetailCard>
       <DetailCard title="Résumé and placements" icon="🤝">
         <LabelGrid items={[['Résumé', d.resume ? `Attached · ${d.resume.title} · updated ${fmtDate(d.resume.updatedAt)}` : 'Not attached'], ['Applications', d.applications.length ? d.applications.map(a => `${a.title} (${a.employer}) · ${a.stage.replace(/_/g, ' ')}`).join('; ') : 'None'], ['Work spells', d.spells.length ? d.spells.map(x => `${x.role} at ${x.employer} · ${x.type} · ${x.state}`).join('; ') : 'None'], ['Support open', d.support.length ? d.support.map(x => `${titleCase(x.reason)} (${x.state})`).join('; ') : 'None']]} />
@@ -235,7 +235,7 @@ export function TrainerRecord({ id, onBack, openCanvas }) {
         <LabelGrid items={[['Phone', t.phone || '—'], ['Email', t.email || '—'], ['District', d.iti?.district ? `${d.iti.district}, Delhi` : '—'], ['Availability today', t.todayNote ? `${titleCase(t.today)} · ${t.todayNote}` : titleCase(t.today)]]} />
       </DetailCard>
       <DetailCard title="Batches and subjects" icon="📚">
-        <Table columns={[{ key: 'name', label: 'Batch', render: r => <div><div className="font-semibold">{r.name}{r.lead ? <Pill kind="info">lead</Pill> : null}</div><div className="text-[10px] text-txt-tertiary">{r.tradeId} · year {r.studyYear} · {r.students} students</div></div> }, { key: 'subjects', label: 'Subjects', render: r => <span className="text-[11px]">{r.subjects.join(', ')}</span> }]} rows={d.batches} empty="No batch assignments." />
+        <Table tone="violet" columns={[{ key: 'name', label: 'Batch', render: r => <div><div className="font-semibold">{r.name}{r.lead ? <Pill kind="info">lead</Pill> : null}</div><div className="text-[10px] text-txt-tertiary">{r.tradeId} · year {r.studyYear} · {r.students} students</div></div> }, { key: 'subjects', label: 'Subjects', render: r => <span className="text-[11px]">{r.subjects.join(', ')}</span> }]} rows={d.batches} empty="No batch assignments." />
       </DetailCard>
       <DetailCard title="Last 15 days" icon="🗓️">
         <LabelGrid items={[['Sessions reported', `${d.sessions15.reported} of ${d.sessions15.scheduled}`], ['Marks pending', String(d.marksPending)], ['Referrals open', String(d.referrals)]]} />

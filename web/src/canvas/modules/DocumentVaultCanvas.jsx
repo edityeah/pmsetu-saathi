@@ -28,7 +28,7 @@ export default function DocumentVaultCanvas() {
           <Stat label="Awaiting check" value={d.counts.awaiting} sub="institute reviewing" tone="amber" />
           <Stat label="Not added" value={d.counts.missing} sub="needed for some applications" tone={d.counts.missing ? 'rose' : 'emerald'} />
         </StatGrid>
-        <Section title="Your documents" hint="A marksheet lands here from Academics, a certificate at Placement, an experience letter on the job.">
+        <Section tone="indigo" title="Your documents" hint="A marksheet lands here from Academics, a certificate at Placement, an experience letter on the job.">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {d.documents.map(x => <div key={x.id} className={`rounded-2xl border p-3 ${x.state === 'missing' ? 'border-dashed border-bdr bg-white' : 'border-bdr-light bg-surface-page/50'}`}>
               <div className="flex items-start gap-3"><span className="w-9 h-9 rounded-xl bg-white border border-bdr-light flex items-center justify-center text-[18px]" aria-hidden>{x.state === 'missing' ? '➕' : ICON[x.kind] || ICON.other}</span><div className="flex-1 min-w-0"><div className="text-[13px] font-bold text-txt-primary">{x.name}</div><div className="text-[10px] text-txt-tertiary">{x.source === 'digilocker' ? 'via DigiLocker' : x.source === 'upload' ? 'Uploaded' : x.source === 'institute' ? 'Issued by the institute' : x.note || 'Not added yet'}</div></div></div>

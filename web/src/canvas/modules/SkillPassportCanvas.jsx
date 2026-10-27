@@ -27,16 +27,16 @@ export default function SkillPassportCanvas() {
           <Stat label="Stated interests" value={d.stated.length} sub="what you told Saathi" tone="violet" />
           <Stat label="Certificates" value={d.certificates.length} sub={`${d.certificates.filter(c => c.state === 'verified').length} verified`} tone="sky" onClick={() => openCanvas({ type: 'document_vault' })} />
         </StatGrid>
-        <Section title="Verified skills" hint="Each one names where it came from and when.">
+        <Section tone="indigo" title="Verified skills" hint="Each one names where it came from and when.">
           {d.verified.length === 0 ? <div className="text-[12px] text-txt-tertiary">No verified skills yet. Finish a module, demonstrate a practical, or pass an assessment and it appears here.</div> : <ul className="divide-y divide-bdr-light/60">{d.verified.map((v, i) => <li key={i} className="py-2.5 flex items-center gap-3"><div className="flex-1 min-w-0"><div className="text-[13px] font-semibold text-txt-primary">{v.label}</div><div className="text-[10px] text-txt-tertiary">{v.detail}{v.at ? ` · ${fmtDate(v.at)}` : ''}</div></div><Pill kind={SRC[v.source]?.kind || 'ok'}>{SRC[v.source]?.label || v.source}</Pill></li>)}</ul>}
         </Section>
-        {d.inProgress.length > 0 && <Section title="In progress" hint="Modules that will add a verified skill when complete.">
+        {d.inProgress.length > 0 && <Section tone="emerald" title="In progress" hint="Modules that will add a verified skill when complete.">
           <ul className="space-y-2.5">{d.inProgress.map((x, i) => <li key={i} className="text-[12px]"><div className="flex justify-between"><span className="font-semibold">{x.label}</span><span className="text-txt-tertiary">{x.pct}%</span></div><Bar pct={x.pct} /></li>)}</ul>
         </Section>}
-        <Section title="Stated interests and projects" hint="What you told Saathi. Marked as stated, not verified.">
+        <Section tone="amber" title="Stated interests and projects" hint="What you told Saathi. Marked as stated, not verified.">
           {d.stated.length === 0 ? <div className="text-[12px] text-txt-tertiary">Tell the career counsellor what you like doing and it appears here.</div> : <div className="flex flex-wrap gap-2">{d.stated.map((s, i) => <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-violet-50 text-violet-800 text-[11px] font-semibold">{s.label}<span className="text-[9px] uppercase tracking-wider text-violet-500">stated</span></span>)}</div>}
         </Section>
-        <Section title="Certificates" hint="From the document vault.">
+        <Section tone="violet" title="Certificates" hint="From the document vault.">
           {d.certificates.length === 0 ? <div className="text-[12px] text-txt-tertiary">No certificates yet.</div> : <ul className="divide-y divide-bdr-light/60">{d.certificates.map((c, i) => <li key={i} className="py-2 flex items-center gap-3"><span className="flex-1 text-[12px] font-semibold">{c.name}</span><Pill kind={c.state === 'verified' ? 'ok' : c.state === 'awaiting' ? 'warn' : 'neutral'}>{c.state === 'verified' ? `Verified${c.verifiedAt ? ' · ' + fmtDate(c.verifiedAt) : ''}` : c.state === 'awaiting' ? 'Awaiting institute check' : 'Self uploaded'}</Pill></li>)}</ul>}
         </Section>
         <div className="flex gap-2 flex-wrap"><Btn onClick={() => openCanvas({ type: 'resume_builder' })}>Build my résumé from this</Btn><Btn tone="ghost" onClick={() => openCanvas({ type: 'document_vault' })}>Open document vault</Btn></div>

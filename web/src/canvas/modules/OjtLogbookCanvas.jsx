@@ -20,7 +20,7 @@ export default function OjtLogbookCanvas() {
       <Hero tone="orange" eyebrow={s.type === 'ojt' ? 'On-the-Job Training' : 'Apprenticeship'} title={s.role} subtitle={`${s.employer.name} · mentor ${s.mentorName || 'to be named'} · started ${fmtDate(s.startAt)}`} />
       <div className="p-4 space-y-4">
         {s.hoursTarget && <div className="rounded-2xl bg-white border border-bdr-light p-3"><Bar pct={100 * s.hoursLogged / s.hoursTarget} label={`${s.hoursLogged} of ${s.hoursTarget} hours`} tone="auto" /><div className="mt-2 flex gap-2 flex-wrap"><Pill kind={s.mentorSignedAt ? 'ok' : 'warn'}>mentor {s.mentorSignedAt ? 'signed' : 'not yet'}</Pill><Pill kind={s.itiSignedAt ? 'ok' : 'warn'}>ITI {s.itiSignedAt ? 'signed' : 'not yet'}</Pill><Pill kind="info">{s.evidenceLevel.replace(/_/g, ' ')}</Pill></div></div>}
-        <Section title="Log today">
+        <Section tone="indigo" title="Log today">
           <form onSubmit={log} className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <input type="number" min="0.5" max="12" step="0.5" value={form.hours} onChange={e => setForm({ ...form, hours: e.target.value })} className={inputCls} />
             <input value={form.task} onChange={e => setForm({ ...form, task: e.target.value })} placeholder="What did you do?" className={`${inputCls} md:col-span-2`} />
@@ -28,7 +28,7 @@ export default function OjtLogbookCanvas() {
             <input value={form.traineeNote} onChange={e => setForm({ ...form, traineeNote: e.target.value })} placeholder="What did you learn? (optional)" className={`${inputCls} md:col-span-4`} />
           </form>
         </Section>
-        <Section title="Logbook">
+        <Section tone="emerald" title="Logbook">
           <ul className="space-y-1.5 text-[12px]">{[...s.logbook].reverse().map((l, i) => <li key={i} className="flex items-start gap-2"><span className="text-[10px] text-txt-tertiary w-20">{l.date}</span><span className="flex-1"><b>{l.hours} h</b> · {l.task}{l.traineeNote ? <span className="block text-[11px] text-txt-secondary">{l.traineeNote}</span> : null}</span></li>)}{s.logbook.length === 0 && <li className="text-txt-tertiary">No entries yet.</li>}</ul>
         </Section>
       </div>

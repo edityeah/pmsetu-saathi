@@ -27,8 +27,8 @@ export default function ClusterOperationsCanvas({ context }) {
     { label: 'Support actions open', value: sum('supportOpen'), hint: `${sum('trainersOnLeave')} trainers on leave today`, tone: 'violet' },
   ] }
   const table = (
-    <Section title="By ITI" hint="Only registry-connected ITIs have operations data.">
-      <Table columns={[
+    <Section tone="indigo" title="By ITI" hint="Only registry-connected ITIs have operations data.">
+      <Table tone="indigo" columns={[
         { key: 'iti', label: 'ITI', render: r => <div><div className="font-semibold">{r.iti.name}</div><div className="text-[10px] text-txt-tertiary">{r.iti.kind} · {r.registryConnected ? 'registry connected' : 'no feed'}</div></div> },
         { key: 'students', label: 'Students', align: 'right', render: r => nil(r.students) },
         { key: 'coveragePct', label: 'Coverage', align: 'right', render: r => r.registryConnected ? <b className={r.coveragePct < 90 ? 'text-amber-700' : 'text-emerald-700'}>{fmtPct(r.coveragePct)}</b> : <Pill kind="warn">no feed</Pill> },

@@ -23,8 +23,8 @@ export default function ReportsCanvas() {
     <div className="h-full overflow-y-auto">
       <Hero tone="sky" eyebrow="License Agreement · reporting" title="Reports, AOP and the IMA pack" subtitle="Quarterly reports go to the SSC through the IMA: operations, upgradation works, KPI compliance, enrolment, placements, dropouts. A new Annual Plan is due 3 months before the current one ends." />
       <div className="p-4 space-y-4">
-        <Section title="Report calendar" hint="Due dates from the License Agreement and SSC calendar.">
-          <Table columns={[
+        <Section tone="indigo" title="Report calendar" hint="Due dates from the License Agreement and SSC calendar.">
+          <Table tone="indigo" columns={[
             { key: 'period', label: 'Report', render: r => <div><div className="font-semibold">{r.period}</div><div className="text-[10px] text-txt-tertiary">{titleCase(r.kind)}</div></div> },
             { key: 'dueAt', label: 'Due', render: r => fmtDate(r.dueAt) },
             { key: 'submittedAt', label: 'Submitted', render: r => fmtDate(r.submittedAt) },
@@ -32,7 +32,7 @@ export default function ReportsCanvas() {
             { key: 'act', label: '', align: 'right', render: r => role === 'spv_ceo' && (r.state === 'draft' || r.state === 'returned') ? <Btn small onClick={() => submit(r)}>Submit</Btn> : null },
           ]} rows={data.reports} />
         </Section>
-        <Section title="Generate the quarterly IMA pack from live data" hint="Assembles operations, upgradation, KPIs and finance exactly as the IMA inspects them." right={<Btn onClick={generate} disabled={busy}><Sparkles className="w-3.5 h-3.5" />{busy ? 'Generating…' : 'Generate pack'}</Btn>}>
+        <Section tone="emerald" title="Generate the quarterly IMA pack from live data" hint="Assembles operations, upgradation, KPIs and finance exactly as the IMA inspects them." right={<Btn onClick={generate} disabled={busy}><Sparkles className="w-3.5 h-3.5" />{busy ? 'Generating…' : 'Generate pack'}</Btn>}>
           {!pack ? <div className="text-[12px] text-txt-tertiary px-2 py-2">No pack generated in this session yet.</div> : <Pack pack={pack} onOpen={openCanvas} />}
         </Section>
       </div>
@@ -59,11 +59,11 @@ function Pack({ pack, onOpen }) {
       </div>
       <div>
         <div className="font-bold text-txt-secondary uppercase text-[10px] tracking-wider mb-1">2 · Upgradation works</div>
-        <Table columns={[{ key: 'iti', label: 'ITI' }, { key: 'title', label: 'Work' }, { key: 'pct', label: '%', align: 'right' }, { key: 'state', label: 'State', render: r => <Pill kind={stateKind(r.state)}>{r.state}</Pill> }]} rows={s.upgradation.civil} />
+        <Table tone="emerald" columns={[{ key: 'iti', label: 'ITI' }, { key: 'title', label: 'Work' }, { key: 'pct', label: '%', align: 'right' }, { key: 'state', label: 'State', render: r => <Pill kind={stateKind(r.state)}>{r.state}</Pill> }]} rows={s.upgradation.civil} />
       </div>
       <div>
         <div className="font-bold text-txt-secondary uppercase text-[10px] tracking-wider mb-1">3 · KPI compliance</div>
-        <Table columns={[{ key: 'name', label: 'KPI', render: r => `${r.code} · ${r.name}` }, { key: 'baseline', label: 'Baseline', align: 'right', render: r => r.baseline ?? '—' }, { key: 'current', label: 'Current', align: 'right', render: r => r.current ?? '—' }, { key: 'target', label: 'Y1 target', align: 'right', render: r => r.target ?? '—' }, { key: 'coverage', label: 'Coverage', render: r => <span className="text-[10px]">{r.coverage || r.valueStatus}</span> }, { key: 'verified', label: 'IMA', render: r => r.current == null ? <span className="text-txt-tertiary text-[10px]">n/a</span> : <Pill kind={r.verified ? 'ok' : 'warn'}>{r.verified ? 'verified' : 'unverified'}</Pill> }]} rows={s.kpis} />
+        <Table tone="emerald" columns={[{ key: 'name', label: 'KPI', render: r => `${r.code} · ${r.name}` }, { key: 'baseline', label: 'Baseline', align: 'right', render: r => r.baseline ?? '—' }, { key: 'current', label: 'Current', align: 'right', render: r => r.current ?? '—' }, { key: 'target', label: 'Y1 target', align: 'right', render: r => r.target ?? '—' }, { key: 'coverage', label: 'Coverage', render: r => <span className="text-[10px]">{r.coverage || r.valueStatus}</span> }, { key: 'verified', label: 'IMA', render: r => r.current == null ? <span className="text-txt-tertiary text-[10px]">n/a</span> : <Pill kind={r.verified ? 'ok' : 'warn'}>{r.verified ? 'verified' : 'unverified'}</Pill> }]} rows={s.kpis} />
       </div>
       <div>
         <div className="font-bold text-txt-secondary uppercase text-[10px] tracking-wider mb-1">4 · Finance</div>

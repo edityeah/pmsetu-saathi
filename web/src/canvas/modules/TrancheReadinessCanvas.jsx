@@ -43,18 +43,18 @@ export default function TrancheReadinessCanvas() {
           <Stat label="Outcome block" value={`${liveScore.outcomeScore}/${liveScore.outcomeWeight}`} sub="KPIs with a source only" tone="violet" />
         </StatGrid>
 
-        <Section title={`First tranche of Year ${nextYear} · start of year`} hint="All three must hold; otherwise release is deferred until compliance.">
+        <Section tone="indigo" title={`First tranche of Year ${nextYear} · start of year`} hint="All three must hold; otherwise release is deferred until compliance.">
           <ul className="space-y-3">
             {firstTranche.conditions.map(c => <Condition key={c.id} c={c} />)}
           </ul>
         </Section>
 
-        <Section title={`Second tranche of Year ${nextYear} · mid-year`} hint="Industry and State shares must be in escrow; reports current.">
+        <Section tone="emerald" title={`Second tranche of Year ${nextYear} · mid-year`} hint="Industry and State shares must be in escrow; reports current.">
           <ul className="space-y-3">{secondTranche.conditions.map(c => <Condition key={c.id} c={c} />)}</ul>
         </Section>
 
-        <Section title="Cost-weighted KPI arithmetic" hint="Each component contributes progress × its share of cost. ~10% is reserved for outcomes that do not track spend." right={<Pill kind="info">milestones {milestoneProgressPct}% verified</Pill>}>
-          <Table columns={[
+        <Section tone="amber" title="Cost-weighted KPI arithmetic" hint="Each component contributes progress × its share of cost. ~10% is reserved for outcomes that do not track spend." right={<Pill kind="info">milestones {milestoneProgressPct}% verified</Pill>}>
+          <Table tone="amber" columns={[
             { key: 'label', label: 'Component', render: r => <div><div className="font-semibold">{r.label}</div><div className="text-[10px] text-txt-tertiary">{fmtCr(r.utilisedCr)} of {fmtCr(r.budgetCr)}</div></div> },
             { key: 'weightPct', label: 'Weight', align: 'right', render: r => `${r.weightPct}%` },
             { key: 'progressPct', label: 'Progress', render: r => <div className="min-w-[140px]"><Bar pct={sim.progress[r.component] ?? r.progressPct} tone="auto" /></div> },

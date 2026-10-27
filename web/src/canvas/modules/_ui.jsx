@@ -28,13 +28,13 @@ export function Hero({ eyebrow, title, subtitle, tone = 'indigo', right }) {
 }
 
 export function Stat({ label, value, sub, tone = 'indigo', onClick }) {
-  const bg = { indigo: 'bg-indigo-50 border-indigo-200/60 text-indigo-700', emerald: 'bg-emerald-50 border-emerald-200/60 text-emerald-700', amber: 'bg-amber-50 border-amber-200/60 text-amber-700', rose: 'bg-rose-50 border-rose-200/60 text-rose-700', sky: 'bg-sky-50 border-sky-200/60 text-sky-700', violet: 'bg-violet-50 border-violet-200/60 text-violet-700', teal: 'bg-teal-50 border-teal-200/60 text-teal-700', slate: 'bg-slate-50 border-slate-200/60 text-slate-700' }[tone]
+  const bg = { indigo: 'from-indigo-50 to-indigo-100/70 border-indigo-200 text-indigo-800', emerald: 'from-emerald-50 to-emerald-100/70 border-emerald-200 text-emerald-800', amber: 'from-amber-50 to-amber-100/70 border-amber-200 text-amber-800', rose: 'from-rose-50 to-rose-100/70 border-rose-200 text-rose-800', sky: 'from-sky-50 to-sky-100/70 border-sky-200 text-sky-800', violet: 'from-violet-50 to-violet-100/70 border-violet-200 text-violet-800', teal: 'from-teal-50 to-teal-100/70 border-teal-200 text-teal-800', fuchsia: 'from-fuchsia-50 to-fuchsia-100/70 border-fuchsia-200 text-fuchsia-800', orange: 'from-orange-50 to-orange-100/70 border-orange-200 text-orange-800', slate: 'from-slate-50 to-slate-100/70 border-slate-200 text-slate-700' }[tone] || 'from-indigo-50 to-indigo-100/70 border-indigo-200 text-indigo-800'
   const W = onClick ? 'button' : 'div'
   return (
-    <W onClick={onClick} className={`text-left rounded-xl border p-3 ${bg} ${onClick ? 'hover:shadow-card cursor-pointer' : ''}`}>
-      <div className="text-[10px] uppercase tracking-wider font-bold opacity-70 truncate">{label}</div>
+    <W onClick={onClick} className={`text-left rounded-xl border bg-gradient-to-br p-3 ${bg} ${onClick ? 'hover:shadow-card cursor-pointer' : ''}`}>
+      <div className="text-[10px] uppercase tracking-wider font-bold opacity-80 leading-tight">{label}</div>
       <div className="text-[20px] md:text-[22px] font-bold leading-tight mt-0.5">{value}</div>
-      {sub && <div className="text-[10px] mt-1 opacity-80 leading-snug">{sub}</div>}
+      {sub && <div className="text-[10px] mt-1 opacity-90 leading-snug">{sub}</div>}
     </W>
   )
 }
@@ -73,11 +73,19 @@ export const fmtDate = (x) => x ? new Date(x).toLocaleDateString('en-IN', { day:
 export const fmtCr = (n) => n == null ? '—' : `₹${Number(n).toFixed(2)} Cr`
 export const fmtInr = (n) => n == null ? '—' : `₹${Number(n).toLocaleString('en-IN')}`
 
-export function Section({ title, hint, children, right }) {
+// Section header tones: a coloured strip and a matching eyebrow so a page
+// of sections reads as distinct blocks rather than one grey column.
+const SECTION_TONE = {
+  indigo: 'from-indigo-50 to-white border-indigo-100 text-indigo-700', emerald: 'from-emerald-50 to-white border-emerald-100 text-emerald-700', amber: 'from-amber-50 to-white border-amber-100 text-amber-700',
+  rose: 'from-rose-50 to-white border-rose-100 text-rose-700', sky: 'from-sky-50 to-white border-sky-100 text-sky-700', violet: 'from-violet-50 to-white border-violet-100 text-violet-700',
+  teal: 'from-teal-50 to-white border-teal-100 text-teal-700', fuchsia: 'from-fuchsia-50 to-white border-fuchsia-100 text-fuchsia-700', orange: 'from-orange-50 to-white border-orange-100 text-orange-700',
+}
+export function Section({ title, hint, children, right, tone = 'indigo' }) {
+  const t = SECTION_TONE[tone] || SECTION_TONE.indigo
   return (
     <section className="rounded-2xl border border-bdr-light bg-white shadow-card overflow-hidden">
-      <div className="px-4 py-2.5 bg-gradient-to-r from-surface-page/50 to-white border-b border-bdr-light flex items-center gap-2">
-        <div className="flex-1 min-w-0"><div className="text-[11px] font-bold uppercase tracking-wider text-primary">{title}</div>{hint && <div className="text-[10px] text-txt-tertiary mt-0.5">{hint}</div>}</div>
+      <div className={`px-4 py-2.5 bg-gradient-to-r ${t} border-b flex items-center gap-2`}>
+        <div className="flex-1 min-w-0"><div className="text-[11px] font-bold uppercase tracking-wider">{title}</div>{hint && <div className="text-[10px] text-txt-secondary mt-0.5">{hint}</div>}</div>
         {right}
       </div>
       <div className="p-3">{children}</div>
@@ -85,15 +93,21 @@ export function Section({ title, hint, children, right }) {
   )
 }
 
-export function Table({ columns, rows, empty = 'Nothing here yet.' }) {
+// Tables: a coloured header row, zebra stripes and a bold first column.
+const TABLE_TONE = {
+  indigo: 'bg-indigo-100/80 text-indigo-900', emerald: 'bg-emerald-100/80 text-emerald-900', amber: 'bg-amber-100/80 text-amber-900', rose: 'bg-rose-100/80 text-rose-900',
+  sky: 'bg-sky-100/80 text-sky-900', violet: 'bg-violet-100/80 text-violet-900', teal: 'bg-teal-100/80 text-teal-900', fuchsia: 'bg-fuchsia-100/80 text-fuchsia-900', orange: 'bg-orange-100/80 text-orange-900',
+}
+export function Table({ columns, rows, empty = 'Nothing here yet.', tone = 'indigo' }) {
   if (!rows?.length) return <div className="text-[12px] text-txt-tertiary px-2 py-3">{empty}</div>
+  const head = TABLE_TONE[tone] || TABLE_TONE.indigo
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-xl border border-bdr-light">
       <table className="w-full text-[12px]">
-        <thead><tr className="bg-surface-page/50 border-b border-bdr-light">{columns.map(c => <th key={c.key} className={`px-2.5 py-2 text-left font-bold text-txt-secondary uppercase tracking-wider text-[10px] ${c.align === 'right' ? 'text-right' : ''}`}>{c.label}</th>)}</tr></thead>
+        <thead><tr className={head}>{columns.map(c => <th key={c.key} className={`px-2.5 py-2 text-left font-bold uppercase tracking-wider text-[10px] ${c.align === 'right' ? 'text-right' : ''}`}>{c.label}</th>)}</tr></thead>
         <tbody>{rows.map((r, i) => (
-          <tr key={r.id || i} className="border-b border-bdr-light/60 last:border-b-0 hover:bg-surface-page/40 align-top">
-            {columns.map(c => <td key={c.key} className={`px-2.5 py-2 text-txt-primary ${c.align === 'right' ? 'text-right tabular-nums' : ''}`}>{c.render ? c.render(r) : r[c.key]}</td>)}
+          <tr key={r.id || i} className={`border-b border-bdr-light/60 last:border-b-0 align-top hover:bg-primary-light/40 ${i % 2 ? 'bg-surface-page/50' : 'bg-white'}`}>
+            {columns.map((c, j) => <td key={c.key} className={`px-2.5 py-2 text-txt-primary ${j === 0 ? 'font-semibold' : ''} ${c.align === 'right' ? 'text-right tabular-nums' : ''}`}>{c.render ? c.render(r) : r[c.key]}</td>)}
           </tr>
         ))}</tbody>
       </table>

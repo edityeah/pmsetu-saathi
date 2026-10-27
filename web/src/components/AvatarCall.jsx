@@ -90,7 +90,7 @@ export default function AvatarCall({
   // the assessment and report cards.
   onCard,
 }) {
-  const { showToast, meExtra, role, refreshThreads, openCanvas } = useApp()
+  const { showToast, meExtra, role, refreshThreads, openCanvas, closeCanvas } = useApp()
   const { setActions } = useContext(CanvasHeaderActionsContext) || {}
   const threadIdRef = useRef(initialThreadId || null)        // persisted thread id (server)
   const profileBlock = buildProfileBlock(meExtra, role)
@@ -314,7 +314,6 @@ export default function AvatarCall({
     let buffer = ''
     const citations = []
     let placeholderIndex = -1
-    let pendingNavigate = null
     // Fresh AbortController per turn so barge-in can cancel the in-flight stream.
     try { streamAbortRef.current?.abort() } catch {}
     const ctrl = new AbortController()
@@ -357,7 +356,8 @@ export default function AvatarCall({
           // Screen tool from the server: remember the resolved canvas and
           // open it once the reply has finished streaming (opening a canvas
           // replaces this view, so the answer must land in the thread first).
-          if (p.navigate?.canvas?.type) pendingNavigate = p.navigate
+          // In text chat the screen is offered, never opened by itself.
+          if (p.navigate?.canvas?.type) { const idx = placeholderIndex; const offer = { label: p.navigate.label || p.navigate.canvas.type, canvas: p.navigate.canvas }; setMessages(m => { const c = m.slice(); if (idx >= 0 && c[idx]) c[idx] = { ...c[idx], offer }; return c }) }
           if (p.offer?.canvas?.type) { const idx = placeholderIndex; const offer = p.offer; setMessages(m => { const c = m.slice(); if (idx >= 0 && c[idx]) c[idx] = { ...c[idx], offer }; return c }) }
               // Card events from the server's card parser — append to the
           // current assistant bubble's `cards` list so ChatBubble can render
@@ -376,10 +376,6 @@ export default function AvatarCall({
           }
           if (p.done) {
             console.log('[reply] done', { bufferLen: buffer.length, hasAnamClient: !!anamClient })
-            if (pendingNavigate) {
-              const nav = pendingNavigate; pendingNavigate = null
-              setTimeout(() => { try { openCanvas?.(nav.canvas); showToast?.({ kind: 'info', text: `Opened: ${nav.label || nav.canvas.type}` }) } catch {} }, 600)
-            }
             if (citations.length) {
               const idx = placeholderIndex
               setMessages(m => { const c = m.slice(); if (idx >= 0) c[idx] = { ...c[idx], citations }; return c })
@@ -452,7 +448,10 @@ export default function AvatarCall({
     if (screenSharing) {
       stopScreenShare?.()
     } else {
-      await startScreenShare?.()
+      const ok = await startScreenShare?.()
+      // The split view takes over: dashboard on the left, this conversation
+      // on the right. Close the chat canvas so the left side is free.
+      if (ok) closeCanvas?.()
     }
   }
 

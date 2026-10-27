@@ -40,8 +40,8 @@ export default function MarksAnalyticsCanvas() {
             </div>
           </div>
         </div>
-        <Section title="Every assessment" hint="Source and review date per mark. Marks entered by OCR are flagged until a trainer confirms them.">
-          <Table columns={[
+        <Section tone="indigo" title="Every assessment" hint="Source and review date per mark. Marks entered by OCR are flagged until a trainer confirms them.">
+          <Table tone="indigo" columns={[
             { key: 'title', label: 'Assessment', render: s => <div><div className="font-semibold">{s.title}</div><div className="text-[10px] text-txt-tertiary">{titleCase(s.type)}{s.subject ? ` · ${s.subject}` : ''} · {fmtDate(s.date)}</div></div> },
             { key: 'marks', label: 'Marks', align: 'right', render: s => s.marks != null ? <b>{s.marks} / {s.maxMarks}</b> : <span className="text-txt-tertiary">— / {s.maxMarks}</span> },
             { key: 'pct', label: '%', align: 'right', render: s => s.pct != null ? `${s.pct}%` : '—' },

@@ -38,7 +38,7 @@ export default function PrincipalBudgetCanvas({ context }) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `budget-${iti?.code || 'iti'}-year-${year}.csv`; a.click()
   }
   const t = d?.totals
-  const pkgTable = (rows, hint) => <Table columns={[
+  const pkgTable = (rows, hint) => <Table tone="indigo" columns={[
     { key: 'title', label: 'Work package', render: r => <button className="text-left hover:text-primary" onClick={() => setOpen(r.id)}><div className="font-semibold">{r.title}</div><div className="text-[10px] text-txt-tertiary">{r.id} · {r.category} · {r.expenditureType}</div></button> },
     { key: 'allocationCr', label: 'AOP allocation', align: 'right', render: r => fmtCr(r.allocationCr) },
     { key: 'releasedCr', label: 'Released', align: 'right', render: r => fmtCr(r.releasedCr) },
@@ -74,7 +74,7 @@ export default function PrincipalBudgetCanvas({ context }) {
               </Card></div>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 items-stretch">
-              <div className="xl:col-span-3"><Section title="Work packages" hint={`Showing ${Math.min(5, d.rows.length)} of ${d.rows.length}. Tap a package for its record.`} right={d.rows.length > 5 ? <button className="text-[11px] text-primary font-bold" onClick={() => setTab('packages')}>View all {d.rows.length} →</button> : null}>{pkgTable(d.rows.slice(0, 5))}</Section></div>
+              <div className="xl:col-span-3"><Section tone="indigo" title="Work packages" hint={`Showing ${Math.min(5, d.rows.length)} of ${d.rows.length}. Tap a package for its record.`} right={d.rows.length > 5 ? <button className="text-[11px] text-primary font-bold" onClick={() => setTab('packages')}>View all {d.rows.length} →</button> : null}>{pkgTable(d.rows.slice(0, 5))}</Section></div>
               <div className="xl:col-span-2"><Card title="Needs review" sub="Status rule: delayed = a task past due with no forecast or the AOP record returned; at risk = any overdue or blocked task.">
                 <div className="space-y-3">
                   <button onClick={() => { setStatus('at_risk'); setTab('packages') }} className="w-full flex items-center gap-3 rounded-xl bg-rose-50 px-3 py-2.5 text-left"><span className="text-[22px] font-bold text-rose-600 w-10">{d.needsReview.atRisk}</span><span className="text-[12px] text-txt-secondary">work packages at risk or delayed</span></button>
@@ -95,7 +95,7 @@ export default function PrincipalBudgetCanvas({ context }) {
               <Stat label="Delayed" value={d.rows.filter(r => r.status === 'delayed').length} sub="no forecast or returned" tone="rose" />
               <Stat label="Average physical progress" value={d.rows.length ? `${Math.round(d.rows.reduce((s, r) => s + r.progressPct, 0) / d.rows.length)}%` : '—'} sub="AOP records" tone="sky" />
             </StatGrid>
-            <Section title="Work packages" hint="Money sits on the package and its AOP record; tasks carry no budget.">{pkgTable(d.rows)}</Section>
+            <Section tone="emerald" title="Work packages" hint="Money sits on the package and its AOP record; tasks carry no budget.">{pkgTable(d.rows)}</Section>
           </div>
         )}
         {tab === 'releases' && (
@@ -106,10 +106,10 @@ export default function PrincipalBudgetCanvas({ context }) {
               <Stat label="Utilised" value={fmtCr(t.spentCr)} sub={`${fmtPct(t.utilisedPct)} of released`} tone="sky" />
               <Stat label="Projects in progress" value={d.releases.filter(r => r.projectState === 'in_progress').length} sub={`${d.releases.filter(r => r.projectState === 'completed').length} completed`} tone="amber" />
             </StatGrid>
-            <Section title="Released and utilised by work area" hint="Utilisation is the institute's certified spend against each area.">
-              <Table columns={[{ key: 'category', label: 'Work area', render: r => <span className="font-semibold">{r.category}</span> }, { key: 'allocationCr', label: 'Allocated', align: 'right', render: r => fmtCr(r.allocationCr) }, { key: 'releasedCr', label: 'Released', align: 'right', render: r => fmtCr(r.releasedCr) }, { key: 'spentCr', label: 'Utilised', align: 'right', render: r => fmtCr(r.spentCr) }, { key: 'u', label: 'Utilised of released', render: r => <div className="min-w-[120px]"><Bar pct={r.releasedCr ? 100 * r.spentCr / r.releasedCr : 0} label={fmtPct(r.releasedCr ? 100 * r.spentCr / r.releasedCr : null)} tone="auto" /></div> }]} rows={d.byCategory} />
+            <Section tone="amber" title="Released and utilised by work area" hint="Utilisation is the institute's certified spend against each area.">
+              <Table tone="amber" columns={[{ key: 'category', label: 'Work area', render: r => <span className="font-semibold">{r.category}</span> }, { key: 'allocationCr', label: 'Allocated', align: 'right', render: r => fmtCr(r.allocationCr) }, { key: 'releasedCr', label: 'Released', align: 'right', render: r => fmtCr(r.releasedCr) }, { key: 'spentCr', label: 'Utilised', align: 'right', render: r => fmtCr(r.spentCr) }, { key: 'u', label: 'Utilised of released', render: r => <div className="min-w-[120px]"><Bar pct={r.releasedCr ? 100 * r.spentCr / r.releasedCr : 0} label={fmtPct(r.releasedCr ? 100 * r.spentCr / r.releasedCr : null)} tone="auto" /></div> }]} rows={d.byCategory} />
             </Section>
-            <Section title={`Release history · ${d.releases.length}`} hint="Every release this year, newest first. Tap a release to open the work package it funded.">
+            <Section tone="violet" title={`Release history · ${d.releases.length}`} hint="Every release this year, newest first. Tap a release to open the work package it funded.">
               <ReleaseTable rows={d.releases.map(r => ({ ...r, itiCode: iti?.code, category: r.category }))} onPick={r => setOpen(r.packageId)} />
             </Section>
           </div>
@@ -122,8 +122,8 @@ export default function PrincipalBudgetCanvas({ context }) {
               <Stat label="Sanction references" value={d.evidence.filter(e => e.kind === 'release').length} sub="PFMS references" tone="sky" />
               <Stat label="Returned by reviewer" value={d.evidence.filter(e => e.state === 'returned').length} sub="needs resubmission" tone={d.evidence.some(e => e.state === 'returned') ? 'rose' : 'emerald'} />
             </StatGrid>
-            <Section title="Evidence" hint="Documents behind the physical and financial progress, newest first.">
-              <Table columns={[{ key: 'at', label: 'Date', render: e => fmtDate(e.at) }, { key: 'title', label: 'Document', render: e => <div><div className="font-semibold">{e.title}</div>{e.note && <div className="text-[10px] text-txt-tertiary">{e.note}</div>}</div> }, { key: 'packageId', label: 'Work package', render: e => <button className="text-[11px] text-primary font-bold" onClick={() => e.packageId && setOpen(e.packageId)}>{d.rows.find(r => r.id === e.packageId)?.title || e.packageId || '—'}</button> }, { key: 'by', label: 'By' }, { key: 'state', label: 'State', render: e => <Pill kind={TASK[e.state] || (e.state === 'completed' ? 'ok' : 'info')}>{titleCase(e.state)}</Pill> }]} rows={d.evidence} empty="No evidence uploaded yet." />
+            <Section tone="sky" title="Evidence" hint="Documents behind the physical and financial progress, newest first.">
+              <Table tone="sky" columns={[{ key: 'at', label: 'Date', render: e => fmtDate(e.at) }, { key: 'title', label: 'Document', render: e => <div><div className="font-semibold">{e.title}</div>{e.note && <div className="text-[10px] text-txt-tertiary">{e.note}</div>}</div> }, { key: 'packageId', label: 'Work package', render: e => <button className="text-[11px] text-primary font-bold" onClick={() => e.packageId && setOpen(e.packageId)}>{d.rows.find(r => r.id === e.packageId)?.title || e.packageId || '—'}</button> }, { key: 'by', label: 'By' }, { key: 'state', label: 'State', render: e => <Pill kind={TASK[e.state] || (e.state === 'completed' ? 'ok' : 'info')}>{titleCase(e.state)}</Pill> }]} rows={d.evidence} empty="No evidence uploaded yet." />
             </Section>
           </div>
         )}
@@ -153,10 +153,10 @@ function WorkPackageRecord({ id, year, onBack }) {
         {d.milestones.length === 0 ? <div className="text-[12px] text-txt-tertiary">No Year-1 tasks are linked to this package.</div> : <ol className="space-y-2.5">{d.milestones.map(m => { const done = ['completed', 'reviewed'].includes(m.state); return <li key={m.id} className="flex items-start gap-3 text-[12px]"><span className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${done ? 'bg-emerald-500' : m.state === 'blocked' || m.state === 'returned' ? 'bg-rose-500' : m.state === 'planned' ? 'bg-slate-300' : 'bg-primary'}`} /><div className="flex-1 min-w-0"><div className="font-semibold text-txt-primary">{m.title}</div><div className="text-[10px] text-txt-tertiary">{m.id} · owner {m.responsibleRole}{m.blockedReason ? ` · blocked: ${m.blockedReason}` : ''}{m.reviewNote ? ` · ${m.reviewNote}` : ''}</div></div><Pill kind={TASK[m.state] || 'neutral'}>{titleCase(m.state)}</Pill><span className="text-[11px] text-txt-tertiary whitespace-nowrap w-24 text-right">{fmtDate(m.forecastAt || m.dueAt)}</span></li> })}</ol>}
       </DetailCard>
       <DetailCard title="Releases against this package" icon="🏦">
-        <Table columns={[{ key: 'releasedAt', label: 'Date', render: r => fmtDate(r.releasedAt) }, { key: 'project', label: 'Project' }, { key: 'amountCr', label: 'Amount', align: 'right', render: r => fmtCr(r.amountCr) }, { key: 'reference', label: 'Reference', render: r => r.reference || '—' }, { key: 'projectState', label: 'Project', render: r => <Pill kind={r.projectState === 'completed' ? 'ok' : r.projectState === 'stopped' ? 'bad' : 'info'}>{titleCase(r.projectState)}</Pill> }]} rows={d.releases} empty="Nothing released yet." />
+        <Table tone="sky" columns={[{ key: 'releasedAt', label: 'Date', render: r => fmtDate(r.releasedAt) }, { key: 'project', label: 'Project' }, { key: 'amountCr', label: 'Amount', align: 'right', render: r => fmtCr(r.amountCr) }, { key: 'reference', label: 'Reference', render: r => r.reference || '—' }, { key: 'projectState', label: 'Project', render: r => <Pill kind={r.projectState === 'completed' ? 'ok' : r.projectState === 'stopped' ? 'bad' : 'info'}>{titleCase(r.projectState)}</Pill> }]} rows={d.releases} empty="Nothing released yet." />
       </DetailCard>
       <DetailCard title="Evidence" icon="📎">
-        <Table columns={[{ key: 'title', label: 'Document', render: e => <div><div className="font-semibold">{e.title}</div>{e.note && <div className="text-[10px] text-txt-tertiary">{e.note}</div>}</div> }, { key: 'at', label: 'Date', render: e => fmtDate(e.at) }, { key: 'by', label: 'By' }]} rows={d.evidence} empty="No evidence uploaded yet." />
+        <Table tone="sky" columns={[{ key: 'title', label: 'Document', render: e => <div><div className="font-semibold">{e.title}</div>{e.note && <div className="text-[10px] text-txt-tertiary">{e.note}</div>}</div> }, { key: 'at', label: 'Date', render: e => fmtDate(e.at) }, { key: 'by', label: 'By' }]} rows={d.evidence} empty="No evidence uploaded yet." />
       </DetailCard>
       <DetailCard title="Latest update" icon="🗒️">
         {d.latestUpdate ? <div className="text-[13px] text-txt-primary">{d.latestUpdate.text}<div className="text-[10px] text-txt-tertiary mt-1">{fmtDate(d.latestUpdate.at)} · {d.latestUpdate.by}</div></div> : <div className="text-[12px] text-txt-tertiary">No updates recorded yet.</div>}

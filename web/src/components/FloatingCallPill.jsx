@@ -32,6 +32,8 @@ export default function FloatingCallPill() {
   // If user is already viewing the call's canvas, the AvatarCall in there is
   // already showing the full call UI — don't double up with the pill.
   if (onMatchingCanvas) return null
+  // While the screen is shared the call sits in the split view on desktop.
+  const splitView = activeCall.screenSharing && activeCall.mode === 'voice'
 
   const status =
     activeCall.state === 'connecting' ? 'Connecting…' :
@@ -47,7 +49,7 @@ export default function FloatingCallPill() {
   }
 
   return (
-    <div className="flex items-center gap-1.5 pl-1.5 pr-1.5 py-1 rounded-pill bg-white border border-bdr shadow-card animate-fade-in"
+    <div className={`${splitView ? 'md:hidden ' : ''}flex items-center gap-1.5 pl-1.5 pr-1.5 py-1 rounded-pill bg-white border border-bdr shadow-card animate-fade-in`}
          role="status" aria-label="Active call">
       {/* Persona avatar + pulse */}
       <div className="relative w-7 h-7 flex-shrink-0">

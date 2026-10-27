@@ -26,7 +26,7 @@ export default function SupportQueueCanvas() {
       <div className="p-4 space-y-4">
         <StatGrid>{Object.entries(byReason).map(([k, v]) => <Stat key={k} label={titleCase(k)} value={v} tone={k === 'repeated_absence' ? 'rose' : k === 'low_result' ? 'amber' : k === 'recheck_due' ? 'violet' : 'sky'} onClick={() => setReason(k)} />)}<Stat label="Overdue" value={open.filter(a => a.dueAt && new Date(a.dueAt) < new Date()).length} tone="rose" /></StatGrid>
         <div className="flex gap-3 flex-wrap"><Chips options={[{ id: 'all', label: 'All reasons' }, ...Object.keys(byReason).map(k => ({ id: k, label: titleCase(k) }))]} value={reason} onChange={setReason} /><Chips options={[{ id: 'open', label: 'Open' }, 'in_progress', 'closed', { id: 'all', label: 'All' }]} value={state} onChange={setState} /></div>
-        <Section title="Actions">
+        <Section tone="indigo" title="Actions">
           <ul className="space-y-2">{list.map(a => (
             <li key={a.id} className="rounded-xl border border-bdr-light bg-white p-2.5">
               <div className="flex items-start gap-2 flex-wrap">
@@ -40,7 +40,7 @@ export default function SupportQueueCanvas() {
               </div>
             </li>))}{list.length === 0 && <li className="text-[12px] text-txt-tertiary">Nothing in this filter.</li>}</ul>
         </Section>
-        <Section title="Referrals from students" hint="What the student chose to share is shown; reply moves the state (accepted → contacted → action agreed → resolved).">
+        <Section tone="emerald" title="Referrals from students" hint="What the student chose to share is shown; reply moves the state (accepted → contacted → action agreed → resolved).">
           <ul className="space-y-2">{referrals.map(r => (
             <li key={r.id} className="rounded-xl border border-bdr-light bg-white p-2.5">
               <div className="flex items-center gap-2 flex-wrap"><b className="text-[12px]">{r.trainee.name}</b><Pill kind="neutral">{titleCase(r.kind)}</Pill><Pill kind={stateKind(r.state)}>{r.state.replace(/_/g, ' ')}</Pill><span className="text-[10px] text-txt-tertiary">to {r.toUser?.name || r.toRole} · {fmtDate(r.createdAt)}</span></div>

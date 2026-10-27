@@ -37,8 +37,8 @@ export default function ItiDashboardCanvas({ context }) {
         </StatGrid>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {registryConnected ? <LineChartCard card={{ title: 'Daily attendance · last 14 days (reported sessions)', xAxis: '', yAxis: '% present', series: [{ name: 'Present %', color: 'primary', data: attendanceTrend }] }} /> : <NoFeed>Attendance trend needs a registry feed.</NoFeed>}
-          <Section title="SIP offerings" hint="Places and planned enrolments for Year 1; launch period for new programmes.">
-            <Table columns={[
+          <Section tone="indigo" title="SIP offerings" hint="Places and planned enrolments for Year 1; launch period for new programmes.">
+            <Table tone="indigo" columns={[
               { key: 'name', label: 'Course', render: r => <div><div className="font-semibold">{r.trade.name}</div><div className="text-[10px] text-txt-tertiary">{r.trade.code} · NSQF {r.trade.nsqfLevel}</div></div> },
               { key: 'kind', label: 'Kind', render: r => <Pill kind={r.trade.kind === 'new_specialist' ? 'info' : r.trade.kind === 'short_term' ? 'violet' : r.trade.kind === 'aggregate' ? 'neutral' : 'ok'}>{titleCase(r.trade.kind)}</Pill> },
               { key: 'y1', label: 'Y1 enrol / places', align: 'right', render: r => r.y1 ? `${r.y1.enrolments} / ${r.y1.places}` : '—' },
@@ -47,8 +47,8 @@ export default function ItiDashboardCanvas({ context }) {
             ]} rows={trades} />
           </Section>
         </div>
-        <Section title={`Batches · ${batches.length}`} hint={showBatches ? undefined : `${batches.filter(b => b.state === 'running').length} running · ${batches.reduce((s, b) => s + b._count.trainees, 0).toLocaleString('en-IN')} students`} right={<div className="flex items-center gap-3"><button className="text-[11px] text-primary font-bold" onClick={() => setShowBatches(v => !v)}>{showBatches ? 'Collapse' : 'Show batches'} {showBatches ? '↑' : '↓'}</button><button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'batches', itiId: iti.id })}>Open rosters →</button></div>}>
-          {showBatches && <Table columns={[
+        <Section tone="emerald" title={`Batches · ${batches.length}`} hint={showBatches ? undefined : `${batches.filter(b => b.state === 'running').length} running · ${batches.reduce((s, b) => s + b._count.trainees, 0).toLocaleString('en-IN')} students`} right={<div className="flex items-center gap-3"><button className="text-[11px] text-primary font-bold" onClick={() => setShowBatches(v => !v)}>{showBatches ? 'Collapse' : 'Show batches'} {showBatches ? '↑' : '↓'}</button><button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'batches', itiId: iti.id })}>Open rosters →</button></div>}>
+          {showBatches && <Table tone="emerald" columns={[
             { key: 'name', label: 'Batch', render: r => <div><div className="font-semibold">{r.name}</div><div className="text-[10px] text-txt-tertiary">{r.trade.name} · lead {r.lead?.name || 'none assigned'}</div></div> },
             { key: 'trainees', label: 'Students', align: 'right', render: r => `${r._count.trainees}/${r.capacity}` },
             { key: 'tenure', label: 'Tenure', render: r => `${r.tenureMonths} months · year ${r.studyYear}` },
@@ -58,10 +58,10 @@ export default function ItiDashboardCanvas({ context }) {
           {showBatches && batches.length > 40 && <div className="text-[11px] text-txt-tertiary px-2 pt-2">Showing 40 of {batches.length}.</div>}
         </Section>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Section title="Machines & labs" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'machines_infra', itiId: iti.id })}>Full register →</button>}>
+          <Section tone="amber" title="Machines & labs" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'machines_infra', itiId: iti.id })}>Full register →</button>}>
             <ul className="space-y-1.5 text-[12px]">{machines.slice(0, 8).map(m => <li key={m.id} className="flex items-center gap-2"><Pill kind={stateKind(m.status)}>{titleCase(m.status)}</Pill><span className="truncate">{m.name}</span><span className="text-[10px] text-txt-tertiary ml-auto">{m.trade?.code || m.category}</span></li>)}</ul>
           </Section>
-          <Section title="Civil works at this ITI" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'civil_works', itiId: iti.id })}>Civil works →</button>}>
+          <Section tone="violet" title="Civil works at this ITI" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'civil_works', itiId: iti.id })}>Civil works →</button>}>
             {civil.length === 0 ? <div className="text-[12px] text-txt-tertiary">No civil works planned here.</div> : civil.map(w => <div key={w.id} className="mb-2"><div className="flex justify-between text-[12px]"><span className="font-semibold truncate">{w.title}</span><Pill kind={stateKind(w.state)}>{w.state.replace(/_/g, ' ')}</Pill></div><Bar pct={w.pctComplete} tone={w.state === 'delayed' ? 'rose' : 'auto'} /><div className="text-[10px] text-txt-tertiary">{w.packageId} · {fmtCr(w.budgetCr)} · {w.unitsAccepted}/{w.workUnits} units · due {fmtDate(w.scheduledCompletion)}</div></div>)}
           </Section>
         </div>

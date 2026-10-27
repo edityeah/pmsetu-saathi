@@ -22,8 +22,8 @@ export default function ReportReviewCanvas() {
     <div className="h-full overflow-y-auto">
       <Hero tone="sky" eyebrow={role === 'state_pmu' ? 'State Steering Committee · secretariat' : 'IMA review'} title={`${pending.length} report${pending.length === 1 ? '' : 's'} awaiting action`} subtitle="Quarterly reports: IMA reviews, SSC notes. Annual Operational Plan: IMA comments within 14 days, SSC approves within 14 days — else deemed approved." />
       <div className="p-4 space-y-4">
-        <Section title="Submissions">
-          <Table columns={[
+        <Section tone="indigo" title="Submissions">
+          <Table tone="indigo" columns={[
             { key: 'period', label: 'Report', render: r => <div><div className="font-semibold">{r.period}</div><div className="text-[10px] text-txt-tertiary">{titleCase(r.kind)}</div></div> },
             { key: 'dueAt', label: 'Due', render: r => fmtDate(r.dueAt) },
             { key: 'submittedAt', label: 'Submitted', render: r => fmtDate(r.submittedAt) },
@@ -37,7 +37,7 @@ export default function ReportReviewCanvas() {
           ]} rows={data.reports} />
         </Section>
         {pack && (
-          <Section title={`Live pack · ${pack.period}`} hint="Assembled from the cluster database at review time.">
+          <Section tone="emerald" title={`Live pack · ${pack.period}`} hint="Assembled from the cluster database at review time.">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[12px]">
               {[['Active enrolment', pack.sections.operations.enrolmentActive], ['Dropouts', pack.sections.operations.dropouts], ['OJT hours', pack.sections.operations.ojtHours], ['KPI score', `${pack.sections.score.score}%`], ['Utilised', `${pack.sections.finance.utilisation.utilisedPct}%`], ['Verified placements', pack.sections.operations.placementsByState.find(p => p.state === 'verified')?.count || 0], ['Disputed', pack.sections.operations.placementsByState.find(p => p.state === 'disputed')?.count || 0], ['Civil works', pack.sections.upgradation.civil.length]].map(([l, v]) => <div key={l} className="rounded-xl bg-surface-page p-2.5"><div className="text-[10px] uppercase font-bold text-txt-tertiary">{l}</div><div className="text-[18px] font-bold">{v}</div></div>)}
             </div>

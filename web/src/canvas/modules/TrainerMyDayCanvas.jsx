@@ -28,7 +28,7 @@ export default function TrainerMyDayCanvas() {
           <Stat label="Marks to enter" value={marksPending.length} tone={marksPending.length ? 'amber' : 'emerald'} onClick={() => openCanvas({ type: 'assessments', tab: 'enter' })} />
           <Stat label="Rechecks due" value={rechecks.length} tone="violet" onClick={() => openCanvas({ type: 'practical_bot' })} />
         </StatGrid>
-        <Section title="Today's sessions" hint="Tap a session to submit attendance. Delivery status is separate from attendance.">
+        <Section tone="indigo" title="Today's sessions" hint="Tap a session to submit attendance. Delivery status is separate from attendance.">
           {sessions.length === 0 ? <div className="text-[12px] text-txt-tertiary">No sessions scheduled for you today.</div> : <ul className="space-y-2">{sessions.map(s => (
             <li key={s.id} className="rounded-xl border border-bdr-light bg-white p-2.5 flex items-center gap-3">
               <div className="w-12 text-center"><div className="text-[14px] font-bold text-primary leading-none">{s.startTime}</div><div className="text-[9px] text-txt-tertiary uppercase mt-0.5">{s.kind}</div></div>
@@ -36,20 +36,20 @@ export default function TrainerMyDayCanvas() {
               <Btn small onClick={() => openCanvas({ type: 'attendance_bot', sessionId: s.id })}>{s.attendanceState === 'not_reported' ? 'Attendance' : 'Open'}</Btn>
             </li>))}</ul>}
         </Section>
-        {pendingAttendance.length > 0 && <Section title="Attendance not yet submitted" hint="Past sessions still open — submit or mark cancelled/rescheduled.">
+        {pendingAttendance.length > 0 && <Section tone="emerald" title="Attendance not yet submitted" hint="Past sessions still open — submit or mark cancelled/rescheduled.">
           <ul className="space-y-1.5 text-[12px]">{pendingAttendance.map(s => <li key={s.id} className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-rose-500" /><span className="flex-1 truncate">{fmtDate(s.date)} {s.startTime} · {s.batch.name} · {s.subject.name}</span><Btn small tone="ghost" onClick={() => openCanvas({ type: 'attendance_bot', sessionId: s.id })}>Submit</Btn></li>)}</ul>
         </Section>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Section title="Marks and tests" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'assessments' })}>Assessments →</button>}>
+          <Section tone="amber" title="Marks and tests" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'assessments' })}>Assessments →</button>}>
             <ul className="space-y-1.5 text-[12px]">{marksPending.map(a => <li key={a.id} className="flex items-center gap-2"><Pill kind="warn">marks pending</Pill><span className="flex-1 truncate">{a.title} · {a.batch.name}</span></li>)}{upcomingAssessments.map(a => <li key={a.id} className="flex items-center gap-2"><Pill kind="info">{fmtDate(a.date)}</Pill><span className="flex-1 truncate">{a.title} · {a.batch.name}</span></li>)}{marksPending.length + upcomingAssessments.length === 0 && <li className="text-txt-tertiary">Nothing this week.</li>}</ul>
           </Section>
-          <Section title="Students asking for help" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'support_queue' })}>Support queue →</button>}>
+          <Section tone="violet" title="Students asking for help" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'support_queue' })}>Support queue →</button>}>
             <ul className="space-y-1.5 text-[12px]">{referrals.map(r => <li key={r.id} className="flex items-center gap-2"><Pill kind={stateKind(r.state)}>{r.state.replace(/_/g, ' ')}</Pill><span className="flex-1 truncate"><b>{r.trainee.name}</b>: {r.summary}</span></li>)}{support.map(s => <li key={s.id} className="flex items-center gap-2"><Pill kind="warn">{titleCase(s.reason)}</Pill><span className="flex-1 truncate"><b>{s.trainee.name}</b> · {s.nextAction}</span><span className="text-[10px] text-txt-tertiary">{fmtDate(s.dueAt)}</span></li>)}{referrals.length + support.length === 0 && <li className="text-txt-tertiary">None.</li>}</ul>
           </Section>
-          <Section title="Rechecks" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'practical_bot' })}>Practical bot →</button>}>
+          <Section tone="sky" title="Rechecks" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'practical_bot' })}>Practical bot →</button>}>
             <ul className="space-y-1.5 text-[12px]">{rechecks.map(r => <li key={r.id} className="flex items-center gap-2"><span className="flex-1 truncate"><b>{r.trainee.name}</b> · {r.task.title}</span><span className="text-[10px] text-txt-tertiary">{fmtDate(r.recheckAt)}</span></li>)}{rechecks.length === 0 && <li className="text-txt-tertiary">None due.</li>}</ul>
           </Section>
-          <Section title="Issues I raised" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'daily_ops' })}>Daily ops →</button>}>
+          <Section tone="rose" title="Issues I raised" right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'daily_ops' })}>Daily ops →</button>}>
             <ul className="space-y-1.5 text-[12px]">{issues.map(i => <li key={i.id} className="flex items-center gap-2"><Pill kind={stateKind(i.state)}>{i.state}</Pill><span className="flex-1 truncate">{i.title}</span></li>)}{issues.length === 0 && <li className="text-txt-tertiary">None open.</li>}</ul>
           </Section>
         </div>

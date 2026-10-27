@@ -15,6 +15,8 @@ import { Bell, Plus, Search, Sparkles, Send, Mic, Phone, ChevronUp, MessageSquar
 import HeadlineStrip from '../components/HeadlineStrip.jsx'
 import CanvasPanel from '../canvas/CanvasPanel.jsx'
 import FloatingCallPill from '../components/FloatingCallPill.jsx'
+import CallSidePanel from '../components/CallSidePanel.jsx'
+import { useCall } from '../context/CallProvider.jsx'
 
 const TONES = {
   indigo:  { bg: 'bg-indigo-100',  fg: 'text-indigo-600',  ring: 'hover:border-indigo-300' },
@@ -39,12 +41,18 @@ export default function HomePage() {
   const chips = suggestionsFor(ctx.role)
   const threads = ctx.threads || []
   const mobile = homeLayoutFor(ctx.role) === 'mobile'
+  // Screen share on a voice call splits the main area: the dashboard the
+  // agent opens on the left, the live conversation on the right.
+  const { activeCall } = useCall() || {}
+  const split = !!(activeCall && activeCall.mode === 'voice' && activeCall.screenSharing)
 
   const now = Date.now(), DAY = 86400000
   const todayT = threads.filter(t => now - new Date(t.updatedAt).getTime() < DAY)
   const weekT = threads.filter(t => { const d = now - new Date(t.updatedAt).getTime(); return d >= DAY && d < 7 * DAY })
   const earlierT = threads.filter(t => now - new Date(t.updatedAt).getTime() >= 7 * DAY)
 
+  // A role switch starts a fresh conversation; the old role's answers must not carry over.
+  useEffect(() => { setMessages([]) }, [ctx.role])
   function startNewChat() { setMessages([]); setShowSidebar(false); ctx.newChat?.() }
   function openThread(t) { setShowSidebar(false); ctx.openThread?.(t) }
 
@@ -66,13 +74,19 @@ export default function HomePage() {
     followRef.current = follow
     const followActions = follow.map((q, i) => ({ label: `${i + 1}. ${q}`, kind: 'chip', value: q }))
     if (r.responseType === 'action') {
-      setMessages(m => [...m, { role: 'bot', text: r.meta?.assistantText || 'Opening…', actions: [...followActions, ...(follow.length ? [] : (r.meta?.chips || []).map(c => ({ label: c, kind: 'chip', value: c })))] }])
-      if (r.canvas?.type) ctx.openCanvas(r.canvas)
-      else dispatchActionForRole({ actionId: r.actionId, entities: r.entities, role: ctx.role, openCanvas: ctx.openCanvas, showToast: ctx.showToast })
+      // A screen is never opened by itself: the answer carries an Open
+      // button and the user decides. Legacy form actions still dispatch.
+      if (r.canvas?.type) {
+        const label = r.cta?.label || `Open ${r.meta?.label || 'screen'}`
+        setMessages(m => [...m, { role: 'bot', text: r.meta?.assistantText || `${r.meta?.label || 'The screen'} is ready.`, actions: [{ label, kind: 'open', canvas: r.canvas }, ...followActions] }])
+      } else {
+        setMessages(m => [...m, { role: 'bot', text: r.meta?.assistantText || 'Opening…', actions: [...followActions, ...(follow.length ? [] : (r.meta?.chips || []).map(c => ({ label: c, kind: 'chip', value: c })))] }])
+        dispatchActionForRole({ actionId: r.actionId, entities: r.entities, role: ctx.role, openCanvas: ctx.openCanvas, showToast: ctx.showToast })
+      }
     } else if (r.responseType === 'answer') {
       const cits = (r.answer.citations || []).map(c => c.source).join(' · ')
       const actions = [...(r.cta?.canvas?.type ? [{ label: r.cta.label, kind: 'open', canvas: r.cta.canvas }] : []), ...followActions]
-      setMessages(m => [...m, { role: 'bot', text: r.answer.text, html: `<div>${r.answer.text}</div>${cits ? `<div class="mt-2 text-[10px] text-slate-500">Sources: ${cits}</div>` : ''}${follow.length ? '<div class="mt-2 text-[11px] text-slate-500">Reply with 1, 2 or 3 to ask a follow-up.</div>' : ''}`, actions }])
+      setMessages(m => [...m, { role: 'bot', text: r.answer.text, html: `<div>${r.answer.text}</div>${cits ? `<div class="mt-2 text-[10px] text-slate-500">Sources: ${cits}</div>` : ''}${follow.length ? '<div class="mt-2 text-[11px] text-slate-500">Ask a follow-up below, or reply with 1, 2 or 3.</div>' : ''}`, actions }])
     } else if (r.responseType === 'none' && r.reason === 'openai_not_configured') {
       setMessages(m => [...m, { role: 'bot', text: 'Saathi needs an OpenAI key on the server to understand free text. Tap an app tile below — every screen works without AI.' }])
     } else {
@@ -84,7 +98,7 @@ export default function HomePage() {
 
   return (
     <div className="h-screen flex bg-white overflow-hidden" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-      <aside className={`${showSidebar ? 'fixed inset-0 z-40' : 'hidden'} md:flex md:static w-[280px] flex-shrink-0 flex-col border-r border-bdr-strong bg-surface-secondary`}>
+      <aside className={`${showSidebar ? 'fixed inset-0 z-40' : 'hidden'} ${split ? 'md:hidden' : 'md:flex'} md:static w-[280px] flex-shrink-0 flex-col border-r border-bdr-strong bg-surface-secondary`}>
         <div className="px-4 pt-5 pb-4 flex items-center justify-center"><Logo size={44} showText /></div>
         <div className="px-4"><button onClick={startNewChat} className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-pill bg-primary text-white font-bold text-[14px] shadow-modal active:opacity-80"><Plus className="w-4 h-4" /> New chat</button></div>
         <div className="px-4 mt-3"><div className="flex items-center gap-2 px-3 py-2 rounded-pill bg-white border border-bdr"><Search className="w-3.5 h-3.5 text-txt-tertiary" /><input placeholder="Search chats" className="flex-1 bg-transparent text-[12px] outline-none placeholder:text-txt-tertiary" /></div></div>
@@ -95,7 +109,8 @@ export default function HomePage() {
       </aside>
       {showSidebar && <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setShowSidebar(false)} />}
 
-      <main className="relative flex-1 flex flex-col min-w-0 bg-white">
+      <main className="relative flex-1 flex min-w-0 bg-white">
+      <div className="relative flex-1 flex flex-col min-w-0">
         <div className="flex items-center justify-between md:justify-end px-3 md:px-6 py-3 border-b border-bdr bg-gradient-to-b from-surface-page/40 to-white flex-shrink-0">
           <button onClick={() => setShowSidebar(true)} className="md:hidden p-2 rounded-lg hover:bg-slate-100"><Menu className="w-5 h-5 text-txt-secondary" /></button>
           <div className="md:hidden"><Logo size={28} /></div>
@@ -107,7 +122,9 @@ export default function HomePage() {
         </div>
         {greeted ? <GreetingPanel ctx={ctx} bots={bots} chips={chips} onSend={send} onPickBot={openBot} mobile={mobile} /> : <ChatThread messages={messages} typing={typing} onPick={(c) => c.kind === 'open' ? ctx.openCanvas(c.canvas) : c.kind === 'chip' && send(c.value)} />}
         <MessageInput onSend={send} />
-        <CanvasPanel />
+        <CanvasPanel fill={split} />
+      </div>
+      {split && <CallSidePanel />}
       </main>
     </div>
   )

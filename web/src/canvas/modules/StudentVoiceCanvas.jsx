@@ -34,14 +34,14 @@ export default function StudentVoiceCanvas({ context }) {
   const donut = { title: 'Direct vs inferred', unit: 'signals', data: [{ label: 'Direct', value: totals.direct, color: 'emerald' }, { label: 'Inferred', value: totals.inferred, color: 'amber' }] }
   const line = { title: 'Signals per week', yAxis: 'signals', series: [{ name: 'All', color: 'primary', data: trend }] }
   const actionBox = (
-    <Section title="Actions this suggests" hint="Themes with the most students first; each links to the owner who can act.">
+    <Section tone="indigo" title="Actions this suggests" hint="Themes with the most students first; each links to the owner who can act.">
       <ul className="space-y-1.5 text-[12px]">{actions.map(a => <li key={a.theme} className="flex items-start gap-2"><Pill kind="warn">{titleCase(a.theme)}</Pill><span className="flex-1">{a.suggestion}</span><span className="text-[10px] text-txt-tertiary">{a.affected} students</span></li>)}</ul>
       <div className="mt-2 flex gap-2 flex-wrap"><button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'support_queue' })}>Support queue →</button><button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'daily_ops' })}>Facilities issues →</button></div>
     </Section>
   )
   const signalTable = (
-    <Section title="Signal taxonomy (from the companion KB)" hint="Structured events, not transcripts. Distinct students per signal; sensitive signals with fewer than 3 students are suppressed.">
-      <Table columns={[
+    <Section tone="emerald" title="Signal taxonomy (from the companion KB)" hint="Structured events, not transcripts. Distinct students per signal; sensitive signals with fewer than 3 students are suppressed.">
+      <Table tone="emerald" columns={[
         { key: 'dashboardLabel', label: 'Signal', render: r => <div><div className="font-semibold">{r.dashboardLabel}</div><div className="text-[10px] text-txt-tertiary">{r.code} · {r.eventGroup} · {r.sourceMethod}</div></div> },
         { key: 'verificationState', label: 'Verification', render: r => <Pill kind={/Verified|confirmed/.test(r.verificationState) ? 'ok' : /Inferred|Unverified|Self/.test(r.verificationState) ? 'warn' : 'info'}>{r.verificationState}</Pill> },
         { key: 'students', label: 'Students', align: 'right', render: r => r.suppressed ? <span className="text-[10px] text-txt-tertiary">suppressed (&lt;3)</span> : r.students },
@@ -51,7 +51,7 @@ export default function StudentVoiceCanvas({ context }) {
     </Section>
   )
   const itiTable = scope === 'cluster' ? (
-    <Section title="By ITI"><Table columns={[{ key: 'name', label: 'ITI' }, { key: 'registryConnected', label: 'Companion live', render: r => <Pill kind={r.registryConnected ? 'ok' : 'warn'}>{r.registryConnected ? 'yes' : 'no feed'}</Pill> }, { key: 'events', label: 'Signals', align: 'right' }, { key: 'students', label: 'Students heard', align: 'right' }]} rows={perIti} /></Section>
+    <Section tone="amber" title="By ITI"><Table tone="amber" columns={[{ key: 'name', label: 'ITI' }, { key: 'registryConnected', label: 'Companion live', render: r => <Pill kind={r.registryConnected ? 'ok' : 'warn'}>{r.registryConnected ? 'yes' : 'no feed'}</Pill> }, { key: 'events', label: 'Signals', align: 'right' }, { key: 'students', label: 'Students heard', align: 'right' }]} rows={perIti} /></Section>
   ) : null
   const saathiContext = `Student Voice (${days} days, ${scope}): ${totals.events} signals from ${totals.students} students (${totals.participationPct}% participation), ${totals.direct} direct / ${totals.inferred} inferred, ${totals.guests} guests. Themes: ${themes.map(t => `${t.theme} ${t.total} (${t.students} students; top: ${t.topics[0]?.topic})`).join('; ')}. By stage ${JSON.stringify(byStage)}. Referrals ${JSON.stringify(referrals)}. Signal taxonomy counts: ${signals.map(s => `${s.dashboardLabel} ${s.suppressed ? 'suppressed' : s.students} students (${s.verificationState})`).join('; ')}.`
   return (

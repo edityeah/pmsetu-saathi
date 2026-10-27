@@ -62,23 +62,14 @@ r.post('/message', async (req, res, next) => {
       if (!r0.error) {
         const followUps = nav.followUps?.length === 3 ? nav.followUps : followUpsFor(nav.target, nav.entities, r0.iti?.name)
         const cta = { label: `Open ${r0.label}`, canvas: r0.canvas }
-        // Insight question: answer from the live data and offer the screen.
-        if (nav.wantsAnswer && !nav.wantsScreen) {
-          const answer = await answerFromData({ question: text, label: r0.label, data: r0.data, language: nav.language, target: nav.target, itiName: r0.iti?.name }).catch(() => null)
-          if (answer) return res.json({ responseType: 'answer', target: nav.target, answer: { text: answer, citations: [], language: nav.language }, cta, followUps, meta: { label: r0.label } })
-        }
-        // Orchestration: open the screen, with a line that says so.
-        return res.json({
-          responseType: 'action',
-          target: nav.target,
-          canvas: r0.canvas,
-          actionId: null,
-          entities: nav.entities,
-          confidence: nav.confidence,
-          cta,
-          followUps,
-          meta: { assistantText: nav.language === 'hi' ? `मैं आपको ${r0.label} दिखा रहा हूँ।` : `I'm showing you ${r0.label}.`, chips: nav.chips, language: nav.language, label: r0.label },
-        })
+        // Every navigation request is answered in the chat: a data question
+        // gets its answer, a "show me" request gets a two-sentence summary of
+        // what the screen holds. The screen itself opens only from the Open
+        // button under the answer, never by itself.
+        const question = nav.wantsAnswer && !nav.wantsScreen ? text : `Summarise what ${r0.label}${r0.iti?.name ? ` for ${r0.iti.name}` : ''} shows right now in two short sentences, quoting the key figures.`
+        const answer = await answerFromData({ question, label: r0.label, data: r0.data, language: nav.language, target: nav.target, itiName: r0.iti?.name }).catch(() => null)
+        const fallback = nav.language === 'hi' ? `${r0.label} तैयार है। नीचे Open दबाकर देखें।` : `${r0.label} is ready. Tap Open below to see the full screen.`
+        return res.json({ responseType: 'answer', target: nav.target, answer: { text: answer || fallback, citations: [], language: nav.language }, cta, followUps, meta: { label: r0.label, canvas: r0.canvas } })
       }
     }
 

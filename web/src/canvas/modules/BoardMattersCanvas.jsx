@@ -23,7 +23,7 @@ export default function BoardMattersCanvas() {
           {Object.entries(NEEDS).map(([k, v]) => <div key={k} className="rounded-xl bg-white border border-bdr-light p-2"><Pill kind={v.kind}>{v.label}</Pill><div className="text-[18px] font-bold mt-1">{items.filter(i => i.needs === k && i.state === 'pending').length}<span className="text-[10px] text-txt-tertiary font-normal"> pending</span></div></div>)}
         </div>
         {groups.map(([title, rows]) => (
-          <Section key={title} title={title}>
+          <Section tone="indigo" key={title} title={title}>
             <ul className="divide-y divide-bdr-light/60">
               {rows.map(i => (
                 <li key={i.id} className="py-2.5 flex items-start gap-3">

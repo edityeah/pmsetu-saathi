@@ -37,7 +37,7 @@ export default function ClusterHomeCanvas({ context }) {
   )
   const catDonut = { title: 'Year-1 by category (₹ Cr)', unit: '₹ Cr', annotation: `Planned ₹${totals.budgetCr} Cr against the envelope of ₹${sip.envelopeY1Cr} Cr. Civil is the largest Year-1 line; equipment peaks in Years 2–3.`, data: lines.map(l => ({ label: l.label.split(' (')[0], value: l.budgetCr })) }
   const byIti = (
-    <Section title="Year-1 by ITI (₹ Cr)" hint="Planned Year-1 allocation per institute and what has been spent so far. Tap an ITI to open its profile." right={<span className="text-[10px] text-txt-tertiary">planned · spent</span>}>
+    <Section tone="indigo" title="Year-1 by ITI (₹ Cr)" hint="Planned Year-1 allocation per institute and what has been spent so far. Tap an ITI to open its profile." right={<span className="text-[10px] text-txt-tertiary">planned · spent</span>}>
       <div className="space-y-2.5">
         {[...itis].sort((a, b) => b.y1Cr - a.y1Cr).map(i => (
           <button key={i.id} onClick={() => openCanvas({ type: 'institute_profile', itiCode: i.code })} className="w-full text-left">
@@ -50,8 +50,8 @@ export default function ClusterHomeCanvas({ context }) {
     </Section>
   )
   const pkgTable = (
-    <Section title="Five-year packages by category" hint={`${packages.length} packages; each has a yearly AOP record. Task budgets are never added on top.`}>
-      <Table columns={[{ key: 'category', label: 'Category' }, { key: 'n', label: 'Packages', align: 'right' }, { key: 'totalCr', label: '5-year', align: 'right', render: r => fmtCr(r.totalCr) }, { key: 'y1', label: 'Year 1', align: 'right', render: r => fmtCr(r.y1) }, { key: 'share', label: 'Share', align: 'right', render: r => `${Math.round(100 * r.totalCr / cluster.sipAmountCr)}%` }]} rows={Object.values(byCat).sort((a, b) => b.totalCr - a.totalCr)} />
+    <Section tone="emerald" title="Five-year packages by category" hint={`${packages.length} packages; each has a yearly AOP record. Task budgets are never added on top.`}>
+      <Table tone="emerald" columns={[{ key: 'category', label: 'Category' }, { key: 'n', label: 'Packages', align: 'right' }, { key: 'totalCr', label: '5-year', align: 'right', render: r => fmtCr(r.totalCr) }, { key: 'y1', label: 'Year 1', align: 'right', render: r => fmtCr(r.y1) }, { key: 'share', label: 'Share', align: 'right', render: r => `${Math.round(100 * r.totalCr / cluster.sipAmountCr)}%` }]} rows={Object.values(byCat).sort((a, b) => b.totalCr - a.totalCr)} />
     </Section>
   )
 
@@ -72,8 +72,8 @@ export default function ClusterHomeCanvas({ context }) {
   const unit = k => k.unit === 'percent' ? '%' : ''
   const r1 = v => v == null ? null : Math.round(v * 10) / 10
   const kpiTable = (
-    <Section title="Headline KPIs · baseline, target, current position" hint="A current value appears only where a source exists; otherwise the owner who will produce it is named." right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'five_year_targets' })}>All 27 KPIs →</button>}>
-      <Table columns={[
+    <Section tone="amber" title="Headline KPIs · baseline, target, current position" hint="A current value appears only where a source exists; otherwise the owner who will produce it is named." right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'five_year_targets' })}>All 27 KPIs →</button>}>
+      <Table tone="amber" columns={[
         { key: 'code', label: 'KPI', render: r => <div><div className="font-semibold">{r.code} · {r.name}</div><div className="text-[10px] text-txt-tertiary">{r.unit}{r.ownerRole ? ` · owner ${r.ownerRole}` : ''}</div></div> },
         { key: 'baseline', label: 'Baseline', align: 'right', render: r => r.baseline == null ? <span className="text-txt-tertiary">{r.baselineText || '—'}</span> : `${r1(r.baseline)}${unit(r)}` },
         { key: 'target', label: 'Y1 target', align: 'right', render: r => <b>{r1(r.targets?.Y1 ?? r.target) ?? '—'}{(r.targets?.Y1 ?? r.target) != null ? unit(r) : ''}</b> },
@@ -87,12 +87,12 @@ export default function ClusterHomeCanvas({ context }) {
 
   // 4. Risks and changes
   const risksBox = (
-    <Section title="Risks · triggered first" hint="From the SIP risk register; decision rules apply before any target is revised." right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'milestone_board' })}>Board →</button>}>
+    <Section tone="violet" title="Risks · triggered first" hint="From the SIP risk register; decision rules apply before any target is revised." right={<button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'milestone_board' })}>Board →</button>}>
       <ul className="space-y-1.5 text-[12px]">{[...risks].sort((a, b) => (b.state === 'triggered') - (a.state === 'triggered')).slice(0, 5).map(r => <li key={r.id} className="flex items-start gap-2"><Pill kind={r.state === 'triggered' ? 'bad' : r.state === 'closed' ? 'ok' : 'info'}>{r.state}</Pill><div><b>{r.id} · {r.risk}</b> <span className="text-txt-secondary">— {r.response}</span><div className="text-[10px] text-txt-tertiary">owner {r.ownerRole} · {r.cadence} · rule: {r.decisionRule}</div></div></li>)}</ul>
     </Section>
   )
   const changesBox = (
-    <Section title={`Change requests · ${pendingChanges.length} awaiting decision`} hint="Logged before any target or date is revised; formal approvals are routed, never implied.">
+    <Section tone="sky" title={`Change requests · ${pendingChanges.length} awaiting decision`} hint="Logged before any target or date is revised; formal approvals are routed, never implied.">
       {changes.length === 0 ? <div className="text-[12px] text-txt-tertiary">None.</div> : <ul className="space-y-1.5 text-[12px]">{changes.slice(0, 5).map(c => <li key={c.id} className="flex items-start gap-2"><Pill kind={stateKind(c.state)}>{c.state.replace(/_/g, ' ')}</Pill><div><b>{c.title}</b> <span className="text-txt-tertiary">({c.itiCode || 'cluster'} · {c.proposer.name})</span><div className="text-[10px] text-txt-secondary">{c.currentValue} → {c.proposedValue} · {c.reason}</div></div></li>)}</ul>}
       <div className="mt-2"><button className="text-[11px] text-primary font-bold" onClick={() => openCanvas({ type: 'milestone_board' })}>Decide on the milestone board →</button></div>
     </Section>

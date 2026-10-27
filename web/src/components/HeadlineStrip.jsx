@@ -7,14 +7,14 @@ import { api } from '../api/client.js'
 import { useApp } from '../context/AppContext.jsx'
 
 const TONE = {
-  indigo:  { ring: '#4f46e5', bg: 'bg-indigo-50',  fg: 'text-indigo-700' },
-  sky:     { ring: '#0284c7', bg: 'bg-sky-50',     fg: 'text-sky-700' },
-  fuchsia: { ring: '#c026d3', bg: 'bg-fuchsia-50', fg: 'text-fuchsia-700' },
-  amber:   { ring: '#d97706', bg: 'bg-amber-50',   fg: 'text-amber-700' },
-  rose:    { ring: '#e11d48', bg: 'bg-rose-50',    fg: 'text-rose-700' },
-  emerald: { ring: '#059669', bg: 'bg-emerald-50', fg: 'text-emerald-700' },
-  violet:  { ring: '#7c3aed', bg: 'bg-violet-50',  fg: 'text-violet-700' },
-  teal:    { ring: '#0d9488', bg: 'bg-teal-50',    fg: 'text-teal-700' },
+  indigo:  { ring: '#4f46e5', card: 'from-indigo-50 to-indigo-100/60 border-indigo-200', fg: 'text-indigo-700', val: 'text-indigo-900' },
+  sky:     { ring: '#0284c7', card: 'from-sky-50 to-sky-100/60 border-sky-200', fg: 'text-sky-700', val: 'text-sky-900' },
+  fuchsia: { ring: '#c026d3', card: 'from-fuchsia-50 to-fuchsia-100/60 border-fuchsia-200', fg: 'text-fuchsia-700', val: 'text-fuchsia-900' },
+  amber:   { ring: '#d97706', card: 'from-amber-50 to-amber-100/60 border-amber-200', fg: 'text-amber-700', val: 'text-amber-900' },
+  rose:    { ring: '#e11d48', card: 'from-rose-50 to-rose-100/60 border-rose-200', fg: 'text-rose-700', val: 'text-rose-900' },
+  emerald: { ring: '#059669', card: 'from-emerald-50 to-emerald-100/60 border-emerald-200', fg: 'text-emerald-700', val: 'text-emerald-900' },
+  violet:  { ring: '#7c3aed', card: 'from-violet-50 to-violet-100/60 border-violet-200', fg: 'text-violet-700', val: 'text-violet-900' },
+  teal:    { ring: '#0d9488', card: 'from-teal-50 to-teal-100/60 border-teal-200', fg: 'text-teal-700', val: 'text-teal-900' },
 }
 
 function Ring({ pct, color, size = 44 }) {
@@ -42,12 +42,12 @@ export default function HeadlineStrip() {
         {data.items.map(it => {
           const t = TONE[it.tone] || TONE.indigo
           return (
-            <button key={it.key} onClick={() => it.open ? openCanvas({ type: it.open.canvas, tab: it.open.tab, filters: it.open.filters }) : it.canvas && openCanvas({ type: it.canvas })} className={`text-left rounded-2xl bg-white border border-bdr-light p-3.5 hover:shadow-card transition flex items-start gap-3 min-w-0 ${it.canvas ? '' : 'cursor-default'}`}>
+            <button key={it.key} onClick={() => it.open ? openCanvas({ type: it.open.canvas, tab: it.open.tab, filters: it.open.filters }) : it.canvas && openCanvas({ type: it.canvas })} className={`text-left rounded-2xl bg-gradient-to-br ${t.card} border p-3.5 hover:shadow-card transition flex items-start gap-3 min-w-0 ${it.canvas ? '' : 'cursor-default'}`}>
               <div className="flex-1 min-w-0">
-                <div className={`text-[10px] font-bold uppercase tracking-wider ${t.fg} leading-tight line-clamp-2`}>{it.label}</div>
-                <div className="text-[22px] leading-tight font-bold text-txt-primary mt-1 tabular-nums break-words">{it.value}</div>
-                {it.target && <div className="text-[10px] text-txt-secondary truncate mt-0.5">{it.target}</div>}
-                {(it.hint || it.delta) && <div className="text-[10px] text-txt-tertiary truncate">{it.delta && <span className={`font-bold ${it.delta.value < 0 ? 'text-rose-600' : it.delta.value > 0 ? 'text-emerald-600' : 'text-txt-secondary'}`}>{it.delta.text}</span>}{it.delta && it.hint ? ' · ' : ''}{it.hint}</div>}
+                <div className={`text-[10px] font-bold uppercase tracking-wider ${t.fg} leading-tight`}>{it.label}</div>
+                <div className={`text-[24px] leading-tight font-bold ${t.val} mt-1 tabular-nums break-words`}>{it.value}</div>
+                {it.target && <div className="text-[11px] text-txt-primary mt-1 leading-snug">{it.target}</div>}
+                {(it.hint || it.delta) && <div className="text-[10px] text-txt-secondary leading-snug mt-0.5">{it.delta && <span className={`font-bold ${it.delta.value < 0 ? 'text-rose-600' : it.delta.value > 0 ? 'text-emerald-600' : 'text-txt-secondary'}`}>{it.delta.text}</span>}{it.delta && it.hint ? ' ' : ''}{it.hint}</div>}
               </div>
               {it.pct != null && <Ring pct={it.pct} color={t.ring} size={40} />}
             </button>

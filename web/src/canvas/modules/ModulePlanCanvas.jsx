@@ -24,7 +24,7 @@ export default function ModulePlanCanvas({ context }) {
         right={<select value={active} onChange={e => setBatchId(e.target.value)} className="text-[12px] rounded-lg border border-bdr px-2 py-1.5 bg-white max-w-[200px]">{list.batches.filter(x => x.state === 'running').map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>} />
       <div className="px-4 pt-3 pb-2 space-y-3 flex-shrink-0">
         <div className="flex gap-1.5 overflow-x-auto">{modules.map(m => <span key={m.id} className={`text-[10px] px-2 py-1 rounded-pill whitespace-nowrap ${m.index === current.index ? 'bg-primary text-white' : m.index < current.index ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-page text-txt-secondary'}`}>M{m.index} · {m.kind}</span>)}</div>
-        <Section title="Lessons in this module">
+        <Section tone="indigo" title="Lessons in this module">
           <ul className="space-y-1.5">{lessons.map((l, i) => (
             <li key={i} className="flex items-center gap-2 text-[12px]"><Pill kind={l.type === 'practical' ? 'ok' : l.type === 'quiz' ? 'violet' : 'info'}>{l.type}</Pill><span className="flex-1">{l.title}</span><span className="text-[10px] text-txt-tertiary">{l.minutes} min</span><button onClick={() => setPending({ text: `Give me a 45-minute delivery plan for "${l.title}" with a demo, a safety point and a 3-question quick check.`, nonce: Date.now() })} className="text-[10px] text-primary font-bold">Plan ✨</button></li>
           ))}</ul>

@@ -44,7 +44,7 @@ export default function MyInstituteCanvas({ context }) {
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
       {tab === 'profile' && (
         <div className="p-4 space-y-5">
-          <Section title="Institute snapshot">
+          <Section tone="indigo" title="Institute snapshot">
             <LabelGrid items={[['Institute name', iti.name], ['Academic year', '2026–27'], ['Role', iti.kind === 'hub' ? 'Hub ITI' : 'Spoke ITI'], ['Current operating status', 'Active'], ['Locality', `${iti.district}, Delhi`], ['Registry', iti.registryConnected ? 'Connected' : 'Not connected'], ['Institute code', iti.code], ['Principal', iti.principal?.name || '—'], ['Sector focus', iti.sectorFocus], ['Five-year plan', `${fmtCr(iti.fiveYearCr)} · civil ${fmtCr(iti.civilCr)} · digital ${fmtCr(iti.digitalCr)}`]]} />
           </Section>
           <StatGrid>
@@ -54,15 +54,15 @@ export default function MyInstituteCanvas({ context }) {
             <Stat label="Year-1 tasks" value={`${tasks.filter(t => ['completed', 'reviewed'].includes(t.state)).length} / ${tasks.length}`} sub={`${tasks.filter(t => t.overdue).length} overdue · ${gates.filter(g => g.state === 'passed').length} of ${gates.length} launch gates passed`} tone={tasks.some(t => t.overdue) ? 'rose' : 'teal'} onClick={() => openCanvas({ type: 'budget_analytics', tab: 'packages' })} />
           </StatGrid>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
-            <Section title="Campus facilities" hint={`${facilities.length} workshops, labs and spaces.`} right={<button className="text-[11px] text-primary font-bold" onClick={() => setTab('facilities')}>Open facilities →</button>}>
-              <Table columns={[
+            <Section tone="emerald" title="Campus facilities" hint={`${facilities.length} workshops, labs and spaces.`} right={<button className="text-[11px] text-primary font-bold" onClick={() => setTab('facilities')}>Open facilities →</button>}>
+              <Table tone="emerald" columns={[
                 { key: 'name', label: 'Facility', render: f => <button className="text-left hover:text-primary" onClick={() => { setTab('facilities'); setFacility(f) }}><div className="font-semibold">{f.name}</div><div className="text-[10px] text-txt-tertiary">{titleCase(f.kind)}{f.linkedTrades?.length ? ` · ${f.linkedTrades.join(', ')}` : ''}</div></button> },
                 { key: 'status', label: 'Condition', render: f => <Pill kind={FAC[f.status]?.kind || 'neutral'}>{FAC[f.status]?.label || titleCase(f.status)}</Pill> },
                 { key: 'machines', label: 'Machines', align: 'right', render: f => f.machines?.total ?? f.machineCount ?? '—' },
               ]} rows={facilities.slice(0, 5)} empty="No facilities recorded." />
             </Section>
-            <Section title="Trade offerings" hint={`${trades.length} courses in the plan.`} right={<button className="text-[11px] text-primary font-bold" onClick={() => setTab('trades')}>Open trade offerings →</button>}>
-              <Table columns={[
+            <Section tone="amber" title="Trade offerings" hint={`${trades.length} courses in the plan.`} right={<button className="text-[11px] text-primary font-bold" onClick={() => setTab('trades')}>Open trade offerings →</button>}>
+              <Table tone="amber" columns={[
                 { key: 'trade', label: 'Trade / course', render: t => <button className="text-left hover:text-primary" onClick={() => setCourse(t)}><div className="font-semibold">{t.trade.name}</div><div className="text-[10px] text-txt-tertiary">{KIND_LABEL[t.trade.kind] || titleCase(t.trade.kind)} · NSQF {t.trade.nsqfLevel || '—'}</div></button> },
                 { key: 'places', label: 'Places (Y1)', align: 'right', render: t => y1(t)?.places ?? '—' },
                 { key: 'batches', label: 'Running batches', align: 'right', render: t => t.runningBatches },
@@ -75,7 +75,7 @@ export default function MyInstituteCanvas({ context }) {
               <button key={id} onClick={() => setTab(id)} className="rounded-2xl border border-bdr-light bg-white shadow-card p-4 text-left hover:border-primary/40 transition"><div className="text-[22px] mb-1">{icon}</div><div className="text-[14px] font-bold text-txt-primary">{title}</div><div className="text-[11px] text-txt-secondary mt-0.5 mb-3">{desc}</div><span className="inline-flex items-center px-3 py-1.5 rounded-pill bg-primary text-white text-[11px] font-bold">Open {title.toLowerCase()} →</span></button>
             ))}
           </div>
-          {(contacts.principal || contacts.placement) && <Section title="Contacts">
+          {(contacts.principal || contacts.placement) && <Section tone="violet" title="Contacts">
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">{[contacts.principal, contacts.placement].filter(Boolean).map(c => <li key={c.role} className="flex items-center gap-3"><span className="w-9 h-9 rounded-full bg-primary-light text-primary-dark font-bold flex items-center justify-center text-[12px]">{c.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span><div><div className="font-semibold text-txt-primary">{c.name}</div><div className="text-[10px] text-txt-tertiary">{c.role}{c.phone ? ` · ${c.phone}` : ''}</div></div></li>)}</ul>
           </Section>}
         </div>

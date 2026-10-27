@@ -43,7 +43,7 @@ export default function PracticalBotCanvas({ context }) {
           <Stat label="Not yet observed" value={matrix.length * tasks.length - Object.values(counts).reduce((a, b) => a + b, 0)} sub="student × task cells" tone="slate" />
         </StatGrid>
         {cell && task && (
-          <Section title={`${matrix.find(m => m.id === cell.traineeId)?.name} · ${task.title}`} hint="Score each criterion 0 (not shown) · 1 (partly) · 2 (fully).">
+          <Section tone="indigo" title={`${matrix.find(m => m.id === cell.traineeId)?.name} · ${task.title}`} hint="Score each criterion 0 (not shown) · 1 (partly) · 2 (fully).">
             <div className="space-y-2">
               {task.rubric.map(c => <div key={c} className="flex items-center gap-3 text-[12px]"><span className="flex-1">{c}</span><div className="flex rounded-pill bg-surface-page p-0.5">{[0, 1, 2].map(v => <button key={v} onClick={() => setScores(s => ({ ...s, [c]: v }))} className={`w-8 h-7 rounded-pill text-[11px] font-bold ${scores[c] === v ? (v === 2 ? 'bg-emerald-500 text-white' : v === 1 ? 'bg-amber-500 text-white' : 'bg-rose-500 text-white') : 'text-txt-tertiary'}`}>{v}</button>)}</div></div>)}
               <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note for the student (optional)" className={inputCls} />
@@ -52,7 +52,7 @@ export default function PracticalBotCanvas({ context }) {
             </div>
           </Section>
         )}
-        <Section title="Students × tasks" hint="Tap a cell to observe. Latest observation shown.">
+        <Section tone="emerald" title="Students × tasks" hint="Tap a cell to observe. Latest observation shown.">
           <div className="overflow-x-auto"><table className="w-full text-[11px]">
             <thead><tr className="bg-surface-page/50 border-b border-bdr-light"><th className="px-2 py-2 text-left font-bold text-txt-secondary uppercase text-[10px]">Student</th>{tasks.map(t => <th key={t.id} className="px-2 py-2 text-left font-bold text-txt-secondary uppercase text-[10px] min-w-[150px]">{t.title}{!t.required && <span className="text-txt-tertiary font-normal"> (optional)</span>}</th>)}</tr></thead>
             <tbody>{matrix.map(m => <tr key={m.id} className="border-b border-bdr-light/60"><td className="px-2 py-1.5 font-semibold whitespace-nowrap">{m.name}</td>{tasks.map(t => { const o = m.byTask[t.id]; return <td key={t.id} className="px-2 py-1.5"><button onClick={() => { setCell({ traineeId: m.id, taskId: t.id }); setScores({}); setNote('') }} className="text-left">{o ? <div><Pill kind={RESULT_KIND[o.result]}>{titleCase(o.result)}</Pill><div className="text-[9px] text-txt-tertiary">{fmtDate(o.observedAt)}{o.recheckAt ? ` · recheck ${fmtDate(o.recheckAt)}` : ''}</div></div> : <span className="text-txt-tertiary">+ observe</span>}</button></td> })}</tr>)}</tbody>
