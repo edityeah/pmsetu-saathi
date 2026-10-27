@@ -107,7 +107,7 @@ export default function AvatarCall({
   // BUT only if the active call's persona matches this view (otherwise some
   // other persona is in a call and we should appear idle).
   const call = useCall() || {}
-  const { activeCall, startVoiceCall, startVideoCall, endCall,
+  const { activeCall, transcript: callTranscript, startVoiceCall, startVideoCall, endCall,
           toggleMute: ctxToggleMute, sendText: ctxSendText,
           startScreenShare, stopScreenShare,
           bindHandlers, bindVideoElement, screenStreamRef } = call
@@ -156,9 +156,29 @@ export default function AvatarCall({
         }
         assistantPlaceholderRef.current = -1
       },
+      // A screen offered by a voice tool: Open button + follow-ups under the
+      // agent's current reply (or a fresh bot bubble if none is streaming).
+      onOffer: (offer) => {
+        setMessages(m => {
+          const c = m.slice()
+          let idx = assistantPlaceholderRef.current
+          if (idx < 0 || !c[idx]) { for (let i = c.length - 1; i >= 0; i--) if (c[i].role === 'bot') { idx = i; break } }
+          if (idx >= 0 && c[idx] && c[idx].role === 'bot' && !c[idx].offer) c[idx] = { ...c[idx], offer }
+          else c.push({ role: 'bot', text: '', offer })
+          return c
+        })
+      },
     })
     return () => bindHandlers(null)
   }, [bindHandlers, isMyCall])
+
+  // Re-opening this canvas during a live call restores the conversation so
+  // far (answers, Open buttons, follow-ups) instead of an empty thread.
+  useEffect(() => {
+    if (!isMyCall || !Array.isArray(callTranscript) || !callTranscript.length) return
+    setMessages(m => m.length ? m : callTranscript.map(x => ({ ...x })))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMyCall])
 
   // Video mode needs its <video> element registered with the Anam client.
   // When the canvas re-opens during an existing video call, re-bind so the
@@ -357,7 +377,7 @@ export default function AvatarCall({
           // open it once the reply has finished streaming (opening a canvas
           // replaces this view, so the answer must land in the thread first).
           // In text chat the screen is offered, never opened by itself.
-          if (p.navigate?.canvas?.type) { const idx = placeholderIndex; const offer = { label: p.navigate.label || p.navigate.canvas.type, canvas: p.navigate.canvas }; setMessages(m => { const c = m.slice(); if (idx >= 0 && c[idx]) c[idx] = { ...c[idx], offer }; return c }) }
+          if (p.navigate?.canvas?.type) { const idx = placeholderIndex; const offer = { label: p.navigate.label || p.navigate.canvas.type, canvas: p.navigate.canvas, followUps: p.navigate.followUps || [] }; setMessages(m => { const c = m.slice(); if (idx >= 0 && c[idx]) c[idx] = { ...c[idx], offer }; return c }) }
           if (p.offer?.canvas?.type) { const idx = placeholderIndex; const offer = p.offer; setMessages(m => { const c = m.slice(); if (idx >= 0 && c[idx]) c[idx] = { ...c[idx], offer }; return c }) }
               // Card events from the server's card parser — append to the
           // current assistant bubble's `cards` list so ChatBubble can render
@@ -550,28 +570,15 @@ export default function AvatarCall({
           : 'hidden'}
       />
       {showRibbon && callMode === 'voice' && (
-        <div className="flex-1 min-h-0 flex flex-col items-center justify-center bg-gradient-to-b from-primary-light/60 to-white px-6 py-10">
-
-          {/* Pulsing orb — animated rings around a solid centre. */}
-          <div className="relative w-48 h-48 flex items-center justify-center">
-            {callState === 'live' && (
-              <>
-                <span className="absolute inset-0 rounded-full bg-primary/20 animate-pulse-ring" />
-                <span className="absolute inset-4 rounded-full bg-primary/30 animate-pulse-ring" style={{ animationDelay: '0.4s' }} />
-              </>
-            )}
-            <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center text-[40px] font-bold shadow-modal">
-              {personaShort.charAt(0)}
-            </div>
+        <div className="flex-shrink-0 bg-gradient-to-b from-primary-light/60 to-white border-b border-bdr px-4 py-3 flex items-center gap-3">
+          <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
+            {callState === 'live' && <span className="absolute inset-0 rounded-full bg-primary/25 animate-pulse-ring" />}
+            <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center text-[16px] font-bold shadow-card">{personaShort.charAt(0)}</div>
           </div>
-
-          <div className="mt-8 text-[20px] font-bold text-txt-primary">{personaShort}</div>
-          <div className="mt-1 text-[13px] text-txt-secondary">
-            {callState === 'connecting' ? 'Connecting…' : callState === 'live' ? (listening ? 'Listening…' : 'Speak naturally') : ''}
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-bold text-txt-primary truncate">On a call with {personaShort}</div>
+            <div className="text-[11px] text-txt-secondary truncate">{callState === 'connecting' ? 'Connecting…' : callState === 'live' ? (listening ? 'Listening. Answers, Open buttons and follow-ups appear below.' : 'Muted') : ''}{callState === 'error' && callError ? ` · ${callError}` : ''}</div>
           </div>
-          {callState === 'error' && callError && (
-            <div className="mt-3 text-[12px] text-danger">{callError}</div>
-          )}
         </div>
       )}
 
@@ -599,7 +606,7 @@ export default function AvatarCall({
       {/* Zone 2 — Chat thread. Takes the rest of the height and scrolls.
           Hidden during a voice call (Zone 1 already fills the canvas like a
           phone call). Visible in video mode (under the video) and in text mode. */}
-      <div className={`${callMode === 'voice' && callState !== 'idle' ? 'hidden' : 'flex'} flex-1 min-h-0 overflow-y-auto px-4 md:px-5 py-4 flex-col gap-2.5`}>
+      <div className="flex flex-1 min-h-0 overflow-y-auto px-4 md:px-5 py-4 flex-col gap-2.5">
         {/* "Try asking" — vertical grid of prompts at the top of the chat
             thread. ALWAYS visible (scrolls with the thread, so it sits above
             the messages and the user can scroll back to it at any time).
@@ -644,8 +651,11 @@ export default function AvatarCall({
             {Array.isArray(m.cards) && m.cards.map((card, j) => (
               <CardRenderer key={j} card={card} onChip={(text) => streamReply(text, null)} />
             ))}
-            {m.offer?.canvas?.type && (
-              <div className="mt-1.5 ml-2"><button onClick={() => { try { openCanvas?.(m.offer.canvas); showToast?.({ kind: 'info', text: `Opened: ${m.offer.label}` }) } catch {} }} className="px-3 py-1.5 text-xs font-bold rounded-pill bg-primary text-white hover:opacity-90">Open {m.offer.label} →</button></div>
+            {m.offer && (m.offer.canvas?.type || m.offer.followUps?.length > 0) && (
+              <div className="mt-1.5 ml-2 flex flex-wrap gap-2">
+                {m.offer.canvas?.type && <button onClick={() => { try { openCanvas?.(m.offer.canvas); showToast?.({ kind: 'info', text: `Opened: ${m.offer.label}` }) } catch {} }} className="px-3 py-1.5 text-xs font-bold rounded-pill bg-primary text-white hover:opacity-90">Open {m.offer.label} →</button>}
+                {(m.offer.followUps || []).slice(0, 3).map((q, k) => <button key={k} onClick={() => { if (isMyCall && callMode === 'voice' && ctxSendText?.(q)) return; streamReply(q, null) }} className="px-3 py-1.5 text-xs rounded-pill bg-white border border-primary text-primary-dark hover:bg-primary-light/40">{k + 1}. {q}</button>)}
+              </div>
             )}
             {m.citations?.length > 0 && (
               <div className="text-[10px] text-txt-tertiary mt-1 ml-2 flex flex-wrap gap-x-3">

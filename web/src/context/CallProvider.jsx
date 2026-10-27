@@ -38,9 +38,10 @@ export function CallProvider({ children }) {
   // value object. Reading through the ref means the newest handler is
   // always used at dispatch time without re-creating the RTC session.
   const app = useApp()
-  const voiceCtxRef = useRef({ openCanvas: null, showToast: null, arise: null })
+  const voiceCtxRef = useRef({ openCanvas: null, showToast: null, arise: null, offer: null })
   voiceCtxRef.current.openCanvas = app?.openCanvas || null
   voiceCtxRef.current.showToast  = app?.showToast  || null
+  voiceCtxRef.current.offer = (o) => { try { handlersRef.current.onOffer?.(o) } catch {} ; tOffer(o) }
   // `arise` is a per-canvas callback bag registered by the ARISE classroom
   // canvas when it mounts (via bindArise below). Voice tools like
   // arise_whiteboard_write read from voiceCtxRef.current.arise and no-op
@@ -59,8 +60,11 @@ export function CallProvider({ children }) {
   const [transcript, setTranscript] = useState([])
   const streamingRef = useRef(false)
   const tUser = (text) => { if (!text) return; streamingRef.current = false; setTranscript(t => [...t, { role: 'user', text }]) }
-  const tDelta = (delta) => { if (!delta) return; setTranscript(t => { if (streamingRef.current && t.length && t[t.length - 1].role === 'bot') { const c = t.slice(); c[c.length - 1] = { ...c[c.length - 1], text: c[c.length - 1].text + delta }; return c } streamingRef.current = true; return [...t, { role: 'bot', text: delta }] }) }
-  const tDone = (full) => { setTranscript(t => { if (streamingRef.current && t.length && t[t.length - 1].role === 'bot') { const c = t.slice(); c[c.length - 1] = { ...c[c.length - 1], text: full || c[c.length - 1].text }; return c } return full?.trim() ? [...t, { role: 'bot', text: full }] : t }); streamingRef.current = false }
+  const tDelta = (delta) => { if (!delta) return; setTranscript(t => { if (t.length && t[t.length - 1].role === 'bot' && (streamingRef.current || !t[t.length - 1].text)) { const c = t.slice(); c[c.length - 1] = { ...c[c.length - 1], text: c[c.length - 1].text + delta }; return c } streamingRef.current = true; return [...t, { role: 'bot', text: delta }] }) }
+  // A screen offer (Open button + follow-ups) attaches to the agent's current
+  // reply, or starts one if the reply has not begun streaming yet.
+  const tOffer = (offer) => setTranscript(t => { if (t.length && t[t.length - 1].role === 'bot') { const c = t.slice(); c[c.length - 1] = { ...c[c.length - 1], offer }; return c } return [...t, { role: 'bot', text: '', offer }] })
+  const tDone = (full) => { setTranscript(t => { if (t.length && t[t.length - 1].role === 'bot' && (streamingRef.current || !t[t.length - 1].text)) { const c = t.slice(); c[c.length - 1] = { ...c[c.length - 1], text: full || c[c.length - 1].text }; return c } return full?.trim() ? [...t, { role: 'bot', text: full }] : t }); streamingRef.current = false }
 
   // Refs (intentionally outside React state so they survive renders without
   // triggering re-renders on every update).
@@ -481,8 +485,8 @@ Rules: answer about what is on screen from these notes without calling a tool un
     if (!import.meta.env.DEV) return
     window.__mockCall = (on) => {
       if (!on) { setActiveCall(null); setTranscript([]); return }
-      setActiveCall({ persona: 'general', title: 'Saathi', mode: 'voice', state: 'live', muted: false, screenSharing: true, threadId: null, startedAt: Date.now() })
-      setTranscript([{ role: 'user', text: 'Show me the budget analytics for Pusa.' }, { role: 'bot', text: 'I am showing you Budget analytics for Government ITI Pusa. Utilisation is 61% of the approved AOP.' }, { role: 'user', text: 'Which package is slipping?' }, { role: 'bot', text: 'The civil works package is 2 months behind its milestone; the equipment package is on track' }])
+      setActiveCall({ persona: 'general', title: 'Saathi', mode: 'voice', state: 'live', muted: false, screenSharing: on === true, threadId: null, startedAt: Date.now() })
+      setTranscript([{ role: 'user', text: 'Show me the budget analytics for Pusa.' }, { role: 'bot', text: 'Budget analytics for Government ITI Pusa: 2.47 crore of 7.49 crore has been released, 33%. Tap Open below to see it.', offer: { label: 'Budget analytics · Allocations and releases · Government ITI Pusa', canvas: { type: 'budget_analytics', tab: 'allocations', filters: { itiCode: 'PUS' } }, followUps: ['Which actions are pending on these funds at Government ITI Pusa?', 'Show the same figures for another work package', 'Show the same figures for another ITI'] } }, { role: 'user', text: 'Which package is slipping?' }, { role: 'bot', text: 'The civil works package is 2 months behind its milestone; the equipment package is on track.' }])
     }
     return () => { delete window.__mockCall }
   }, [])

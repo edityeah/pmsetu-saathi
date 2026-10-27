@@ -41,7 +41,7 @@ const perSession = rateLimit({
 r.use(perSession)
 
 // Rules appended to the general persona so the streaming chat uses the tools.
-const NAV_TOOL_RULES = (role) => `SCREEN TOOLS: you can open screens in this user's UI with open_canvas(target, iti?, trade?, gender?, date?) and read live platform data with lookup_data(same arguments). Two modes. (1) Orchestration: when the user asks to open, show, see or display a screen, dashboard, graph, chart or list, CALL open_canvas and say in one line that you are showing it ("I'm showing you the Infrastructure readiness screen for Pusa."). (2) Insight: when the user asks a data question (how many, how much, is it working, what is remaining…), call lookup_data, answer ONLY from the returned data quoting the numbers exactly, then offer the screen in one line ("I can open the Budget analytics screen for Pusa if you want.") and end with three numbered deeper-dive questions the user could ask next (1. … 2. … 3. …). Do not open a screen the user did not ask to see; if they reply yes or pick a number, act on it. Targets for role ${role} are listed in the tool's enum; machines, workshops or labs working today → ops_infrastructure; courses or trades offered → institute_trades; facilities and assets installed → institute_facilities.`
+const NAV_TOOL_RULES = (role) => `SCREEN TOOLS: open_canvas(target, iti?, trade?, gender?, date?) and lookup_data(same arguments) both return the live platform data behind a screen and place an "Open <screen>" button plus three follow-up questions under your reply. Nothing opens by itself; the user taps the button. Two modes. (1) The user asks to open, show, see or display a screen, dashboard, graph, chart or list: CALL open_canvas, give the one or two key figures from the returned data, and say in one line that the screen is a tap away ("Budget analytics for Pusa is ready below; tap Open to see it."). (2) The user asks a data question (how many, how much, is it working, what is remaining…): call lookup_data, answer ONLY from the returned data quoting the numbers exactly, then say in one line that the screen is a tap away. Never say you are opening or showing a screen. Do not list the follow-up questions in your text; they are already shown as buttons. Targets for role ${role} are listed in the tool's enum; machines, workshops or labs working today → ops_infrastructure; courses or trades offered → institute_trades; facilities and assets installed → institute_facilities.`
 
 function isQuestionLike(text) {
   return /\?\s*$/.test(text) || /\b(why|how|what|when|where|explain|kya|kyun|kaise|samjhao|batao)\b/i.test(text)
@@ -113,7 +113,7 @@ r.post('/navigate', async (req, res, next) => {
     const body = z.object({ target: z.string(), iti: z.string().nullable().optional(), trade: z.string().nullable().optional(), gender: z.string().nullable().optional(), date: z.string().nullable().optional(), year: z.union([z.string(), z.number()]).nullable().optional(), category: z.string().nullable().optional(), open: z.boolean().optional() }).parse(req.body || {})
     const out = await resolveNavigation(req, { ...body, withData: true })
     if (out.error) return res.status(400).json({ error: out.error })
-    res.json(out)
+    res.json({ ...out, followUps: followUpsFor(body.target, body, out.iti?.name) })
   } catch (e) { next(e) }
 })
 
@@ -247,9 +247,10 @@ r.post('/stream', async (req, res, next) => {
           if (name !== 'open_canvas' && name !== 'lookup_data') return { ok: false, error: 'unknown tool' }
           const out = await resolveNavigation(req, { ...args, withData: true })
           if (out.error) return { ok: false, error: out.error }
-          if (name === 'open_canvas') res.write(`data: ${JSON.stringify({ navigate: { canvas: out.canvas, label: out.label } })}\n\n`)
-          else res.write(`data: ${JSON.stringify({ offer: { canvas: out.canvas, label: out.label } })}\n\n`)
-          return { ok: true, opened: name === 'open_canvas' ? out.label : undefined, screen: out.label, data: out.data }
+          // Both tools offer the screen: an Open button and follow-ups under
+          // the reply. Nothing opens until the user taps.
+          res.write(`data: ${JSON.stringify({ offer: { canvas: out.canvas, label: out.label, followUps: followUpsFor(args.target, args, out.iti?.name) } })}\n\n`)
+          return { ok: true, screen: out.label, data: out.data, note: `An "Open ${out.label}" button and three follow-up questions are now under your reply; do not say you opened or are showing the screen.` }
         },
         onCitation: (c) => {
           if (c.url) {

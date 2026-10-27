@@ -6,10 +6,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Mic, MicOff, PhoneOff, ScreenShareOff, Send, Sparkles } from 'lucide-react'
 import { useCall } from '../context/CallProvider.jsx'
+import { useApp } from '../context/AppContext.jsx'
 import ChatBubble from './ChatBubble.jsx'
 
 export default function CallSidePanel() {
   const { activeCall, transcript = [], toggleMute, endCall, stopScreenShare, sendText } = useCall() || {}
+  const { openCanvas } = useApp() || {}
   const [input, setInput] = useState('')
   const endRef = useRef(null)
   useEffect(() => { try { endRef.current?.scrollIntoView({ block: 'end' }) } catch {} }, [transcript.length, transcript[transcript.length - 1]?.text?.length])
@@ -35,10 +37,20 @@ export default function CallSidePanel() {
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-2.5">
         <div className="rounded-2xl border border-bdr-light bg-gradient-to-b from-primary-light/30 to-white p-3 text-[12px] text-txt-secondary">
           <div className="text-[11px] uppercase tracking-wider font-bold text-primary mb-1">Screen share is on</div>
-          {name} sees the screen on the left and answers from its live figures. Ask about anything you see, or ask to open another screen.
+          {name} sees the screen on the left and answers from its live figures. Ask about anything you see; when another screen is relevant an Open button appears here and you choose when to open it.
         </div>
         {transcript.length === 0 && <div className="text-center py-6 text-txt-tertiary text-[12px]">Speak, or type below. What you both say appears here.</div>}
-        {transcript.map((m, i) => <ChatBubble key={i} role={m.role} text={m.text || '…'} />)}
+        {transcript.map((m, i) => (
+          <div key={i}>
+            <ChatBubble role={m.role} text={m.text || '…'} />
+            {m.offer && (m.offer.canvas?.type || m.offer.followUps?.length > 0) && (
+              <div className="mt-1.5 ml-2 flex flex-wrap gap-2">
+                {m.offer.canvas?.type && <button onClick={() => openCanvas?.(m.offer.canvas)} className="px-3 py-1.5 text-xs font-bold rounded-pill bg-primary text-white hover:opacity-90">Open {m.offer.label} →</button>}
+                {(m.offer.followUps || []).slice(0, 3).map((q, k) => <button key={k} onClick={() => sendText?.(q)} className="px-3 py-1.5 text-xs rounded-pill bg-white border border-primary text-primary-dark hover:bg-primary-light/40">{k + 1}. {q}</button>)}
+              </div>
+            )}
+          </div>
+        ))}
         <div ref={endRef} />
       </div>
       <form onSubmit={submit} className="flex-shrink-0 px-3 py-3 border-t border-bdr bg-gradient-to-t from-surface-page/40 to-white">
